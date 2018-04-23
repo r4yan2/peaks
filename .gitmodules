@@ -1,0 +1,3 @@
+[submodule "OpenPGP"]
+	path = OpenPGP
+	url = git@github.com:D-o-c/OpenPGP.git
