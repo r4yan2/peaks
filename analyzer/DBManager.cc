@@ -31,8 +31,9 @@ DBManager::DBManager() {
             "INNER JOIN Pubkey ON Signatures.issuingFingerprint = Pubkey.fingerprint "
             "LEFT JOIN KeyStatus ON KeyStatus.fingerprint = Pubkey.fingerprint and KeyStatus.version = Pubkey.version "
             "WHERE Signatures.is_analyzed = 0 and Pubkey.is_analyzed = 1 LIMIT ?;"));
-    get_RSA_modulo_list_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT DISTINCT n FROM Pubkey WHERE pubAlgorithm <= 3 and n != \"\" "
-            "and (version, fingerprint) not in (SELECT version, fingerprint from KeyStatus WHERE vulnerabilityCode = 4);"));
+    get_RSA_modulo_list_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT DISTINCT n FROM Pubkey "
+            "WHERE pubAlgorithm <= 3 and n != \"\" and (version, fingerprint) not in "
+            "(SELECT version, fingerprint from KeyStatus WHERE vulnerabilityCode = 4);"));
 
     get_MPI_pubkey_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT e, n, p, q, g, y, curveOID "
             "FROM Pubkey AS p INNER JOIN KeyStatus AS ks WHERE p.version = (?) and p.fingerprint = unhex(?) "
@@ -371,10 +372,12 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
         case Utils::ANALYZED_PUBKEY:
             for (const auto &f: files){
                 try{
-                    shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_pk (version tinyint, fingerprint binary(20), analyzed tinyint, PRIMARY KEY (version, fingerprint)) ENGINE=MEMORY;");
+                    shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_pk (version tinyint, "
+                               "fingerprint binary(20), analyzed tinyint, PRIMARY KEY (version, fingerprint)) ENGINE=MEMORY;");
                     shared_ptr<Statement>(con->createStatement())->execute(set_pubkey_analyzed_stmt.first + f + set_pubkey_analyzed_stmt.second);
-                    shared_ptr<Statement>(con->createStatement())->execute("UPDATE Pubkey INNER JOIN tmp_analyzer_pk ON tmp_analyzer_pk.version = Pubkey.version AND "
-                                                            "tmp_analyzer_pk.fingerprint = Pubkey.fingerprint SET Pubkey.is_analyzed = 1;");
+                    shared_ptr<Statement>(con->createStatement())->execute("UPDATE Pubkey INNER JOIN tmp_analyzer_pk ON "
+                               "tmp_analyzer_pk.version = Pubkey.version AND tmp_analyzer_pk.fingerprint = Pubkey.fingerprint "
+                               "SET Pubkey.is_analyzed = 1;");
                     shared_ptr<Statement>(con->createStatement())->execute("DROP TABLE tmp_analyzer_pk;");
                 }catch (exception &e){
                     syslog(LOG_CRIT, ("set_pubkey_analyzed_stmt FAILED, the key will result ANALYZABLE in the database! - " +
@@ -386,9 +389,11 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
         case Utils::ANALYZED_SIGNATURE:
             for (const auto &f: files){
                 try{
-                    shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_s (signature_id int(10), PRIMARY KEY (signature_id)) ENGINE=MEMORY;");
+                    shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_s (signature_id int(10), "
+                               "PRIMARY KEY (signature_id)) ENGINE=MEMORY;");
                     shared_ptr<Statement>(con->createStatement())->execute(set_analyzed_signature_stmt.first + f + set_analyzed_signature_stmt.second);
-                    shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN tmp_analyzer_s ON tmp_analyzer_s.signature_id = Signatures.id SET Signatures.is_analyzed = 1;");
+                    shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN tmp_analyzer_s ON "
+                               "tmp_analyzer_s.signature_id = Signatures.id SET Signatures.is_analyzed = 1;");
                     shared_ptr<Statement>(con->createStatement())->execute("DROP TABLE tmp_analyzer_s;");
                 }catch (exception &e){
                     syslog(LOG_CRIT, ("set_analyzed_signature_stmt FAILED, the signature will result ANALYZABLE in the database! - " +
@@ -411,9 +416,10 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
         case Utils::BROKEN_MODULUS:
             for (const auto &f: files){
                 try{
-                    shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_mod (RSA_modulus blob, PRIMARY KEY (RSA_modulus(767)));");
+                    shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_mod (RSA_modulus blob, "
+                               "PRIMARY KEY (RSA_modulus(767)));");
                     auto insert_keystatus_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT IGNORE INTO "
-                        "KeyStatus SELECT version, fingerprint, ?, ? FROM Pubkey WHERE n in (SELECT * FROM tmp_analyzer_mod)"));
+                               "KeyStatus SELECT version, fingerprint, ?, ? FROM Pubkey WHERE n in (SELECT * FROM tmp_analyzer_mod)"));
                     shared_ptr<Statement>(con->createStatement())->execute(insert_broken_modulus_stmt.first + f + insert_broken_modulus_stmt.second);
                     insert_keystatus_stmt -> setInt(1, Utils::VULN_CODE::RSA_COMMON_FACTOR);
                     insert_keystatus_stmt -> setString(2, Utils::VULN_NAME.at(Utils::VULN_CODE::RSA_COMMON_FACTOR));
@@ -440,9 +446,10 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
         case Utils::REPEATED_R:
             for (const auto &f: files){
                 try{
-                    shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_repR (id int(10), PRIMARY KEY(id)) ENGINE=MEMORY;");
+                    shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_repR (id int(10), "
+                               "PRIMARY KEY(id)) ENGINE=MEMORY;");
                     auto insert_signatureStatus_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT IGNORE "
-                          "INTO SignatureStatus SELECT id, ?, ? FROM tmp_analyzer_repR;"));
+                               "INTO SignatureStatus SELECT id, ?, ? FROM tmp_analyzer_repR;"));
                     shared_ptr<Statement>(con->createStatement())->execute(insert_repeated_r_stmt.first + f + insert_repeated_r_stmt.second);
                     insert_signatureStatus_stmt -> setInt(1, Utils::VULN_CODE::SIGNATURE_REPEATED_R);
                     insert_signatureStatus_stmt -> setString(2, Utils::VULN_NAME.at(Utils::VULN_CODE::SIGNATURE_REPEATED_R));
