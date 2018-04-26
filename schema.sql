@@ -311,22 +311,6 @@ SET character_set_client = utf8;
 SET character_set_client = @saved_cs_client;
 
 --
--- Temporary table structure for view `revokedSignatures`
---
-
-DROP TABLE IF EXISTS `revokedSignatures`;
-/*!50001 DROP VIEW IF EXISTS `revokedSignatures`*/;
-SET @saved_cs_client     = @@character_set_client;
-SET character_set_client = utf8;
-/*!50001 CREATE VIEW `revokedSignatures` AS SELECT 
- 1 AS `issuingKeyId`,
- 1 AS `signedKeyId`,
- 1 AS `issuingFingerprint`,
- 1 AS `signedFingerprint`,
- 1 AS `signedUsername`*/;
-SET character_set_client = @saved_cs_client;
-
---
 -- Table structure for table `removed_hash`
 --
 
@@ -347,7 +331,7 @@ DROP TABLE IF EXISTS `revocationSignatures`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `revocationSignatures` (
-  `issuingKeyId` bigint(20) NOT NULL DEFAULT '0',
+  `issuingKeyId` bigint(20) unsigned NOT NULL DEFAULT '0',
   `signedFingerprint` binary(20) NOT NULL DEFAULT '\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0',
   `signedUsername` varchar(750) NOT NULL DEFAULT '',
   PRIMARY KEY (`issuingKeyId`,`signedFingerprint`,`signedUsername`(250))
@@ -385,19 +369,6 @@ CREATE TABLE `selfSignaturesMetadata` (
   KEY `signedUserId` (`signedUserId`(255)),
   KEY `version` (`version`,`issuingFingerprint`,`trustLevel`,`isPrimaryUserId`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10701766 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `tmp_analyzer_mod`
---
-
-DROP TABLE IF EXISTS `tmp_analyzer_mod`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `tmp_analyzer_mod` (
-  `RSA_modulus` blob NOT NULL,
-  PRIMARY KEY (`RSA_modulus`(767))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -464,24 +435,6 @@ USE `gpg_keyserver`;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
 
---
--- Final view structure for view `revokedSignatures`
---
-
-/*!50001 DROP VIEW IF EXISTS `revokedSignatures`*/;
-/*!50001 SET @saved_cs_client          = @@character_set_client */;
-/*!50001 SET @saved_cs_results         = @@character_set_results */;
-/*!50001 SET @saved_col_connection     = @@collation_connection */;
-/*!50001 SET character_set_client      = utf8 */;
-/*!50001 SET character_set_results     = utf8 */;
-/*!50001 SET collation_connection      = utf8_general_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`gpg_keyserver`@`%` SQL SECURITY DEFINER */
-/*!50001 VIEW `revokedSignatures` AS (select `Signatures`.`issuingKeyId` AS `issuingKeyId`,`Signatures`.`signedKeyId` AS `signedKeyId`,`Signatures`.`issuingFingerprint` AS `issuingFingerprint`,`Signatures`.`signedFingerprint` AS `signedFingerprint`,`Signatures`.`signedUsername` AS `signedUsername` from `Signatures` where (`Signatures`.`isRevocation` = 1)) */;
-/*!50001 SET character_set_client      = @saved_cs_client */;
-/*!50001 SET character_set_results     = @saved_cs_results */;
-/*!50001 SET collation_connection      = @saved_col_connection */;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

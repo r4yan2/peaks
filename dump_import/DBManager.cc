@@ -401,9 +401,6 @@ void DBManager::UpdateSignatureIssuingUsername() {
         shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
         shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN key_primary_userID on "
              "issuingFingerprint = fingerprint SET issuingUsername = name WHERE issuingUsername IS NULL;");
-        /*shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN Pubkey on "
-             "Signatures.issuingFingerprint = Pubkey.fingerprint INNER JOIN key_primary_userID on "
-             "Pubkey.PriFingerprint = key_primary_userID.fingerprint SET issuingUsername = name WHERE issuingUsername = \"\";");*/
     }catch (exception &e){
         syslog(LOG_CRIT, ("update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - " +
                           (string)e.what()).c_str());
@@ -447,7 +444,7 @@ void DBManager::UpdateIsValid() {
 void DBManager::lockTables(){
     try{
         shared_ptr<Statement>(con->createStatement())->execute("LOCK TABLES broken_keys WRITE, gpg_keyserver WRITE, "
-             "KeyStatus WRITE, Pubkey WRITE, selfSignaturesMetadata WRITE, Signatures WRITE, SignatureStatus WRITE, "
+             "KeyStatus WRITE, Pubkey WRITE, selfSignaturesMetadata WRITE, Signatures WRITE, SignatureStatus WRITE, revocationSignatures WRITE, "
              "Unpacker_errors WRITE, UserID WRITE, Signature_no_issuing_fp WRITE, UserAttribute WRITE, key_primary_userID WRITE;");
     }catch (exception &e){
         syslog(LOG_WARNING, ("lock_tables_stmt FAILED, the query will be slowly! - " +

@@ -178,7 +178,7 @@ namespace Unpacker {
             }
         }
 
-        /*for (auto it = pk.uid_userAtt.begin(); it != pk.uid_userAtt.end(); it++) {
+        for (auto it = pk.uid_userAtt.begin(); it != pk.uid_userAtt.end(); it++) {
             try {
                 DBStruct::userAtt ua_struct{
                         .id = std::distance(pk.uid_userAtt.begin(), it) + 1,
@@ -191,15 +191,15 @@ namespace Unpacker {
                 modified.modified = true;
                 modified.comments.push_back("Unpacking jumped due to: " + string(e.what()));
             }
-        }*/
+        }
 
         for (auto i = pk.subKeys.begin(); i != pk.subKeys.end(); i = pk.subKeys.upper_bound(i->first)){
-            /*try{
+            try{
                 unpackedPubkeys.push_back(get_publicKey_data(i->first, primaryKey));
             }catch (exception &e){
                 modified.modified = true;
                 modified.comments.push_back("Unpacking jumped due to: " + string(e.what()));
-            }*/
+            }
 
             auto range_sub = pk.subKeys.equal_range(i->first);
             assert(range_sub.second == pk.subKeys.upper_bound(i->first));
@@ -227,9 +227,9 @@ namespace Unpacker {
         for (auto &u: unpackedUserID){
             dbm->write_userID_csv(u);
         }
-        /*for (auto &ua: unpackedUserAtt){
+        for (auto &ua: unpackedUserAtt){
             dbm->write_userAttributes_csv(ua);
-        }*/
+        }
         for (auto it = unpackedSignatures.begin(); it != unpackedSignatures.end(); it++){
             if(!dbm->existSignature(*it) || find(it + 1, unpackedSignatures.end(), *it) == unpackedSignatures.end()) {
                 dbm->write_signature_csv(*it);
@@ -238,8 +238,8 @@ namespace Unpacker {
                 }
             }
         }
-        //dbm->write_gpg_keyserver_csv(gpg_keyserver_table, modified);
-        //dbm->write_unpackerErrors_csv(modified);
+        dbm->write_gpg_keyserver_csv(gpg_keyserver_table, modified);
+        dbm->write_unpackerErrors_csv(modified);
     }
 
     DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const Packet::Key::Ptr &priKey, const string &uatt_id) {

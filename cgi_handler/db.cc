@@ -220,8 +220,8 @@ forward_list<DB_Key*> *DBManager::indexQuery(string key) {
     result = shared_ptr<ResultSet>(index_stmt->executeQuery());
     while (result->next()) {
         int algoNum = result->getInt(3);
-        char algoChar;
-        int keyLength;
+        char algoChar = 'c';
+        int keyLength = 0;
 
         string date = string(result->getString(4));
         string keyID = string(result->getString(5));
@@ -499,7 +499,7 @@ string DBManager::get_key_by_hash(const string &hash) {
             out += result->getString("certificate");
         }
     }catch (exception &e){
-        syslog(LOG_WARNING, "Hash not found: requested not existing hashing during recon: %s", hash);
+        syslog(LOG_WARNING, "Hash not found: requested not existing hashing during recon: %s", hash.c_str());
     }
     return out;
 }
