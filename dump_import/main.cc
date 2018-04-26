@@ -133,6 +133,9 @@ int main(int argc, char* argv[]) {
     cout << Utils::getCurrentTime() << "\tSetting expired flag" << endl;
     dbm->UpdateIsExpired();
 
+    cout << Utils::getCurrentTime() << "\tSetting revoked flag" << endl;
+    dbm->UpdateIsRevoked();
+
     cout << Utils::getCurrentTime() << "\tSetting valid flag" << endl;
     dbm->UpdateIsValid();
 

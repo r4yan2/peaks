@@ -42,7 +42,7 @@ public:
     void insertCSV(const std::vector<std::string> &files, const unsigned int &table);
 
     void UpdateIsExpired();
-
+    void UpdateIsRevoked();
     void UpdateIsValid();
 
     void UpdateSignatureIssuingUsername();
