@@ -32,13 +32,12 @@ public:
 
     void insertCSV(const std::vector<std::string> &files, const unsigned int &table);
 
-    void set_as_not_analyzable(const OpenPGP::PublicKey::Ptr &key, const std::string &c);
     void set_as_not_analyzable(const int &version, const std::string &fingerprint, const std::string &comment);
 
     void UpdateSignatureIssuingFingerprint(const unsigned long &l);
 
     void UpdateIsExpired();
-
+    void UpdateIsRevoked();
     void UpdateIsValid();
 
     void UpdateSignatureIssuingUsername();

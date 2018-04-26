@@ -18,11 +18,11 @@ DBManager::DBManager() {
     DBManager::con = shared_ptr<Connection>(driver->connect(DB_info::host, DB_info::user, DB_info::password));
     // Connect to the MySQL keys database
     con->setSchema(DB_info::database);
-    // Create prepared Statements
 
     con->createStatement()->execute("set sql_log_bin = 0;");
     con->createStatement()->execute("set foreign_key_checks = 0;");
 
+    // Create prepared Statements
     get_signature_by_index = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT id "
                                      "FROM Signatures WHERE r = (?) and s = (?)"));
 

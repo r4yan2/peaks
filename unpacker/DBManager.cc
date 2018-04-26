@@ -18,6 +18,10 @@ DBManager::DBManager() {
     DBManager::con = shared_ptr<Connection>(driver->connect(DB_info::host, DB_info::user, DB_info::password));
     // Connect to the MySQL keys database
     con->setSchema(DB_info::database);
+
+    con->createStatement()->execute("set sql_log_bin = 0;");
+    con->createStatement()->execute("set foreign_key_checks = 0;");
+
     // Create prepared Statements
     get_analyzable_cert_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT version, fingerprint, certificate "
                                      "FROM gpg_keyserver WHERE is_unpacked = 0 LIMIT ?"));
@@ -403,13 +407,25 @@ void DBManager::UpdateIsExpired() {
     }
 }
 
+void DBManager::UpdateIsRevoked() {
+    try{
+        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
+        shared_ptr<Statement>(con->createStatement())->execute("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
+                  "signedFingerprint, signedUsername FROM Signatures WHERE isRevocation = 1;");
+        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures set isRevoked = 1 where isRevoked = 0 "
+                  "and isRevocation = 0 and (issuingKeyId, signedFingerprint, signedUsername) in (select * from revocationSignatures);");
+    }catch (exception &e){
+        syslog(LOG_CRIT, ("update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - " +
+                          (string)e.what()).c_str());
+    }
+}
+
+
 void DBManager::UpdateIsValid() {
     try{
         shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
         shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 "
-                  "or (s1.issuingKeyId, s1.signedKeyId, s1.issuingFingerprint, s1.signedFingerprint, s1.signedUsername) "
-                  "in (select s.issuingKeyId, s.signedKeyId, s.issuingFingerprint, s.signedFingerprint, s.signedUsername from "
-                  "(select * from Signatures where isRevocation = 1) as s) WHERE isRevocation = 0;");
+                                                                       "or isRevoked = 1;");
     }catch (exception &e){
         syslog(LOG_CRIT, ("update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - " +
                           (string)e.what()).c_str());
