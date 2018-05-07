@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 __exists() {
     which $1 1>/dev/null 2>&1
 }
