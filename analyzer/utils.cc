@@ -61,8 +61,8 @@ namespace Utils{
                 string rnd_num = to_string(dist(gen));
                 copy_file(f, ERROR_FOLDER + rnd_num + FILENAME.at(i), copy_option::fail_if_exists);
             }catch (error_code &e){
-                syslog(LOG_CRIT, ("set_key_not_analyzable FAILED, the key will result ANALYZABLE in the database! - " +
-                                  (string)e.message()).c_str()); // [TODO] Modificami
+                syslog(LOG_CRIT, "set_key_not_analyzable FAILED, the key will result ANALYZABLE in the database! - %s",
+                                  e.message().c_str());
             }
         }
     }

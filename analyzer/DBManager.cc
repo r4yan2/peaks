@@ -294,8 +294,8 @@ void DBManager::write_analyzed_pk_csv(const DBStruct::pubkey &pk){
         f << '"' << hexlify(pk.fingerprint) << "\",";
         f << "\n";
     }catch (exception &e){
-        syslog(LOG_CRIT, ("write_analyzed_pk_csv FAILED, the key will result ANALYZABLE in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_analyzed_pk_csv FAILED, the key will result ANALYZABLE in the database! - %s",
+                         e.what());
     }
 }
 
@@ -305,8 +305,8 @@ void DBManager::write_analyzed_sign_csv(const DBStruct::signatures &s){
         f << '.' << '"' << to_string(s.id) << "\"";
         f << "\n";
     }catch (exception &e){
-        syslog(LOG_CRIT, ("write_analyzed_sign_csv FAILED, the signature will result ANALYZABLE in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_analyzed_sign_csv FAILED, the signature will result ANALYZABLE in the database! - %s",
+                          e.what());
     }
 }
 
@@ -318,8 +318,8 @@ void DBManager::write_broken_modulus_csv(const std::vector<std::string> &broken_
         }
         f.close();
     } catch (exception &e){
-        syslog(LOG_CRIT, ("write_broken_modulus_csv FAILED, the modulo will result not broken in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_broken_modulus_csv FAILED, the modulo will result not broken in the database! - %s",
+                          e.what());
     }
 }
 
@@ -332,8 +332,8 @@ void DBManager::write_broken_key_csv(const DBStruct::KeyStatus &ks) {
         f << '"' << ks.vulnerabilityDescription << "\"";
         f << "\n";
     } catch (exception &e){
-        syslog(LOG_CRIT, ("write_broken_key_csv FAILED, the key will result not broken in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_broken_key_csv FAILED, the key will result not broken in the database! - %s",
+                          e.what());
     }
 }
 
@@ -345,8 +345,9 @@ void DBManager::write_broken_signature_csv(const DBStruct::SignatureStatus &ss) 
         f << '"' << ss.vulnerabilityDescription << "\"";
         f << "\n";
     } catch (exception &e){
-        syslog(LOG_CRIT, ("write_broken_signature_csv FAILED, the signature will result not broken in the database! - " +
-                          (string)e.what()).c_str());
+	    string tmp = e.what();
+        syslog(LOG_CRIT, "write_broken_signature_csv FAILED, the signature will result not broken in the database! - %s",
+                          e.what());
     }
 }
 
@@ -362,8 +363,8 @@ void DBManager::write_repeated_r_csv() {
         }
         f.close();
     } catch (exception &e){
-        syslog(LOG_CRIT, ("write_repeated_r_csv FAILED, the signature will result not broken in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_repeated_r_csv FAILED, the signature will result not broken in the database! - %s",
+                          e.what());
     }
 }
 
@@ -380,8 +381,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                                "SET Pubkey.is_analyzed = 1;");
                     shared_ptr<Statement>(con->createStatement())->execute("DROP TABLE tmp_analyzer_pk;");
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("set_pubkey_analyzed_stmt FAILED, the key will result ANALYZABLE in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "set_pubkey_analyzed_stmt FAILED, the key will result ANALYZABLE in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::ANALYZED_PUBKEY);
                 }
             }
@@ -396,8 +397,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                                "tmp_analyzer_s.signature_id = Signatures.id SET Signatures.is_analyzed = 1;");
                     shared_ptr<Statement>(con->createStatement())->execute("DROP TABLE tmp_analyzer_s;");
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("set_analyzed_signature_stmt FAILED, the signature will result ANALYZABLE in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "set_analyzed_signature_stmt FAILED, the signature will result ANALYZABLE in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::ANALYZED_SIGNATURE);
                 }
             }
@@ -407,8 +408,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_broken_key_stmt.first + f + insert_broken_key_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_broken_key_stmt FAILED, the key will result not broken in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_broken_key_stmt FAILED, the key will result not broken in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::BROKEN_PUBKEY);
                 }
             }
@@ -426,8 +427,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                     insert_keystatus_stmt -> execute();
                     shared_ptr<Statement>(con->createStatement())->execute("DROP TABLE tmp_analyzer_mod;");
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_broken_modulus_stmt FAILED, the key will result not broken in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_broken_modulus_stmt FAILED, the key will result not broken in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::BROKEN_MODULUS);
                 }
             }
@@ -437,8 +438,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_broken_signature_stmt.first + f + insert_broken_signature_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_broken_signature_stmt FAILED, the signature will result not broken in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_broken_signature_stmt FAILED, the signature will result not broken in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::BROKEN_SIGNATURE);
                 }
             }
@@ -456,8 +457,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                     insert_signatureStatus_stmt -> execute();
                     shared_ptr<Statement>(con->createStatement())->execute("DROP TABLE tmp_analyzer_repR;");
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_repeated_r_stmt FAILED, the signature will result not broken in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_repeated_r_stmt FAILED, the signature will result not broken in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::REPEATED_R);
                 }
             }
@@ -471,8 +472,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
         try{
             remove(f.c_str());
         }catch (exception &e){
-            syslog(LOG_CRIT, ("Error during deletion of files. The file will remaining in the temp folder. - " +
-                              (string)e.what()).c_str());
+            syslog(LOG_CRIT, "Error during deletion of files. The file will remaining in the temp folder. - %s",
+                              e.what());
         }
     }
 }

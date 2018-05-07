@@ -94,13 +94,11 @@ int main(int argc, char* argv[]) {
                 pks.push_back(make_shared<PublicKey>(PublicKey(*pkt)));
             }catch (exception &e){
                 dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
-                syslog(LOG_CRIT, ("Error during creation of the object PGP::Key - " +
-                                  (string)e.what()).c_str());
+                syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", e.what());
                 continue;
             }catch (error_code &e){
                 dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
-                syslog(LOG_CRIT, ("Error during creation of the object PGP::Key - " +
-                                  (string)e.message()).c_str());
+                syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", e.message().c_str());
                 continue;
             }
         }

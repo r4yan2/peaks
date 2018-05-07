@@ -268,9 +268,9 @@ void DBManager::insert_gpg_keyserver(const gpg_keyserver_data &gk) {
         insert_gpg_stmt->executeQuery();
     }catch (SQLException &e){
         if(e.getErrorCode() == 1062){
-            syslog(LOG_INFO, ("insert_gpg_stmt FAILED - key already in the database (but this error must not happen) - " + (string)e.what()).c_str());
+            syslog(LOG_INFO, "insert_gpg_stmt FAILED - key already in the database (but this error must not happen) - %s", e.what());
         }else {
-            syslog(LOG_ERR, ("insert_gpg_stmt FAILED - " + (string)e.what()).c_str());
+            syslog(LOG_ERR, "insert_gpg_stmt FAILED - %s", e.what());
         }
     }
 }
@@ -283,7 +283,7 @@ void DBManager::update_gpg_keyserver(const gpg_keyserver_data &gk) {
         update_gpg_stmt->setInt(4, gk.version);
         update_gpg_stmt->executeQuery();
     }catch (SQLException &e){
-        syslog(LOG_ERR, ("update_gpg_stmt FAILED - " + (string)e.what()).c_str());
+        syslog(LOG_ERR, "update_gpg_stmt FAILED - %s", e.what());
     }
 }
 
@@ -296,9 +296,9 @@ void DBManager::insert_user_id(const userID_data &uid) {
         insert_uid_stmt->executeQuery();
     }catch(SQLException &e){
         if(e.getErrorCode() == 1062){
-            syslog(LOG_INFO, ("insert_uid_stmt FAILED - user already in the database - " + (string)e.what()).c_str());
+            syslog(LOG_INFO, "insert_uid_stmt FAILED - user already in the database - %s", e.what());
         }else{
-            syslog(LOG_ERR, ("insert_uid_stmt FAILED - " + (string)e.what()).c_str());
+            syslog(LOG_ERR, "insert_uid_stmt FAILED - %s", e.what());
         }
     }
 }
@@ -309,7 +309,7 @@ void DBManager::insert_broken_key(const string &cert, const string &comment) {
         insert_brokenKey_stmt->setString(2, comment);
         insert_brokenKey_stmt->executeQuery();
     }catch (SQLException &e){
-        syslog(LOG_ERR, ("insert_brokenKey_stmt FAILED - " + (string)e.what()).c_str());
+        syslog(LOG_ERR, "insert_brokenKey_stmt FAILED - %s", e.what());
     }
 }
 

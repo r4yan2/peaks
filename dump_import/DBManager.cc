@@ -108,8 +108,7 @@ bool DBManager::existSignature(const DBStruct::signatures &s){
         delete s_sign;
         return result->next();
     }catch (exception &e){
-        syslog(LOG_CRIT, ("get_signature_by_index FAILED, there may be a double signature in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "get_signature_by_index FAILED, there may be a double signature in the database! - %s", e.what());
         delete r_sign;
         delete s_sign;
         return false;
@@ -132,8 +131,7 @@ void DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_
         f << '"' << to_string(gpg_data.error_code) << "\",";
         f << "\n";
     }catch (exception &e){
-        syslog(LOG_CRIT, ("write_gpg_keyserver_csv FAILED, the key will not have the certificate in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_gpg_keyserver_csv FAILED, the key will not have the certificate in the database! - %s", e.what());
     }
 }
 
@@ -147,8 +145,7 @@ void DBManager::write_broken_key_csv(std::ifstream &file_cert, const std::string
         f << '"' << error << "\",";
         f << "\n";
     }catch (exception &e){
-        syslog(LOG_CRIT, ("write_broken_key_csv FAILED, broken key lost! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_broken_key_csv FAILED, broken key lost! - %s", e.what());
     }
 }
 
@@ -168,8 +165,7 @@ void DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
         f << '"' << pubkey.curve<< "\",";
         f << "\n";
     }catch (exception &e){
-        syslog(LOG_CRIT, ("write_pubkey_csv FAILED, the key not have the results of the unpacking in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_pubkey_csv FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
     }
 }
 
@@ -182,8 +178,7 @@ void DBManager::write_userID_csv(const DBStruct::userID &uid) {
         f << '"' << uid.email << "\",";
         f << "\n";
     }catch (exception &e){
-        syslog(LOG_CRIT, ("write_userAttributes_csv FAILED, the UserID not have the results of the unpacking in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_userAttributes_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
     }
 }
 
@@ -197,8 +192,7 @@ void DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
         f << '"' << hexlify(ua.image) << "\",";
         f << "\n";
     }catch (exception &e){
-        syslog(LOG_CRIT, ("write_userAttributes_csv FAILED, the UserID not have the results of the unpacking in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_userAttributes_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
     }
 }
 
@@ -235,8 +229,7 @@ void DBManager::write_signature_csv(const DBStruct::signatures &ss) {
         f << '"' << ss.isRevocation << "\",";
         f << "\n";
     }catch (exception &e){
-        syslog(LOG_CRIT, ("write_signature_csv FAILED, the signature not have the results of the unpacking in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s", e.what());
     }
 }
 
@@ -258,8 +251,7 @@ void DBManager::write_self_signature_csv(const DBStruct::signatures &ss) {
         f << '"' << ss.signedUsername << "\",";
         f << "\n";
     }catch (exception &e){
-        syslog(LOG_CRIT, ("write_self_signature_csv FAILED, the signature not have the results of the unpacking in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_self_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s", e.what());
     }
 }
 
@@ -274,8 +266,7 @@ void DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod){
             f << "\n";
         }
     }catch (exception &e){
-        syslog(LOG_CRIT, ("write_unpackerErrors_csv FAILED, the error of the unpacking will not be in the database! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "write_unpackerErrors_csv FAILED, the error of the unpacking will not be in the database! - %s", e.what());
     }
 }
 
@@ -286,8 +277,7 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_pubkey_stmt.first + f + insert_pubkey_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
                     Utils::put_in_error(f, Utils::PUBKEY);
                 }
             }
@@ -298,8 +288,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                     string query = insert_signature_stmt.first + f + insert_signature_stmt.second;
                     shared_ptr<Statement>(con->createStatement())->execute(insert_signature_stmt.first + f + insert_signature_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::SIGNATURE);
                 }
             }
@@ -309,8 +299,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_self_signature_stmt.first + f + insert_self_signature_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::SELF_SIGNATURE);
                 }
             }
@@ -320,8 +310,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_userID_stmt.first + f + insert_userID_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::USERID);
                 }
             }
@@ -331,8 +321,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_userAtt_stmt.first + f + insert_userAtt_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::USER_ATTRIBUTES);
                 }
             }
@@ -342,8 +332,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_certificate_stmt.first + f + insert_certificate_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_certificate_stmt FAILED, the key will not have the certificate in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_certificate_stmt FAILED, the key will not have the certificate in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::CERTIFICATE);
                 }
             }
@@ -353,8 +343,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::UNPACKER_ERRORS);
                 }
             }
@@ -364,8 +354,8 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_brokenKey_stmt.first + f + insert_brokenKey_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, ("insert_brokenKey_stmt FAILED, the broken key will not be in the database! - " +
-                                      (string)e.what()).c_str());
+                    syslog(LOG_CRIT, "insert_brokenKey_stmt FAILED, the broken key will not be in the database! - %s",
+                                      e.what());
                     Utils::put_in_error(f, Utils::BROKEN_KEY);
                 }
             }
@@ -379,8 +369,7 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
         try{
             remove(f.c_str());
         }catch (exception &e){
-            syslog(LOG_CRIT, ("File deleting FAILED, the following file MUST be deleted manually: " + f + string(". Error: ") +
-                              (string)e.what()).c_str());
+            syslog(LOG_CRIT, "File deleting FAILED, the following file MUST be deleted manually: %s .Error: %s", f.c_str(), e.what());
         }
     }
 }
@@ -391,8 +380,8 @@ void DBManager::UpdateSignatureIssuingFingerprint() {
         shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN Signature_no_issuing_fp "
              "as ifp SET Signatures.issuingFingerprint = ifp.fp WHERE ifp.id = Signatures.id;");
     }catch (exception &e){
-        syslog(LOG_CRIT, ("update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
+                          e.what());
     }
 }
 
@@ -402,8 +391,8 @@ void DBManager::UpdateSignatureIssuingUsername() {
         shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN key_primary_userID on "
              "issuingFingerprint = fingerprint SET issuingUsername = name WHERE issuingUsername IS NULL;");
     }catch (exception &e){
-        syslog(LOG_CRIT, ("update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
+                          e.what());
     }
 }
 
@@ -412,8 +401,8 @@ void DBManager::UpdateIsExpired() {
         shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
         shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures SET isExpired = 1 WHERE expirationTime < NOW();");
     }catch (exception &e){
-        syslog(LOG_CRIT, ("update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
+                          e.what());
     }
 }
 
@@ -425,8 +414,8 @@ void DBManager::UpdateIsRevoked() {
         shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures set isRevoked = 1 where isRevoked = 0 "
              "and isRevocation = 0 and (issuingKeyId, signedFingerprint, signedUsername) in (select * from revocationSignatures);");
     }catch (exception &e){
-        syslog(LOG_CRIT, ("update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
+                          e.what());
     }
 }
 
@@ -436,8 +425,8 @@ void DBManager::UpdateIsValid() {
         shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 "
              "or isRevoked = 1;");
     }catch (exception &e){
-        syslog(LOG_CRIT, ("update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
+                          e.what());
     }
 }
 
@@ -447,8 +436,8 @@ void DBManager::lockTables(){
              "KeyStatus WRITE, Pubkey WRITE, selfSignaturesMetadata WRITE, Signatures WRITE, SignatureStatus WRITE, revocationSignatures WRITE, "
              "Unpacker_errors WRITE, UserID WRITE, Signature_no_issuing_fp WRITE, UserAttribute WRITE, key_primary_userID WRITE;");
     }catch (exception &e){
-        syslog(LOG_WARNING, ("lock_tables_stmt FAILED, the query will be slowly! - " +
-                             (string)e.what()).c_str());
+        syslog(LOG_WARNING, "lock_tables_stmt FAILED, the query will be slowly! - %s",
+                             e.what());
     }
 }
 
@@ -456,8 +445,8 @@ void DBManager::unlockTables(){
     try{
         shared_ptr<Statement>(con->createStatement())->execute(("UNLOCK TABLES;"));
     }catch (exception &e){
-        syslog(LOG_CRIT, ("unlock_tables_stmt FAILED, the tables will remain locked! - " +
-                          (string)e.what()).c_str());
+        syslog(LOG_CRIT, "unlock_tables_stmt FAILED, the tables will remain locked! - %s",
+                          e.what());
     }
 }
 

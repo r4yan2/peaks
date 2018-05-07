@@ -56,8 +56,7 @@ namespace Utils{
                 string rnd_num = to_string(dist(gen));
                 copy_file(f, ERROR_FOLDER.string() + rnd_num + FILENAME.at(i), copy_option::fail_if_exists);
             }catch (error_code &e){
-                syslog(LOG_CRIT, ("Saving errors during CSV insertion FAILED, data will be lost! - " +
-                                  (string)e.message()).c_str());
+                syslog(LOG_CRIT, "Saving errors during CSV insertion FAILED, data will be lost! - %s", e.message().c_str());
             }
         }
     }

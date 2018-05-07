@@ -26,7 +26,7 @@ namespace Unpacker {
                 if (file.is_open()){
                     try{
                         unpack_dump(file, dbm);
-                    }catch(exception &e) {
+                    }catch (exception &e){
                         syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", e.what());
                         cerr << "Key not unpacked due to not meaningfulness (" << e.what() << ")." << endl;
                         dbm->write_broken_key_csv(file, e.what());
@@ -525,7 +525,7 @@ namespace Unpacker {
                     break;
                 }
                 default:
-                    syslog(LOG_WARNING, ("Not valid user attribute subpacket tag found: " + to_string(a->get_type())).c_str());
+                    syslog(LOG_WARNING, "Not valid user attribute subpacket tag found: %d", a->get_type());
                     break;
             }
         }
@@ -626,7 +626,7 @@ namespace Unpacker {
                 }
                 #endif
                 default:
-                    syslog(LOG_WARNING, ("Not valid signature subpacket tag found: " + to_string(p->get_type())).c_str());
+                    syslog(LOG_WARNING, "Not valid signature subpacket tag found: %d", p->get_type());
                     break;
             }
         }
