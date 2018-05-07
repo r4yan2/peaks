@@ -3,8 +3,7 @@ project(pks)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS_DEBUG "-march=native -DGPG_COMPATIBLE -g -O0 -pthread -lbz2 -lgmp -lz -lcppcms -lmysqlcppconn -lbooster -static-libgcc -lstdc++ -pipe -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "-march=native -DGPG_COMPATIBLE -O2 -g3 -pthread -lbz2 -lgmp -lz -lcppcms -lmysqlcppconn -lbooster -static-libgcc -pipe 
--Werror -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "-march=native -DGPG_COMPATIBLE -O2 -g3 -pthread -lbz2 -lgmp -lz -lcppcms -lmysqlcppconn -lbooster -static-libgcc -pipe -Wall")
 set(SOURCE_FILES pks.cc db.cc utils.cc encoder/encoder.cc mitpgpskin.cc PacketReader.cc db_key.h content.h DB_info.h)
 
 set(TEMPLATES_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/templates)
@@ -25,3 +24,12 @@ link_directories(${OpenPGP_DIRECTORY})
 
 target_link_libraries(pks ${OpenPGP_DIRECTORY}/libOpenPGP.a)
 
+find_package(Boost REQUIRED COMPONENTS system filesystem)
+
+target_link_libraries(pks ${Boost_LIBRARIES})
+target_link_libraries(pks mysqlcppconn)
+target_link_libraries(pks gmp)
+target_link_libraries(pks bz2)
+target_link_libraries(pks z)
+target_link_libraries(pks cppcms)
+target_link_libraries(pks booster)

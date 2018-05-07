@@ -13,13 +13,14 @@ add_definitions(-DDEFAULT_DUMP_PATH="/tmp/pgp_dump/")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -Werror")
 
-set(SOURCE_FILES main.cc DBManager.cc Thread_Pool.cc unpacker.cc DBStruct.h utils.cc Key_Tools.cc DB_info.h)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
-add_executable(dump_import ${SOURCE_FILES})
 
 set(OpenPGP_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../OpenPGP)
-include_directories(${OpenPGP_DIRECTORY})
-link_directories(${OpenPGP_DIRECTORY})
+set(SOURCE_FILES main.cc DBManager.cc Thread_Pool.cc unpacker.cc DBStruct.h utils.cc Key_Tools.cc DB_info.h)
+add_executable(dump_import ${SOURCE_FILES})
+include_directories(dump_import PRIVATE ${OpenPGP_DIRECTORY})
 
-target_link_libraries(dump_import ${OpenPGP_DIRECTORY}/libOpenPGP.a)
+find_package(Boost REQUIRED COMPONENTS system filesystem)
+
+target_link_libraries(dump_import ${OpenPGP_DIRECTORY}/libOpenPGP.a gmp bz2 mysqlcppconn z ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})

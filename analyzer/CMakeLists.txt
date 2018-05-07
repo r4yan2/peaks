@@ -34,6 +34,10 @@ set(GMP_PARCHED_DIR ${LIB_DIRECTORY}/gmp)
 include_directories(${GMP_PARCHED_DIR}/include)
 link_directories(${GMP_PARCHED_DIR}/lib)
 
+find_package(Boost REQUIRED COMPONENTS system filesystem)
+
 target_link_libraries(analyzer ${OpenPGP_DIRECTORY}/libOpenPGP.a)
 target_link_libraries(analyzer ${NTL_DIR}/lib/libntl.a)
 target_link_libraries(analyzer ${GMP_PARCHED_DIR}/lib/libgmp.so)
+target_link_libraries(analyzer ${Boost_LIBRARIES}) 
+target_link_libraries(analyzer mysqlcppconn) 
