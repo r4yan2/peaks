@@ -4,3 +4,6 @@ dump/
 lib/
 cppcms-1.2.0/
 dump_import/DB_info.h
+*.mdk
+*.swp
+*.py
