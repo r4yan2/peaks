@@ -8,8 +8,6 @@
 #include <iostream>
 #include <boost/dynamic_bitset.hpp>
 #include <stdexcept>
-#include <cmath>
-#define P_SKS_STRING "530512889551602322505127520352579437339"
 
 using namespace NTL;
 using namespace PTree_settings;
@@ -17,18 +15,18 @@ using namespace PTree_settings;
 typedef boost::dynamic_bitset<unsigned char> bitset;
 
 //finite field used by sks keyserver;
-const ZZ P_SKS = conv<ZZ>(P_SKS_STRING);
 
 class Pnode;
 
 class Ptree{
 protected: 
-  Pnode* root;
-  Vec<ZZ_p> points;
-
-public:
   std::shared_ptr<DBManager> dbm;
+  Vec<ZZ_p> points;
+  Pnode* root;
+  
+public:
   Ptree();
+  Ptree(std::shared_ptr<DBManager> dbm, Vec<ZZ_p> points);
   ~Ptree();
  
   //getters
@@ -64,7 +62,7 @@ private:
   Vec<ZZ_p> node_elements;
 
 public:
-  Pnode();
+  Pnode(std::shared_ptr<DBManager>);
   ~Pnode();
   
   void set_node_key(std::string key);

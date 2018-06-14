@@ -3,7 +3,7 @@
 
 using namespace std;
 namespace DB_info{
-    const string host = "172.18.0.2";
+    const string host = "localhost:3306";
     const string database = "gpg_keyserver";
     const string user = "root";
     const string password = "";

@@ -2,13 +2,13 @@
 
 using namespace recon;
 
-
 Ptree::Ptree(){
-  dbm = std::make_shared<DBManager>(); 
-  ZZ_p::init(P_SKS);
+}
+
+Ptree::Ptree(std::shared_ptr<DBManager> dbp, Vec<ZZ_p> point){
+  dbm = dbp;
+  points = point;
   root = NULL;
-  points = Utils::Zpoints(num_samples);
-  std::cout << "doppio init?";
 }
 
 Ptree::~Ptree(){}
@@ -51,7 +51,7 @@ Pnode* Ptree::get_node(std::string key){
   DBStruct::node n = dbm->get_node(key);
   Vec<ZZ_p> node_elements = Utils::unmarshall_vec_zz_p(n.elements);
   Vec<ZZ_p> node_svalues = Utils::unmarshall_vec_zz_p(n.svalues);
-  Pnode* nd = new Pnode;
+  Pnode* nd = new Pnode(dbm);
   nd->set_node_key(key);
   nd->set_node_svalues(node_svalues);
   nd->set_num_elements(n.num_elements);
@@ -85,12 +85,12 @@ void Ptree::insert(ZZ_p z){
 }
 
 Pnode* Ptree::new_child(Pnode* parent, int child_index){
-  Pnode* n = new Pnode;
+  Pnode* n = new Pnode(dbm);
   n->set_leaf(true);
   bitset key;
   if (parent != NULL){
-    std::string parent_key = parent->get_node_key();
-    bitset key(parent_key);
+    std::string parent_key_string = parent->get_node_key();
+    key = bitset(parent_key_string);
     int key_size = key.size();
     key.resize(key_size + bq);
     for (int j=0; j<bq; j++){
@@ -123,10 +123,7 @@ Pnode* Ptree::node(bitset bs){
   Pnode* n;
   while(1){
     try{
-      std::cout << "\nNodeKey: " << n_key << "\n";
       n = get_node(n_key);
-      
-    } catch (std::invalid_argument){
       break;
     } catch (std::exception &e){
       syslog(LOG_NOTICE, "Errore nel recupero del nodo!");
@@ -154,7 +151,6 @@ void Ptree::populate(){
             new_elem += conv<ZZ_p>(val) * res;
         }
         insert(new_elem);
-        std::cout << "root elements number: " << get_root()->get_num_elements() << "\n";
     }
 }
 
@@ -174,7 +170,9 @@ void Ptree::remove(ZZ_p z){
   dbm->delete_node(key);
 }
 
-Pnode::Pnode(){
+Pnode::Pnode(std::shared_ptr<DBManager> dbp){
+    dbm = dbp;
+    num_elements = 0;
     //node_key = "";
     //node_svalues = //initialize}
     }
@@ -435,9 +433,7 @@ void Pnode::insert(ZZ_p z, Vec<ZZ_p> marray, bitset bs, int depth){
         }
         cur_node->commit_node();
         int child_index = cur_node->next(bs, depth);
-        std::cout << "children index: " << child_index << "\n";
         std::vector<Pnode*> child_vec = cur_node->children();
-        std::cout << "children index: " << child_vec.size() << "\n";
         cur_node = child_vec[child_index];
         depth += 1;
     }
