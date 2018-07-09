@@ -7,8 +7,8 @@
 #include <NTL/vector.h>
 #include <NTL/ZZ_p.h>
 #include <NTL/ZZ.h>
+#include <fstream>
 
-namespace recon{
 /*int create_folder(std::string directory){
   boost::system::error_code returnedError;
   if (boost::filesystem::exists(directory)){
@@ -25,14 +25,32 @@ namespace recon{
 }
 
 */
-class Utils{
-    public:
-static std::string marshall_vec_zz_p(NTL::Vec<NTL::ZZ_p> elements);
+namespace Utils{
 
-static NTL::Vec<NTL::ZZ_p> unmarshall_vec_zz_p(std::string blob);
+/** marshal NTL Vec into suitable data for database insert */
+std::string marshall_vec_zz_p(NTL::Vec<NTL::ZZ_p> elements);
 
-static NTL::Vec<NTL::ZZ_p> Zpoints(int num_samples);
-static boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
-};
+/** unmarshal NTL Vec coming from a database query */
+NTL::Vec<NTL::ZZ_p> unmarshall_vec_zz_p(std::string blob);
+
+/** calculate Zpoints for the current number of samples */
+NTL::Vec<NTL::ZZ_p> Zpoints(int num_samples);
+
+/** convert a number in finite field (ZZ_p) into a bitstring representation */
+boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
+
+/** generate a random number bounded by max_val */
+template<typename I> static I get_random(I max_val); 
+
+/** custom log-to-file */
+void log_to_file(const std::string &text);
+
+/** swap endianess of an int */
+int swap(int d);
+
+/** pop from the front of a std::vector */
+template<typename T> T pop_front(std::vector<T>& vec);
+
 }
+
 #endif
