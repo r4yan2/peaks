@@ -1,7 +1,5 @@
 #include "pTreeDB.h"
 
-using namespace recon;
-
 Ptree::Ptree(){
 }
 

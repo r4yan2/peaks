@@ -14,8 +14,6 @@ using namespace PTree_settings;
 
 typedef boost::dynamic_bitset<unsigned char> bitset;
 
-//finite field used by sks keyserver;
-
 class Pnode;
 
 class Ptree{
@@ -89,7 +87,6 @@ public:
   int next(bitset bs, int depth);
   Pnode* parent();
   void remove(ZZ_p z, Vec<ZZ_p> marray, bitset bs, int depth);
-  int size();
   void split(int depth);
   Vec<ZZ_p> svalues();
   void update_svalues(Vec<ZZ_p> marray, ZZ_p z);
