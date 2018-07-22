@@ -19,4 +19,10 @@ class send_message_exception : public std::exception{
         virtual char const* what() const throw();
 };
 
+class logger_exception : public std::runtime_error{
+    public:
+        logger_exception(char const* const message) throw();
+        virtual char const* what() const throw();
+};
+
 #endif
