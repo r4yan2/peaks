@@ -10,13 +10,9 @@ template<typename T> Myset<T>::Myset(const Vec<T>& vec){
     for (auto elem: vec) add(elem);
 }
 
-template<typename T> Myset<T>& Myset<T>::operator=(const Myset<T>& a){
-
-    Vec<T> new_elems;
-    for (auto elem:a.elems)
-        new_elems.append(elem);
-    elems = new_elems;
-    return *this;
+template<typename T> Myset<T>::Myset(const Myset& a){
+    for (auto elem : a.elements())
+        elems.append(elem);
 }
 
 template<typename T> bool Myset<T>::add(const T& elem){
@@ -28,6 +24,10 @@ template<typename T> bool Myset<T>::add(const T& elem){
 
 template<typename T> void Myset<T>::add(const Vec<T>& elem){
     for (auto e: elem) add(e);
+}
+
+template<typename T> void Myset<T>::add(const Myset<T>& a){
+    elems.append(a.elements());
 }
 
 template<typename T> std::pair<bool,int> Myset<T>::contains(const T& elem){
@@ -56,7 +56,7 @@ template<typename T> int Myset<T>::size(){
     return elems.length();
 }
 
-template<typename T> Vec<T> Myset<T>::elements(){
+template<typename T> Vec<T> Myset<T>::elements() const{
     return elems;
 }
 
