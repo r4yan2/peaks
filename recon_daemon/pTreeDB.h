@@ -1,8 +1,8 @@
 #ifndef RECON_PTREEDB_H
 #define RECON_PTREEDB_H
 
-#include "PTree_settings.h"
-#include "DBManager.h"
+#include "Recon_settings.h"
+#include "RECON_DBManager.h"
 #include "Utils.h"
 #include <syslog.h>
 #include <iostream>
@@ -10,7 +10,7 @@
 #include <stdexcept>
 
 using namespace NTL;
-using namespace PTree_settings;
+using namespace Recon_settings;
 
 typedef boost::dynamic_bitset<unsigned char> bitset;
 
@@ -18,13 +18,13 @@ class Pnode;
 
 class Ptree{
 protected: 
-  std::shared_ptr<DBManager> dbm;
+  std::shared_ptr<RECON_DBManager> dbm;
   Vec<ZZ_p> points;
   Pnode* root;
   
 public:
   Ptree();
-  Ptree(std::shared_ptr<DBManager> dbm, Vec<ZZ_p> points);
+  Ptree(std::shared_ptr<RECON_DBManager> dbm, Vec<ZZ_p> points);
   ~Ptree();
  
   //getters
@@ -46,7 +46,7 @@ public:
   //insert a new node
   Pnode* node(bitset bs);
 
-  void populate();
+  void populate(std::vector<std::string> hashes);
   
   void remove(ZZ_p z);
 };
@@ -60,7 +60,7 @@ private:
   Vec<ZZ_p> node_elements;
 
 public:
-  Pnode(std::shared_ptr<DBManager>);
+  Pnode(std::shared_ptr<RECON_DBManager>);
   ~Pnode();
   
   void set_node_key(std::string key);

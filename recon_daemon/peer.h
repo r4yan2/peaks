@@ -6,7 +6,6 @@
 #include <NTL/ZZ_p.h>
 #include <NTL/ZZ.h>
 #include <NTL/matrix.h>
-#include "PTree_settings.h"
 #include "Connection_Manager.h"
 #include "pTreeDB.h"
 #include "exception.h"
@@ -15,10 +14,17 @@
 #include <NTL/ZZ_pX.h>
 #include <NTL/ZZ_pXFactoring.h>
 #include <algorithm>
-#include <boost/bind.hpp>
-#include <boost/coroutine/coroutine.hpp>
+#include "logger.h"
+#include <thread>
+#include <deque>
+#include <curlpp/cURLpp.hpp>
+#include <curlpp/Easy.hpp>
+#include <curlpp/Options.hpp>
+#include <curlpp/Exception.hpp>
+#include "../dump_import/dump_import.h"
+#include <unistd.h>
 
-using namespace Recon_settings;
+using namespace NTL;
 
 /*
  * this will be send via networking

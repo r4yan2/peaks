@@ -3,7 +3,7 @@
 Ptree::Ptree(){
 }
 
-Ptree::Ptree(std::shared_ptr<DBManager> dbp, Vec<ZZ_p> point){
+Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbp, Vec<ZZ_p> point){
   dbm = dbp;
   points = point;
   root = NULL;
@@ -135,8 +135,7 @@ Pnode* Ptree::node(bitset bs){
   return n;
 }
 
-void Ptree::populate(){
-    std::vector<std::string> hashes = dbm->get_all_hash();
+void Ptree::populate(std::vector<std::string> hashes){
     ZZ_p base(16);
     for (auto hash : hashes){
         ZZ_p new_elem;
@@ -168,7 +167,7 @@ void Ptree::remove(ZZ_p z){
   dbm->delete_node(key);
 }
 
-Pnode::Pnode(std::shared_ptr<DBManager> dbp){
+Pnode::Pnode(std::shared_ptr<RECON_DBManager> dbp){
     dbm = dbp;
     num_elements = 0;
     //node_key = "";
