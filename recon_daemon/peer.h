@@ -39,26 +39,74 @@ struct Communication{
     zset samples;
     bool send;
     Communication_status status;
-    std::vector<Message> messages;
+    std::vector<Message*> messages;
+};
+
+struct request_entry{
+    Pnode* node;
+    bitset key;
+};
+
+enum class recon_state {Bottom=0, FlushEnded=1};
+
+struct bottom_entry{
+    request_entry request;
+    recon_state state;
 };
 
 class Peer{
     private:
-        /** this will hold the Connection Manager singleton */
+        /** this will hold the Connection Manager */
         Connection_Manager cn;
         Ptree tree;
+        std::vector<peertype> membership;
     public:
-        /** constructor take the pair (hostname, port) which identify the host */
-        Peer(peertype peer);
-
+        /** constructor take
+         * the pair (hostname, port) which identify the host 
+         */
+        Peer(Ptree new_tree);
         peertype choose_partner();
-        void client_recon(Peer_config remote_config, Connection_Manager cn);
-        void gossip();
-        void start_recon();
+        void start();
+        void client_recon(peertype);
+        void gossip(); /**< recon as client */
+        void serve(); /**< recon as server */
+        void start_recon(peertype);
+        Vec<ZZ_p> interact_with_client();
+        void fetch_elements(peertype peer, Vec<ZZ_p> elements);
+        void serve_client(peertype peer);
         Communication request_poly_handler(ReconRequestPoly* req);
         Communication request_full_handler(ReconRequestFull* req);
         std::pair<Vec<ZZ_p>,Vec<ZZ_p>> solve(Vec<ZZ_p> r_samples, int r_size, Vec<ZZ_p> l_samples, int l_size, Vec<ZZ_p> points);
+        void request_chunk(peertype peer, Vec<ZZ_p> elements);
+};
 
+class Recon_manager{
+    private:
+        std::deque<request_entry> request_queue;
+        std::deque<bottom_entry> bottom_queue;
+        zset remote_set;
+        bool flushing;
+        std::vector<Message*> messages;
+        Connection_Manager cn;
+    public:
+        Recon_manager(Connection_Manager conn_manager);
+        ~Recon_manager();
+        void push_bottom(bottom_entry bottom);
+        void prepend_request(request_entry requests);
+        void push_request(request_entry request);
+        bottom_entry top_bottom();
+        bottom_entry pop_bottom();
+        request_entry pop_request();
+        bool done();
+        bool bottom_queue_empty();
+        void send_request(request_entry request);
+        void handle_reply(Message* msg,request_entry request);
+        void flush_queue();
+        void toggle_flush(bool new_state);
+        int bottom_queue_size();
+        int request_queue_size();
+        bool is_flushing();
+        Vec<ZZ_p> elements();
 };
 
 #endif //RECON_PEER_H 

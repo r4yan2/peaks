@@ -1,49 +1,184 @@
 #include "peer.h"
 
-using namespace NTL;
-
-Peer::Peer(peertype peer){
-    syslog(LOG_INFO, "Initiating recon with %s", peer.first.c_str());
-    Connection_Manager cn;
-    cn.init(peer);
-}
-
-peertype Peer::choose_partner(){
-    std::vector<peertype> membership;
+Peer::Peer(Ptree new_tree){
+    std::cout << "current modulus " << ZZ_p::modulus() << std::endl;
+    tree = new_tree;
+    cn = Connection_Manager();
     std::ifstream f("membership");
     std::string addr;
     int port;
     while(f >> addr >> port){
-        std::cout << addr << port << "\n";
         membership.push_back(std::make_pair(addr, port));
     }
+    if (membership.size() == 0){
+        g_logger.log(Logger_level::WARNING, "Membership file is empty! Stopping Recon");
+        exit(0);
+    }else{
+        for (peertype peer : membership)
+            g_logger.log(Logger_level::DEBUG, "Membership entry: " + peer.first);
+    }
+}
+
+peertype Peer::choose_partner(){
+    
     int choice = Utils::get_random(membership.size());
-    return membership[choice];
+    peertype peer = membership[choice];
+    cn.init(peer);
+    return peer;
+}
+
+void Peer::start(){
+    //std::thread srv {&Peer::serve, this};
+    std::thread gsp {&Peer::gossip, this};
+    //srv.join();
+    gsp.join();
+}
+
+void Peer::serve(){
+    
+    g_logger.log(Logger_level::DEBUG, "starting gossip server");
+    cn.setup_listener(Recon_settings::peaks_port);
+    std::vector<std::string> addresses;
+    std::transform(membership.begin(), membership.end(), std::back_inserter(addresses), (const std::string& (*)(const peertype&))std::get<0>);
+    for (;;){
+        g_logger.log(Logger_level::DEBUG, "starting acceptor loop");
+        bool check;
+        peertype remote_peer;
+        std::tie(check, remote_peer) = cn.acceptor(addresses);
+        if(check){
+            std::thread srv_c {&Peer::serve_client, this, remote_peer};
+        }
+    }
+}
+
+void Peer::serve_client(peertype peer){
+    Vec<ZZ_p> elements = interact_with_client();
+    fetch_elements(peer, elements);
+}
+
+void Peer::fetch_elements(peertype peer, Vec<ZZ_p> elements){
+    int elements_size = elements.length();
+    int c_size = Recon_settings::request_chunk_size;
+    if (c_size > elements_size){
+        request_chunk(peer, elements);
+    }
+    for (int i=0; i <= elements_size/c_size; i++){
+        int start = i*c_size;
+        int end = min(elements_size, c_size*(i+1));
+        Vec<ZZ_p> chunk;
+        for (int j=start; j<end; j++) chunk.append(elements[j]);
+        request_chunk(peer, chunk);
+    }
+}
+
+void Peer::request_chunk(peertype peer, Vec<ZZ_p> chunk){
+    Buffer buffer;
+    buffer.write_int(chunk.length());
+    for (auto zp: chunk){
+        //hashquery are 16 byte long
+        buffer.write_int(16);
+        buffer.write_zz_p(zp);
+    }
+    std::string url = std::string("http://") + peer.first + std::string("/pks/hashquery");
+    curlpp::Cleanup cleaner;
+    curlpp::Easy request;
+    request.setOpt(new curlpp::options::Url(url));
+    std::list<std::string> header;
+    std::ostringstream response;
+    header.push_back("Content-Length: " + std::to_string(buffer.size()));
+    request.setOpt(new curlpp::options::HttpHeader(header));
+    request.setOpt(new curlpp::options::PostFields(buffer.to_str()));
+    request.setOpt(new curlpp::options::WriteStream(&response));
+    request.perform();
+    Buffer res(response.str());
+    int num_keys = res.read_int();
+    std::vector<std::string> keys;
+    for (int i=0; i < num_keys; i++)
+        keys.push_back(res.read_string());
+    std::vector<std::string> hashes = dump_import(keys);
+    res.read_bytes(2); //read last 2 bytes
+    tree.populate(hashes);
+}
+
+Vec<ZZ_p> Peer::interact_with_client(){
+    Recon_manager recon = Recon_manager(cn);
+    Pnode* root = tree.get_root();
+    bitset newset = bitset(0);
+    request_entry req = request_entry{.node = root, .key = newset};
+    recon.push_request(req);
+    while(!(recon.done())){
+        if (recon.bottom_queue_empty()){
+            request_entry request = recon.pop_request();
+            recon.send_request(request);
+        } else{
+            bottom_entry bottom = recon.top_bottom();
+            switch(bottom.state){
+                case recon_state::FlushEnded:
+                    {
+                        recon.pop_bottom();
+                        recon.toggle_flush(false);
+                    }
+                case recon_state::Bottom:
+                    {
+                        Message* msg;
+                        try{
+                            msg = cn.read_message();
+                            recon.pop_bottom();
+                            recon.handle_reply(msg, bottom.request);
+                        } catch(std::exception& e){
+                            if((recon.bottom_queue_size()>Recon_settings::max_outstanding_recon_req) || 
+                                (recon.request_queue_size()==0)){
+                                if (recon.is_flushing())
+                                    recon.flush_queue();
+                                else{
+                                    recon.pop_bottom();
+                                    msg = cn.read_message();
+                                    recon.handle_reply(msg, bottom.request);
+                                }
+                            } else {
+                                request_entry req = recon.pop_request();
+                                recon.send_request(req);
+                            }
+                        }
+                    }
+            }
+        }
+    }
+    cn.write_message(new Done{});
+    return recon.elements();
 }
 
 void Peer::gossip(){
+    g_logger.log(Logger_level::DEBUG, "starting gossip client");
     std::srand(time(NULL));
     float jitter = 0.1;
     float r = Utils::get_random(jitter);
     float delay = (1 + (r - jitter/2))*reconciliation_timeout;
     peertype peer = choose_partner();
+    g_logger.log(Logger_level::DEBUG, "choosen partner "+ peer.first);
     try{
-        start_recon();
+        start_recon(peer);
     } catch (std::exception e){
-        syslog(LOG_INFO, "Cannot connect to partner! %s", e.what());
+        g_logger.log(Logger_level::WARNING, "Cannot connect to partner! " + std::string(e.what()));
     }
 }
 
-void Peer::start_recon(){
-    Peer_config peer_config = {"1.0.0", 11371, PTree_settings::bq, PTree_settings::mbar, "ciao, mamma"};
-    Peer_config remote_config;
-    remote_config = cn.get_remote_config(peer_config);
-    client_recon(remote_config, cn);
+void Peer::start_recon(peertype peer){
+    int http_port = cn.check_remote_config();
+    if (http_port > 0){
+        peertype peer_http_port;
+        peer_http_port.first = peer.first;
+        peer_http_port.second = http_port;
+        g_logger.log(Logger_level::DEBUG, "Starting recon as client with peer " + peer.first + ", http_port " + std::to_string(http_port));
+        client_recon(peer_http_port);
+    }
+    else
+        g_logger.log(Logger_level::WARNING, "mismatched config, canno recon with peer");
 }
 
-void Peer::client_recon(Peer_config remote_config, Connection_Manager cn){
+void Peer::client_recon(peertype peer){
     zset response;
-    std::vector<Message> pending;
+    std::vector<Message*> pending;
 
     int n=0; 
     Communication comm;
@@ -53,23 +188,22 @@ void Peer::client_recon(Peer_config remote_config, Connection_Manager cn){
     while ((comm.status == Communication_status::NONE) && (n < max_recover_size)){
         // fetch request + craft response
        
-        Message msg = cn.read_message();
-        switch (msg.type){
+        Message* msg = cn.read_message();
+        g_logger.log(Logger_level::DEBUG, "prepare to handle message type" + std::to_string(msg->type));
+        switch (msg->type){
             case Msg_type::ReconRequestPoly:{
                 //ReconRequestPoly
-                ReconRequestPoly* req = ((ReconRequestPoly *) msg.data);
-                comm = request_poly_handler(req);
+                comm = request_poly_handler((ReconRequestPoly*) msg);
                 break;
                    }
             case Msg_type::ReconRequestFull:{
                 //Request Full
-                ReconRequestFull* req = ((ReconRequestFull *) msg.data);
-                comm = request_full_handler(req); 
+                comm = request_full_handler((ReconRequestFull*) msg); 
                 break;
                    }
             case Msg_type::Elements:{
                 //elements
-                comm.samples = ((Elements *) msg.data)->samples;
+                comm.samples = ((Elements *) msg)->samples;
                 break;
                    }
             case Msg_type::Done:{
@@ -99,13 +233,12 @@ void Peer::client_recon(Peer_config remote_config, Connection_Manager cn){
     
     }
     if (comm.status == Communication_status::ERROR){
-        Message error_msg;
-        error_msg.type = Msg_type::ErrorType;
-        ((ErrorType *) error_msg.data)->text = "step_error";
+        ErrorType* error_msg = new ErrorType;
+        error_msg->type = Msg_type::ErrorType;
+        error_msg->text = "step_error";
         cn.write_message(error_msg);
     } 
-    else
-        cn.send_items(response);
+    fetch_elements(peer, response.elements());
 }
 
 std::pair<Vec<ZZ_p>,Vec<ZZ_p>> Peer::solve(Vec<ZZ_p> r_samples, int r_size, Vec<ZZ_p> l_samples, int l_size, Vec<ZZ_p> points){
@@ -186,7 +319,6 @@ std::pair<Vec<ZZ_p>,Vec<ZZ_p>> Peer::solve(Vec<ZZ_p> r_samples, int r_size, Vec<
     for (int i=0; i<mb; i++)
         SetCoeff(b_poly, i, matrix.get(i+ma, mbar));
     SetCoeff(b_poly, mb);
-    std::cout << (a_poly/b_poly) << "\t" << interpolate(points, values) << "\n";
     ZZ_pX g_poly;
     GCD(g_poly, a_poly, b_poly);
     ZZ_pX num = a_poly/g_poly;
@@ -224,12 +356,11 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
                     (node->get_num_elements() < ptree_thresh_mult*mbar)){
                 elements = node->elements();
                 Communication newcomm;
-                std::vector<Message> messages;
-                Message full_elements;
-                full_elements.type = Msg_type::FullElements;
-                full_elements.data = new FullElements;
+                std::vector<Message*> messages;
+                FullElements* full_elements = new FullElements;
+                full_elements->type = Msg_type::FullElements;
                 zset elements_set(elements);
-                ((FullElements *) full_elements.data)->samples = elements;  
+                full_elements->samples = elements;  
                 messages.push_back(full_elements);
                 newcomm.messages = messages;
                 return newcomm;
@@ -239,9 +370,8 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
         }
         else {
             Communication newcomm;
-            Message fail;
-            fail.type = Msg_type::SyncFail;
-            fail.data = new SyncFail;
+            SyncFail* fail = new SyncFail;
+            fail->type = Msg_type::SyncFail;
             newcomm.messages.push_back(fail);
             return newcomm;
         }
@@ -250,10 +380,9 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     zset remote_elements(local_remote.second);
     zset local_elements(local_remote.first);
     newcomm.samples = elements;
-    Message m_elements;
-    m_elements.type = Msg_type::Elements;
-    m_elements.data = new Elements;
-    ((Elements *) m_elements.data)->samples = local_elements; 
+    Elements* m_elements = new Elements;
+    m_elements->samples = local_elements; 
+    m_elements->type = Msg_type::Elements;
     newcomm.messages.push_back(m_elements);
     return newcomm;
 }
@@ -271,9 +400,9 @@ Communication Peer::request_full_handler(ReconRequestFull* req){
     }
     std::pair<Vec<ZZ_p>, Vec<ZZ_p>> local_remote = local_set.symmetric_difference(remote_set); 
     newcomm.samples = local_remote.first;
-    Message m_elements;
-    m_elements.type = Msg_type::Elements;
-    m_elements.data = new Elements;
-    ((Elements *) m_elements.data)->samples = local_remote.second;
+    Elements* m_elements = new Elements;
+    m_elements->samples = local_remote.second;
+    m_elements->type = Msg_type::Elements;
     newcomm.messages.push_back(m_elements);
+    return newcomm;
 }
