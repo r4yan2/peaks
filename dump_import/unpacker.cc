@@ -1,20 +1,20 @@
-#include <ctime>
-#include <Packets/packets.h>
-#include <Misc/mpi.h>
-#include <sys/syslog.h>
-#include <Misc/sigcalc.h>
-#include <common/errors.h>
-#include <thread>
-#include <cmath>
-#include <regex.h>
 #include "unpacker.h"
-#include "Key_Tools.h"
-
 
 using namespace std;
 using namespace OpenPGP;
 
 namespace Unpacker {
+
+    void unpack_string_th(const vector<string> keys){
+        shared_ptr<DBManager> dbm(new DBManager());
+        dbm->openCSVFiles();
+        for (auto key_str : keys){
+            Key::Ptr key;
+            key = std::make_shared<Key>(key_str);
+            unpack(key, dbm);
+        }
+    }
+
 
     void unpack_dump_th(const vector<std::string> &files){
         shared_ptr<DBManager> dbm(new DBManager());
@@ -25,7 +25,9 @@ namespace Unpacker {
                 ifstream file(f, ios::in | ios::binary);
                 if (file.is_open()){
                     try{
-                        unpack_dump(file, dbm);
+                        Key::Ptr key;
+                        key = std::make_shared<Key>(file, true);
+                        unpack(key, dbm);
                     }catch (exception &e){
                         syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", e.what());
                         cerr << "Key not unpacked due to not meaningfulness (" << e.what() << ")." << endl;
@@ -49,14 +51,12 @@ namespace Unpacker {
         }
     }
 
-    void unpack_dump(ifstream &key_file, const shared_ptr<DBManager> &dbm){
-        Key::Ptr key;
+    void unpack(Key::Ptr &key, const shared_ptr<DBManager> &dbm){
         Key::pkey pk;
         DBStruct::gpg_keyserver_data gpg_keyserver_table;
         DBStruct::Unpacker_errors modified;
 
         try{
-            key = std::make_shared<Key>(key_file, true);
             key->set_type(PGP::PUBLIC_KEY_BLOCK);
             modified.version = key->version();
             modified.fingerprint = key->fingerprint();
