@@ -40,16 +40,23 @@ NTL::Vec<NTL::ZZ_p> Zpoints(int num_samples);
 boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
 
 /** generate a random number bounded by max_val */
-template<typename I> static I get_random(I max_val); 
+template<typename I> static I get_random(I max_val){
+    return static_cast <I> (rand()) / (static_cast <I> (RAND_MAX/max_val));
+}
 
-/** custom log-to-file */
-void log_to_file(const std::string &text);
 
 /** swap endianess of an int */
 int swap(int d);
 
 /** pop from the front of a std::vector */
-template<typename T> T pop_front(std::vector<T>& vec);
+template<typename T>
+T pop_front(std::vector<T>& vec)
+{
+    assert(!vec.empty());
+    T a = vec[0];
+    vec.erase(vec.begin());
+    return a;
+}
 
 }
 

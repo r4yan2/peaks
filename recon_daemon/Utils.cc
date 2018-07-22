@@ -30,15 +30,6 @@ boost::dynamic_bitset<unsigned char> Utils::ZZp_to_bitset(NTL::ZZ_p num){
   return bs;
 }
 
-template<typename I> static I Utils::get_random(I max_val){
-    return static_cast <I> (rand()) / (static_cast <I> (RAND_MAX/max_val));
-}
-
-void Utils::log_to_file(const std::string &text){
-    std::ofstream log_file("log.txt", std::ios_base::out | std::ios_base::app);
-    log_file << text << "\n";   
-}
-
 int Utils::swap(int d){
    int a;
    unsigned char *dst = (unsigned char *)&a;
@@ -51,13 +42,3 @@ int Utils::swap(int d){
 
    return a;
 }
-
-template<typename T>
-T Utils::pop_front(std::vector<T>& vec)
-{
-    assert(!vec.empty());
-    T a = vec[0];
-    vec.erase(vec.begin());
-    return a;
-}
-
