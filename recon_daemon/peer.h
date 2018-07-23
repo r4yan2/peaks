@@ -10,6 +10,7 @@
 #include "pTreeDB.h"
 #include "exception.h"
 #include <cmath>
+#include <NTL/vector.h>
 #include <NTL/mat_ZZ_p.h>
 #include <NTL/ZZ_pX.h>
 #include <NTL/ZZ_pXFactoring.h>
@@ -82,17 +83,17 @@ class Peer{
         void serve(); /**< recon as server */
 
         void start_recon(peertype);
-        Vec<ZZ_p> interact_with_client();
+        std::vector<ZZ_p> interact_with_client();
 
         /** fetch the given element from the peer */
-        void fetch_elements(peertype peer, Vec<ZZ_p> elements);
+        void fetch_elements(peertype peer, std::vector<ZZ_p> elements);
 
         void serve_client(peertype peer);
         Communication request_poly_handler(ReconRequestPoly* req);
         Communication request_full_handler(ReconRequestFull* req);
-        std::pair<Vec<ZZ_p>,Vec<ZZ_p>> solve(Vec<ZZ_p> r_samples, int r_size, Vec<ZZ_p> l_samples, int l_size, Vec<ZZ_p> points);
+        std::pair<std::vector<ZZ_p>,std::vector<ZZ_p>> solve(std::vector<ZZ_p> r_samples, int r_size, std::vector<ZZ_p> l_samples, int l_size, std::vector<ZZ_p> points);
 
-        void request_chunk(peertype peer, Vec<ZZ_p> elements);
+        void request_chunk(peertype peer, std::vector<ZZ_p> elements);
 };
 
 class Recon_manager{
@@ -121,7 +122,7 @@ class Recon_manager{
         int bottom_queue_size();
         int request_queue_size();
         bool is_flushing();
-        Vec<ZZ_p> elements();
+        std::vector<ZZ_p> elements();
 };
 
 #endif //RECON_PEER_H 

@@ -65,7 +65,7 @@ bool Recon_manager::bottom_queue_empty(){
 void Recon_manager::send_request(request_entry request){
     Message* msg;
     if ((request.node->is_leaf()) || (request.node->get_num_elements() < Recon_settings::mbar)){
-        Vec<ZZ_p> elements = request.node->get_node_elements();
+        std::vector<ZZ_p> elements = request.node->get_node_elements();
         msg = new ReconRequestFull;
         ((ReconRequestFull*) msg)->prefix = request.key;
         ((ReconRequestFull*) msg)->samples = zset(elements);
@@ -106,7 +106,7 @@ void Recon_manager::handle_reply(Message* msg, request_entry request){
             }
         case (Msg_type::FullElements):
             {
-                Vec<ZZ_p> elements = request.node->get_node_elements();
+                std::vector<ZZ_p> elements = request.node->get_node_elements();
                 zset local_set = zset(elements);
                 zset local_needs, remote_needs;
                 std::tie(remote_needs, local_needs) = ((FullElements*)msg)->samples.symmetric_difference(local_set);
@@ -129,7 +129,7 @@ void Recon_manager::flush_queue(){
     toggle_flush(true);
 }
 
-Vec<ZZ_p> Recon_manager::elements(){
+std::vector<ZZ_p> Recon_manager::elements(){
     return remote_set.elements();
 }
 

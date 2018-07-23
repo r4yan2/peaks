@@ -19,20 +19,20 @@ class Pnode;
 class Ptree{
 protected: 
   std::shared_ptr<RECON_DBManager> dbm;
-  Vec<ZZ_p> points;
+  std::vector<ZZ_p> points;
   Pnode* root;
   
 public:
   Ptree();
-  Ptree(std::shared_ptr<RECON_DBManager> dbm, Vec<ZZ_p> points);
+  Ptree(std::shared_ptr<RECON_DBManager> dbm, std::vector<ZZ_p> points);
   ~Ptree();
  
   //getters
   Pnode* get_root();
-  Vec<ZZ_p> get_points();
+  std::vector<ZZ_p> get_points();
   
-  Vec<ZZ_p> add_element_array(ZZ_p z);
-  Vec<ZZ_p> delete_element_array(ZZ_p z);
+  std::vector<ZZ_p> add_element_array(ZZ_p z);
+  std::vector<ZZ_p> delete_element_array(ZZ_p z);
   
   void create();
 
@@ -54,41 +54,41 @@ public:
 class Pnode: public Ptree{
 private:
   std::string node_key;
-  Vec<ZZ_p> node_svalues;
+  std::vector<ZZ_p> node_svalues;
   bool leaf;
   int num_elements;
-  Vec<ZZ_p> node_elements;
+  std::vector<ZZ_p> node_elements;
 
 public:
   Pnode(std::shared_ptr<RECON_DBManager>);
   ~Pnode();
   
   void set_node_key(std::string key);
-  void set_node_svalues(Vec<ZZ_p> svalues);
+  void set_node_svalues(std::vector<ZZ_p> svalues);
   void set_num_elements(int num);
   void set_leaf(bool b);
-  void set_node_elements(Vec<ZZ_p> elements);
+  void set_node_elements(std::vector<ZZ_p> elements);
   
   std::string get_node_key();
-  Vec<ZZ_p> get_node_svalues();
+  std::vector<ZZ_p> get_node_svalues();
   int get_num_elements();
   bool is_leaf();
-  Vec<ZZ_p> get_node_elements();
+  std::vector<ZZ_p> get_node_elements();
   
   std::vector<Pnode*> children();
   void commit_node();
   void delete_node();
   void delete_elements();
   void delete_element(ZZ_p elem);
-  Vec<ZZ_p> elements();
+  std::vector<ZZ_p> elements();
   void join();
-  void insert(ZZ_p z, Vec<ZZ_p> marray, bitset bs, int depth);
+  void insert(ZZ_p z, std::vector<ZZ_p> marray, bitset bs, int depth);
   void insert_element(ZZ_p elem);
   int next(bitset bs, int depth);
   Pnode* parent();
-  void remove(ZZ_p z, Vec<ZZ_p> marray, bitset bs, int depth);
+  void remove(ZZ_p z, std::vector<ZZ_p> marray, bitset bs, int depth);
   void split(int depth);
-  Vec<ZZ_p> svalues();
-  void update_svalues(Vec<ZZ_p> marray, ZZ_p z);
+  std::vector<ZZ_p> svalues();
+  void update_svalues(std::vector<ZZ_p> marray, ZZ_p z);
 };
 #endif //RECON_PTREEDB_H

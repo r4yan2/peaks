@@ -51,12 +51,12 @@ void Peer::serve(){
 }
 
 void Peer::serve_client(peertype peer){
-    Vec<ZZ_p> elements = interact_with_client();
+    std::vector<ZZ_p> elements = interact_with_client();
     fetch_elements(peer, elements);
 }
 
-void Peer::fetch_elements(peertype peer, Vec<ZZ_p> elements){
-    int elements_size = elements.length();
+void Peer::fetch_elements(peertype peer, std::vector<ZZ_p> elements){
+    int elements_size = elements.size();
     int c_size = Recon_settings::request_chunk_size;
     if (c_size > elements_size){
         request_chunk(peer, elements);
@@ -64,15 +64,15 @@ void Peer::fetch_elements(peertype peer, Vec<ZZ_p> elements){
     for (int i=0; i <= elements_size/c_size; i++){
         int start = i*c_size;
         int end = min(elements_size, c_size*(i+1));
-        Vec<ZZ_p> chunk;
-        for (int j=start; j<end; j++) chunk.append(elements[j]);
+        std::vector<ZZ_p> chunk;
+        for (int j=start; j<end; j++) chunk.push_back(elements[j]);
         request_chunk(peer, chunk);
     }
 }
 
-void Peer::request_chunk(peertype peer, Vec<ZZ_p> chunk){
+void Peer::request_chunk(peertype peer, std::vector<ZZ_p> chunk){
     Buffer buffer;
-    buffer.write_int(chunk.length());
+    buffer.write_int(chunk.size());
     for (auto zp: chunk){
         //hashquery are 16 byte long
         buffer.write_int(16);
@@ -99,7 +99,7 @@ void Peer::request_chunk(peertype peer, Vec<ZZ_p> chunk){
     tree.populate(hashes);
 }
 
-Vec<ZZ_p> Peer::interact_with_client(){
+std::vector<ZZ_p> Peer::interact_with_client(){
     Recon_manager recon = Recon_manager(cn);
     Pnode* root = tree.get_root();
     bitset newset = bitset(0);
@@ -240,10 +240,10 @@ void Peer::client_recon(peertype peer){
     fetch_elements(peer, response.elements());
 }
 
-std::pair<Vec<ZZ_p>,Vec<ZZ_p>> Peer::solve(Vec<ZZ_p> r_samples, int r_size, Vec<ZZ_p> l_samples, int l_size, Vec<ZZ_p> points){
-    Vec<ZZ_p> values;
-    for (int i=0; i<r_samples.length(); i++)
-        values.append(r_samples[i]/l_samples[i]);
+std::pair<std::vector<ZZ_p>,std::vector<ZZ_p>> Peer::solve(std::vector<ZZ_p> r_samples, int r_size, std::vector<ZZ_p> l_samples, int l_size, std::vector<ZZ_p> points){
+    std::vector<ZZ_p> values;
+    for (int i=0; i<r_samples.size(); i++)
+        values.push_back(r_samples[i]/l_samples[i]);
     int size_diff = r_size-l_size;
 
     //Interpolation
@@ -251,8 +251,8 @@ std::pair<Vec<ZZ_p>,Vec<ZZ_p>> Peer::solve(Vec<ZZ_p> r_samples, int r_size, Vec<
     //all the steps because
     //we need the Lagrange form of
     //the interpolating polynomial
-    if (std::abs(size_diff) > values.length()) throw interpolation_exception();
-        int mbar = values.length();
+    if (std::abs(size_diff) > values.size()) throw interpolation_exception();
+        int mbar = values.size();
     if ((mbar + size_diff)%2 != 0) mbar--;
     int ma = (mbar + size_diff)/2;
     int mb = (mbar - size_diff)/2;
@@ -322,29 +322,35 @@ std::pair<Vec<ZZ_p>,Vec<ZZ_p>> Peer::solve(Vec<ZZ_p> r_samples, int r_size, Vec<
     GCD(g_poly, a_poly, b_poly);
     ZZ_pX num = a_poly/g_poly;
     ZZ_pX den = b_poly/g_poly;
-    ZZ_p last_point = points[points.length()-1];
+    ZZ_p last_point = points[points.size()-1];
     ZZ_p val = eval(num,last_point);
-    ZZ_p last_value = values[values.length()-1];
+    ZZ_p last_value = values[values.size()-1];
     if ((val != last_value) ||
             ProbIrredTest(num) ||
             ProbIrredTest(den))
             throw interpolation_exception();
     Vec<ZZ_p> num_factor = FindRoots(num);
     Vec<ZZ_p> den_factor = FindRoots(den);
-    return std::make_pair(num_factor, den_factor);
+    std::vector<ZZ_p> stl_num_factor, stl_den_factor;
+
+    for (auto e: num_factor)
+        stl_num_factor.push_back(e);
+    for (auto e: den_factor)
+        stl_den_factor.push_back(e);
+    return std::make_pair(stl_num_factor, stl_den_factor);
 }
 
 
 Communication Peer::request_poly_handler(ReconRequestPoly* req){
     int r_size = req->size;
-    Vec<ZZ_p> points = tree.get_points();
-    Vec<ZZ_p> r_samples = req->samples;
+    std::vector<ZZ_p> points = tree.get_points();
+    std::vector<ZZ_p> r_samples = req->samples;
     bitset key = req->prefix;
     Pnode* node = tree.node(key);
-    Vec<ZZ_p> l_samples = node->get_node_svalues();
+    std::vector<ZZ_p> l_samples = node->get_node_svalues();
     int l_size = node->get_num_elements();
-    Vec<ZZ_p> elements;
-    std::pair<Vec<ZZ_p>, Vec<ZZ_p>> local_remote;
+    std::vector<ZZ_p> elements;
+    std::pair<std::vector<ZZ_p>, std::vector<ZZ_p>> local_remote;
 
     try{
         local_remote = solve(r_samples, r_size, l_samples, l_size, points);
@@ -397,7 +403,7 @@ Communication Peer::request_full_handler(ReconRequestFull* req){
         newcomm.status = Communication_status::ERROR;
         return newcomm;
     }
-    std::pair<Vec<ZZ_p>, Vec<ZZ_p>> local_remote = local_set.symmetric_difference(remote_set); 
+    std::pair<std::vector<ZZ_p>, std::vector<ZZ_p>> local_remote = local_set.symmetric_difference(remote_set); 
     newcomm.samples = local_remote.first;
     Elements* m_elements = new Elements;
     m_elements->samples = local_remote.second;

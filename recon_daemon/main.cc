@@ -19,7 +19,7 @@ int main(int argc, char* argv[]){
             std::cout << "-r: start recon" << std::endl;
         }
         else if(!strcmp(argv[i], MINUS_B)){
-            const Vec<ZZ_p> points = Utils::Zpoints(num_samples);
+            const std::vector<ZZ_p> points = Utils::Zpoints(num_samples);
             std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(); 
             std::vector<std::string> hashes = dbm->get_all_hash();
             Ptree tree(dbm, points);
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]){
             std::cout << "Inserted " << hashes.size() << " entry!" << std::endl; 
         }
         else if(!strcmp(argv[i], MINUS_R)){
-            const Vec<ZZ_p> points = Utils::Zpoints(num_samples);
+            const std::vector<ZZ_p> points = Utils::Zpoints(num_samples);
             std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(); 
             Ptree tree(dbm, points);
             tree.create();

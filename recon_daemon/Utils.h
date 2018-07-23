@@ -4,7 +4,6 @@
 #include <iostream>
 #include <boost/dynamic_bitset.hpp>
 #include <sstream>
-#include <NTL/vector.h>
 #include <NTL/ZZ_p.h>
 #include <NTL/ZZ.h>
 #include <fstream>
@@ -27,14 +26,14 @@
 */
 namespace Utils{
 
-/** marshal NTL Vec into suitable data for database insert */
-std::string marshall_vec_zz_p(NTL::Vec<NTL::ZZ_p> elements);
+/** marshal NTL std::vector into suitable data for database insert */
+std::string marshall_vec_zz_p(std::vector<NTL::ZZ_p> elements);
 
-/** unmarshal NTL Vec coming from a database query */
-NTL::Vec<NTL::ZZ_p> unmarshall_vec_zz_p(std::string blob);
+/** unmarshal NTL std::vector coming from a database query */
+std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(std::string blob);
 
 /** calculate Zpoints for the current number of samples */
-NTL::Vec<NTL::ZZ_p> Zpoints(int num_samples);
+std::vector<NTL::ZZ_p> Zpoints(int num_samples);
 
 /** convert a number in finite field (ZZ_p) into a bitstring representation */
 boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);

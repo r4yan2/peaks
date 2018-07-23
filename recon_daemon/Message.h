@@ -1,6 +1,5 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
-#include <NTL/vector.h>
 #include <NTL/ZZ_p.h>
 #include <NTL/ZZ.h>
 #include <boost/dynamic_bitset.hpp>
@@ -50,7 +49,7 @@ class Buffer{
         void write_zset(zset);
         void write_bitset(bitset);
         void write_zz_p(ZZ_p);
-        void write_zz_array(Vec<ZZ_p>);
+        void write_zz_array(std::vector<ZZ_p>);
         void write_self_len();
         int read_int(bool check_len=false);
         uint8_t read_uint8();
@@ -58,7 +57,7 @@ class Buffer{
         zset read_zset();
         bitset read_bitset();
         ZZ_p read_zz_p();
-        Vec<ZZ_p> read_zz_array();
+        std::vector<ZZ_p> read_zz_array();
         std::vector<unsigned char> read_bytes(int size);
         void push_back(unsigned char);
         void append(Buffer);
@@ -78,7 +77,7 @@ struct ReconRequestPoly: Message{
     ReconRequestPoly():Message(Msg_type::ReconRequestPoly){}
     bitset prefix;
     int size;
-    Vec<ZZ_p> samples;
+    std::vector<ZZ_p> samples;
     void marshal(buftype &buf);
     void unmarshal(sbuftype buf);
 };

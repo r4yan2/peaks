@@ -3,7 +3,17 @@ build/
 dump/
 lib/
 cppcms-1.2.0/
+ntl-10.5.0/
+html/
+latex/
 dump_import/DB_info.h
+tests/
 *.mdk
 *.swp
 *.py
+*.vim
+*.a
+cmake-3.12.0*
+curlpp-0.8.1*
+*.tex
+*.pdf

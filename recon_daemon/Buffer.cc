@@ -69,9 +69,9 @@ void Buffer::write_string(std::string to_write){
     buf.insert(buf.end(),to_write.begin(),to_write.end());
 }
 
-void Buffer::write_zz_array(Vec<ZZ_p> to_write){
-    write_int(to_write.length());
-    for (int i=0; i<to_write.length(); i++) 
+void Buffer::write_zz_array(std::vector<ZZ_p> to_write){
+    write_int(to_write.size());
+    for (int i=0; i<to_write.size(); i++) 
             write_zz_p(to_write[i]);
 }
 
@@ -114,37 +114,25 @@ bitset Buffer::read_bitset() {
     return bs;
 }
 
-Vec<ZZ_p> Buffer::read_zz_array(){
+std::vector<ZZ_p> Buffer::read_zz_array(){
     int array_size = read_int();
     g_logger.log(Logger_level::DEBUG, "zz array size: " + std::to_string(array_size));
-    Vec<ZZ_p> junk;
     std::vector<ZZ_p> array(array_size);
-    g_logger.log(Logger_level::DEBUG, "zz array allocated");
-    /*
-    try{
-        array.SetLength(array_size);
-    }catch(std::exception &e){
-        g_logger.log(Logger_level::DEBUG, std::string(e.what()));
-        std::cout << "current modulus " << ZZ_p::modulus() << std::endl;
-    }
-    */
     g_logger.log(Logger_level::DEBUG, "zz array size set accordingly");
     for (int i=0; i<array_size; i++){
         ZZ src;
         ZZFromBytes(src, &(*it), Recon_settings::sks_zp_bytes);
         g_logger.log(Logger_level::DEBUG, "zz read");
         it+=Recon_settings::sks_zp_bytes;
-        ZZ_p::init(conv<ZZ>(Recon_settings::P_SKS_STRING.c_str()));
         ZZ_p dst = conv<ZZ_p>(src);
-        std::cout << dst << std::endl;
         array[i] = dst;
     }
 
-    return junk;
+    return array;
 }
 
 zset Buffer::read_zset(){
-    Vec<ZZ_p> array = read_zz_array();
+    std::vector<ZZ_p> array = read_zz_array();
     zset result(array);
     return result;
 }
