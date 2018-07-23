@@ -1,7 +1,6 @@
 #include "peer.h"
 
 Peer::Peer(Ptree new_tree){
-    std::cout << "current modulus " << ZZ_p::modulus() << std::endl;
     tree = new_tree;
     cn = Connection_Manager();
     std::ifstream f("membership");

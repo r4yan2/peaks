@@ -56,27 +56,42 @@ struct bottom_entry{
 
 class Peer{
     private:
-        /** this will hold the Connection Manager */
+        /** hold the Connection Manager reference*/
         Connection_Manager cn;
+        /** hold the ptree reference */
         Ptree tree;
+        /** hold the list of peers specified in membership file */
         std::vector<peertype> membership;
     public:
-        /** constructor take
-         * the pair (hostname, port) which identify the host 
-         */
+        /** constructor take a ptree on which operate */ 
         Peer(Ptree new_tree);
+
+        /** choose random peer partner among the
+         * one specified in membership
+         */
         peertype choose_partner();
+
+        /** start recon daemon processes */
         void start();
+
+        /** recon as client with choosen peer */
         void client_recon(peertype);
+
         void gossip(); /**< recon as client */
+
         void serve(); /**< recon as server */
+
         void start_recon(peertype);
         Vec<ZZ_p> interact_with_client();
+
+        /** fetch the given element from the peer */
         void fetch_elements(peertype peer, Vec<ZZ_p> elements);
+
         void serve_client(peertype peer);
         Communication request_poly_handler(ReconRequestPoly* req);
         Communication request_full_handler(ReconRequestFull* req);
         std::pair<Vec<ZZ_p>,Vec<ZZ_p>> solve(Vec<ZZ_p> r_samples, int r_size, Vec<ZZ_p> l_samples, int l_size, Vec<ZZ_p> points);
+
         void request_chunk(peertype peer, Vec<ZZ_p> elements);
 };
 

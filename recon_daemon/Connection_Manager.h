@@ -38,21 +38,48 @@ class Connection_Manager{
         int listenfd = 0;
     public:
 
+        /** default constructor */
         Connection_Manager();
+
+        /** init connection as client 
+         * with given peer peer */
         void init(peertype peer);
+
+        /** init server listener on the given port */
         void setup_listener(int portno);
+
+        /** acceptor (this is only the accept part, 
+         * has to be called in a loop to be effective 
+         */
         std::pair<bool,peertype> acceptor(std::vector<std::string> addresses);
+        /** helper method to activate keep-alive
+         * on a given socket
+         */
         bool toggle_keep_alive(int socket, int toggle, int idle, int interval, int count);
+
+        /** helper method to set timeout on a given socket */
         void set_timeout(int socket, unsigned int timeout);
+
+        /** exchange and validate config with peer */
         int check_remote_config();
+
+        /** default destructor */
         ~Connection_Manager();
+
+        /** read only n bytes from network, and store into buf */
         bool read_n_bytes(void *buf, std::size_t n);
+
+        /** read a sks-type Message */
         Message* read_message();
-        bitset read_bitset();
+
+        /** perform the actual send */
         void send_message(buftype& buf);
+
+        /** directòy read a string from the network */
         std::string read_string_direct();
 
-        void write_message(Message* m, bool wrap=true);/**< Send message to peer */
+        /** send a sks-type message */
+        void write_message(Message* m, bool wrap=true);
 };
 
 #endif
