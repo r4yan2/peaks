@@ -13,15 +13,16 @@ enum class Logger_level {DEBUG=0, WARNING=1, CRITICAL=2};
 
 class Logger{
     private:
+        int verbose;
         std::ofstream logfile;
         std::mutex mu;
     public:
         Logger();
+        void init(int verb);
         ~Logger();
         void log(Logger_level level, std::string what);
 
 };
 
 extern Logger g_logger;
-
 #endif

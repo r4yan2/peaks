@@ -2,6 +2,10 @@
 
 Logger g_logger;
 
+void Logger::init(int verb){
+    verbose = verb;
+}
+
 Logger::Logger(){
     logfile.open("logfile.txt", std::ios_base::out | std::ios_base::app);
 }
@@ -14,6 +18,8 @@ void Logger::log(Logger_level level, std::string what){
     std::string str_level;
     switch (level){
         case Logger_level::DEBUG: {
+            if (!verbose)
+                return;
             str_level += std::string(" [DEBUG] ");
             break;
                                   }
