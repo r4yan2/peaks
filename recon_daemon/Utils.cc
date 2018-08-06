@@ -1,10 +1,11 @@
 #include "Utils.h"
 
 std::string Utils::marshall_vec_zz_p(std::vector<NTL::ZZ_p> elements){
-  std::ostringstream os;
-  std::copy(elements.begin(), elements.end()-1, std::ostream_iterator<NTL::ZZ_p>(os, " "));
-  os << elements.back();
-  return os.str();
+    if (elements.empty()) return "";
+    std::ostringstream os;
+    std::copy(elements.begin(), elements.end()-1, std::ostream_iterator<NTL::ZZ_p>(os, " "));
+    os << elements.back();
+    return os.str();
 }
 
 std::vector<NTL::ZZ_p> Utils::unmarshall_vec_zz_p(std::string blob){
@@ -30,6 +31,12 @@ boost::dynamic_bitset<unsigned char> Utils::ZZp_to_bitset(NTL::ZZ_p num){
   boost::dynamic_bitset<unsigned char> bs;  
   for (NTL::ZZ tmp(NTL::rep(num)); !(NTL::IsZero(tmp)); tmp/=2) bs.push_back(tmp%2);
   return bs;
+}
+
+std::string Utils::ZZp_to_bitstring(NTL::ZZ_p num){
+    std::ostringstream res; 
+    res << ZZp_to_bitset(num);
+    return res.str();
 }
 
 int Utils::swap(int d){

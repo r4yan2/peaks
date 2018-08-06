@@ -38,6 +38,8 @@ std::vector<NTL::ZZ_p> Zpoints(int num_samples);
 /** convert a number in finite field (ZZ_p) into a bitstring representation */
 boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
 
+std::string ZZp_to_bitstring(NTL::ZZ_p num);
+
 /** generate a random number bounded by max_val */
 template<typename I> static I get_random(I max_val){
     return static_cast <I> (rand()) / (static_cast <I> (RAND_MAX/max_val));
