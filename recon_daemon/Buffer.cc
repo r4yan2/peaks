@@ -3,7 +3,7 @@
 Buffer::Buffer(){}
 Buffer::Buffer(int size){
     buf.resize(size);
-    bzero(buf.data(), sizeof(buf));
+    bzero(buf.data(), buf.size());
 }
 
 Buffer::Buffer(std::string initializer){
@@ -24,16 +24,12 @@ unsigned char* Buffer::data(){
     return buf.data();
 }
 
-std::vector<unsigned char> Buffer::buffer(){
+std::vector<unsigned char> Buffer::vector(){
     return buf;
 }
 
 void Buffer::push_back(unsigned char elem){
     buf.push_back(elem);
-}
-
-void Buffer::append(Buffer tail){
-    buf.insert(buf.end(), tail.buffer().begin(), tail.buffer().end());
 }
 
 std::string Buffer::to_str(){
@@ -53,6 +49,11 @@ void Buffer::write_int(int to_write){
     for (int i=3; i>=0; i--) buf.push_back(ptr[i]);
 }
 
+void Buffer::append(Buffer other){
+    std::vector<unsigned char> v = other.vector();
+    buf.insert(buf.end(), v.begin(), v.end());
+}
+
 void Buffer::write_zset(zset to_write){
     write_zz_array(to_write.elements());
 }
@@ -60,8 +61,28 @@ void Buffer::write_zset(zset to_write){
 void Buffer::write_bitset(bitset to_write){
     write_int(to_write.size());
     write_int(to_write.num_blocks());
+
+    int sz = buf.size();
     auto ii = std::back_inserter(buf);
     to_block_range(to_write, ii);
+    for (it=buf.begin()+sz; it<buf.end(); it++){
+        *it = (*it & 0xF0) >> 4 | (*it & 0x0F) << 4;
+        *it = (*it & 0xCC) >> 2 | (*it & 0x33) << 2;
+        *it = (*it & 0xAA) >> 1 | (*it & 0x55) << 1;
+    }
+  /*  
+    bitset tmp;
+    for (it=; i<8; i++){
+        
+    }
+    if (to_write.size() > 0){
+        unsigned long tmp = to_write.to_ulong();
+        unsigned char *p = (unsigned char *)&tmp;
+    //std::cout << sizeof(p[0]) << std::endl;
+        buf.push_back(p[0]<<6);
+    }
+    */
+    
 }
 
 void Buffer::write_string(std::string to_write){
@@ -69,20 +90,25 @@ void Buffer::write_string(std::string to_write){
     buf.insert(buf.end(),to_write.begin(),to_write.end());
 }
 
-void Buffer::write_zz_array(std::vector<ZZ_p> to_write){
+void Buffer::write_zz_array(std::vector<NTL::ZZ_p> to_write){
     write_int(to_write.size());
     for (int i=0; i<to_write.size(); i++) 
             write_zz_p(to_write[i]);
+    g_logger.log(Logger_level::DEBUG, "Wrote NTL::ZZ_p array to buffer succesfully");
 }
 
-void Buffer::write_zz_p(ZZ_p to_write){
-    ZZ z = rep(to_write);
+void Buffer::write_zz_p(NTL::ZZ_p to_write, int pad_to){
+    //reinit of the module is needed, otherwise ntl will
+    //complain
+    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(Recon_settings::P_SKS_STRING.c_str()));
+
+    NTL::ZZ z = rep(to_write);
     int num_bytes = NumBytes(z);
     std::vector<unsigned char> buf_z(num_bytes);
     BytesFromZZ(buf_z.data(), z, num_bytes);
     buf.insert(buf.end(), buf_z.begin(), buf_z.end());
     if (num_bytes < Recon_settings::sks_zp_bytes){
-        padding(Recon_settings::sks_zp_bytes - num_bytes);
+        padding(pad_to - num_bytes);
     }
 }
 
@@ -111,28 +137,44 @@ bitset Buffer::read_bitset() {
         bs.append(it, it+bytes);
         it+=bytes;
     }
+    bs.resize(bs_size);
+    std::ostringstream os;
+    os << bs;
+    g_logger.log(Logger_level::DEBUG, os.str());
     return bs;
 }
 
-std::vector<ZZ_p> Buffer::read_zz_array(){
+std::vector<NTL::ZZ_p> Buffer::read_zz_array(){
+    //reinit of the module is needed, otherwise ntl will
+    //complain
+    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(Recon_settings::P_SKS_STRING.c_str()));
     int array_size = read_int();
-    g_logger.log(Logger_level::DEBUG, "zz array size: " + std::to_string(array_size));
-    std::vector<ZZ_p> array(array_size);
+    std::vector<NTL::ZZ_p> array(array_size);
+    /*
     g_logger.log(Logger_level::DEBUG, "zz array size set accordingly");
+    std::ostringstream os;
+    os << "resulting zz array: [";
+    */
     for (int i=0; i<array_size; i++){
-        ZZ src;
-        ZZFromBytes(src, &(*it), Recon_settings::sks_zp_bytes);
-        g_logger.log(Logger_level::DEBUG, "zz read");
-        it+=Recon_settings::sks_zp_bytes;
-        ZZ_p dst = conv<ZZ_p>(src);
-        array[i] = dst;
+        std::vector<unsigned char> zbytes = read_bytes(Recon_settings::sks_zp_bytes);
+        NTL::ZZ_p dst;
+        NTL::ZZ_p a(256);
+        for (int i=0; i<zbytes.size(); i++){
+            NTL::ZZ_p x;
+            power(x, a, i);
+            dst += x * (uint8_t)zbytes[i];
+        }
+        array[i]=dst;
+        //os << dst;
+        //os << " ";
     }
-
+    //os << "]" << std::endl;
+    //g_logger.log(Logger_level::DEBUG, os.str());
     return array;
 }
 
 zset Buffer::read_zset(){
-    std::vector<ZZ_p> array = read_zz_array();
+    std::vector<NTL::ZZ_p> array = read_zz_array();
     zset result(array);
     return result;
 }
@@ -152,6 +194,7 @@ std::vector<unsigned char> Buffer::read_bytes(int size){
 }
 
 void Buffer::padding(int padding_len){
-    buftype padding(padding_len);
-    append(padding);
+    std::vector<unsigned char> pad(padding_len);
+    bzero(pad.data(), pad.size());
+    buf.insert(buf.end(), pad.begin(), pad.end());
 }
