@@ -27,7 +27,8 @@ template<typename T> void Myset<T>::add(const std::vector<T>& elem){
 }
 
 template<typename T> void Myset<T>::add(const Myset<T>& a){
-    elems.insert(elems.end(), a.elements().begin(), a.elements().end());
+    std::vector<T> v = a.elements();
+    elems.insert(elems.end(), v.begin(), v.end());
 }
 
 template<typename T> std::pair<bool,int> Myset<T>::contains(const T& elem){
@@ -75,4 +76,4 @@ template<typename T> std::pair<std::vector<T>, std::vector<T>> Myset<T>::symmetr
     return std::make_pair(e,c);
 }
 
-template class Myset<ZZ_p>;
+template class Myset<NTL::ZZ_p>;

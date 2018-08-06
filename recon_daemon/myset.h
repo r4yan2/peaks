@@ -3,7 +3,6 @@
 #include <NTL/ZZ_p.h>
 #include <vector>
 
-using namespace NTL;
 /** My naive implementation of set template class.
  * This template should provide a very basic approach to set container.
  */
