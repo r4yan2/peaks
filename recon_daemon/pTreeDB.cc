@@ -3,33 +3,33 @@
 Ptree::Ptree(){
 }
 
-Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbp, std::vector<ZZ_p> point){
+Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbp, std::vector<NTL::ZZ_p> point){
+  root = NULL;
   dbm = dbp;
   points = point;
-  root = NULL;
 }
 
 Ptree::~Ptree(){}
 
 Pnode* Ptree::get_root(){
-  return root;
+    return root;
 }
 
-std::vector<ZZ_p>Ptree::get_points(){
+std::vector<NTL::ZZ_p>Ptree::get_points(){
   return points;
 }
 
-std::vector<ZZ_p> Ptree::add_element_array(ZZ_p z){
-  std::vector<ZZ_p> marray(points.size());
+std::vector<NTL::ZZ_p> Ptree::add_element_array(NTL::ZZ_p z){
+  std::vector<NTL::ZZ_p> marray(points.size());
   for(int i=0; i<points.size(); i++){
     marray[i] = points[i] - z;
-    if (IsZero(marray[i])) throw std::invalid_argument("marray is 0");
+    if (marray[i] == 0) throw std::invalid_argument("marray element 0");
   }
   return marray;
 }
 
-std::vector<ZZ_p> Ptree::delete_element_array(ZZ_p z){
-  std::vector<ZZ_p> marray(points.size());
+std::vector<NTL::ZZ_p> Ptree::delete_element_array(NTL::ZZ_p z){
+  std::vector<NTL::ZZ_p> marray(points.size());
   for(int i=0; i<points.size(); i++){
     marray[i] = inv(points[i] - z);
   }
@@ -38,21 +38,28 @@ std::vector<ZZ_p> Ptree::delete_element_array(ZZ_p z){
 
 void Ptree::create(){
   if (get_root()==NULL){
-    root = new_child(NULL, 0);
-    root->commit_node();
+      bitset bs;
+      root = node(bs);
+      if (root == NULL){
+        root = new_child(NULL, 0);
+        root->commit_node(true);
+      }
   }
 }
 
 Pnode* Ptree::get_node(std::string key){
   DBStruct::node n = dbm->get_node(key);
-  std::vector<ZZ_p> node_elements = Utils::unmarshall_vec_zz_p(n.elements);
-  std::vector<ZZ_p> node_svalues = Utils::unmarshall_vec_zz_p(n.svalues);
+  std::vector<NTL::ZZ_p> node_elements = Utils::unmarshall_vec_zz_p(n.elements);
+  std::vector<NTL::ZZ_p> node_svalues = Utils::unmarshall_vec_zz_p(n.svalues);
   Pnode* nd = new Pnode(dbm);
   nd->set_node_key(key);
   nd->set_node_svalues(node_svalues);
   nd->set_num_elements(n.num_elements);
   nd->set_leaf(n.leaf);
   nd->set_node_elements(node_elements);
+  std::ostringstream os;
+  os << "Fetched node: " << nd->get_node_key() << ", num_elements: " << nd->get_num_elements() << ", node elements size: " << nd->get_node_elements().size() << ", leaf " << nd->is_leaf();
+  g_logger.log(Logger_level::DEBUG, os.str());
   return nd;
 } 
 
@@ -65,16 +72,19 @@ bool Ptree::has_key(std::string key){
   }
 }
 
-void Ptree::insert(ZZ_p z){
+void Ptree::insert(NTL::ZZ_p z){
+    std::ostringstream os;
+    os << z;
+  g_logger.log(Logger_level::DEBUG, "Inserting NTL::ZZ_p: " + os.str());
   bitset bs = Utils::ZZp_to_bitset(z);
   std::string key;
   to_string(bs, key);
   try{
     DBStruct::node res = dbm->get_node(key);
-    syslog(LOG_NOTICE, "Tentato inserimento di nodo già presente!");
+    g_logger.log(Logger_level::WARNING, "Tentato inserimento di nodo già presente!");
   }catch (...){ 
     Pnode* root_node = get_root();
-    std::vector<ZZ_p> marray = add_element_array(z);
+    std::vector<NTL::ZZ_p> marray = add_element_array(z);
     root_node->insert(z, marray, bs, 0);
     dbm->insert_node(DBStruct::node{key, "", 0, true, ""});
   }
@@ -100,55 +110,56 @@ Pnode* Ptree::new_child(Pnode* parent, int child_index){
   std::string node_key;
   to_string(key, node_key);
   n->set_node_key(node_key);
-  std::vector<ZZ_p> svalues(num_samples);
+  std::vector<NTL::ZZ_p> svalues(num_samples);
   for (int i=0; i<num_samples; i++){
-    ZZ_p z(1);
+    NTL::ZZ_p z(1);
     svalues[i] = z;
   }
   n->set_node_svalues(svalues);
   return n;
 }
 
-Pnode* Ptree::node(bitset bs){
-  if (bs.size() == 0) throw std::invalid_argument("received a bs of 0 size");
-  bitset key = bs;
- 
-  std::string n_key;
-  to_string(bs, n_key);
-  Pnode* n;
-  while(1){
-    try{
-      n = get_node(n_key);
-      break;
-    } catch (std::exception &e){
-      syslog(LOG_NOTICE, "Errore nel recupero del nodo!");
-      std::cout << e.what();
+Pnode* Ptree::node(bitset key){
+   
+    std::string str_key;
+    if (key.size() == 0)
+        str_key = "";
+    else
+        to_string(key, str_key);
+    Pnode* n = NULL;
+    while(1){
+        try{
+            n = get_node(str_key);
+            break;
+        }   catch (std::exception &e){
+            g_logger.log(Logger_level::WARNING, "Errore nel recupero del nodo!");
+            std::cout << e.what();
+        }
+        if (key.size() == 0) break;
+  
+        key.resize(key.size() - bq);
+        to_string(key, str_key);
     }
-    if (key.size() == 0) break;
-
-    key.resize(key.size() - bq);
-    to_string(key, n_key);
-  }
-  return n;
+    return n;
 }
 
 void Ptree::populate(std::vector<std::string> hashes){
-    ZZ_p base(16);
+    NTL::ZZ_p base(16);
     for (auto hash : hashes){
-        ZZ_p new_elem;
+        NTL::ZZ_p new_elem;
         size_t limit = hash.size();
         for (size_t i=1; i <= limit; i++){
             char hexchar = hash[limit - i];
             int val = (hexchar >= 'A') ? (hexchar - 'A' + 10) : (hexchar - '0');            
-            ZZ_p res;
+            NTL::ZZ_p res;
             power(res, base,(i-1));
-            new_elem += conv<ZZ_p>(val) * res;
+            new_elem += NTL::conv<NTL::ZZ_p>(val) * res;
         }
         insert(new_elem);
     }
 }
 
-void Ptree::remove(ZZ_p z){
+void Ptree::remove(NTL::ZZ_p z){
   bitset bs = Utils::ZZp_to_bitset(z);
   std::string key;
   to_string(bs, key);
@@ -159,7 +170,7 @@ void Ptree::remove(ZZ_p z){
   }
 
   Pnode* root = get_root();
-  std::vector<ZZ_p> marray = delete_element_array(z);
+  std::vector<NTL::ZZ_p> marray = delete_element_array(z);
   root->remove(z, marray, bs, 0);
   dbm->delete_node(key);
 }
@@ -176,7 +187,7 @@ int Pnode::get_num_elements(){
   return num_elements;
 }
 
-std::vector<ZZ_p> Pnode::get_node_svalues(){
+std::vector<NTL::ZZ_p> Pnode::get_node_svalues(){
   return node_svalues;
 }
 
@@ -188,7 +199,7 @@ bool Pnode::is_leaf(){
   return leaf;
 }
 
-std::vector<ZZ_p> Pnode::get_node_elements(){
+std::vector<NTL::ZZ_p> Pnode::get_node_elements(){
     return node_elements;
 }
 
@@ -200,11 +211,11 @@ void Pnode::set_num_elements(int num){
     num_elements = num;
 }
 
-void Pnode::set_node_svalues(std::vector<ZZ_p> new_values){
+void Pnode::set_node_svalues(std::vector<NTL::ZZ_p> new_values){
     node_svalues = new_values;
 }
 
-void Pnode::set_node_elements(std::vector<ZZ_p> new_elements){
+void Pnode::set_node_elements(std::vector<NTL::ZZ_p> new_elements){
     node_elements = new_elements;
 }
 
@@ -237,14 +248,20 @@ std::vector<Pnode*> Pnode::children(){
   return result;
 }
 
-void Pnode::commit_node(){
+void Pnode::commit_node(bool newnode){
   DBStruct::node n;
   n.key = node_key;
   n.svalues = Utils::marshall_vec_zz_p(get_node_svalues());
   n.num_elements = num_elements;
   n.leaf = leaf;
   n.elements = Utils::marshall_vec_zz_p(get_node_elements());
-  dbm->insert_node(n);
+  std::ostringstream os;
+  os << "committing node:\nnode_key " << n.key << " tester svalue " << n.svalues[0] << " num elements " << n.num_elements << " leaf " << n.leaf << "node elements number" << get_node_elements().size() << " is a newnode?" << newnode << std::endl;
+  g_logger.log(Logger_level::DEBUG, os.str());
+  if (newnode)
+      dbm->insert_node(n);
+  else
+      dbm->update_node(n);
 }
 
 void Pnode::delete_node(){
@@ -252,13 +269,12 @@ void Pnode::delete_node(){
 }
 
 void Pnode::delete_elements(){
-  std::vector<ZZ_p> empty;
-  node_elements = empty;
+  node_elements.clear();
   commit_node();
 }
 
-void Pnode::delete_element(ZZ_p elem){
-  std::vector<ZZ_p> new_elements;
+void Pnode::delete_element(NTL::ZZ_p elem){
+  std::vector<NTL::ZZ_p> new_elements;
   for (auto element : node_elements){
     if (element != elem) new_elements.push_back(element);  
   }
@@ -266,23 +282,24 @@ void Pnode::delete_element(ZZ_p elem){
   commit_node();
 }
 
-std::vector<ZZ_p> Pnode::elements(){
-  std::vector<ZZ_p> result;
+std::vector<NTL::ZZ_p> Pnode::elements(){
+  std::vector<NTL::ZZ_p> result;
   if (is_leaf()){
     result = node_elements;
   } else{
     std::vector<Pnode*> children_vec;
     children_vec = children();
     for (auto child: children_vec){
-      std::vector<ZZ_p> elements = child->get_node_elements();
+      std::vector<NTL::ZZ_p> elements = child->get_node_elements();
       result.insert(result.end(), elements.begin(), elements.end());
+      delete child;
     }
   }
   return result;
 }
 
 void Pnode::join(){
-  std::vector<ZZ_p> elements;
+  std::vector<NTL::ZZ_p> elements;
   std::vector<Pnode*> children_vec;
   try{
     children_vec = children();
@@ -290,16 +307,18 @@ void Pnode::join(){
     syslog(LOG_NOTICE, "Nodo figlio inesistente");
   }
   for (auto child : children_vec){
-    std::vector<ZZ_p> elems = child->node_elements;
-    elements.insert(elems.end(), elems.begin(), elems.end());
+    std::vector<NTL::ZZ_p> elems = child->node_elements;
+    elements.insert(elements.end(), elems.begin(), elems.end());
     child->delete_node();
+    delete child;
   }
   node_elements = elements;
   leaf = true;
   commit_node();
 }
 
-void Pnode::insert_element(ZZ_p elem){
+void Pnode::insert_element(NTL::ZZ_p elem){
+    g_logger.log(Logger_level::DEBUG, "inserted element into node");
   node_elements.push_back(elem);
 }
 
@@ -316,27 +335,21 @@ int Pnode::next(bitset bs, int depth){
 }
 
 void Pnode::split(int depth){
-  std::vector<ZZ_p> split_elements;
-  split_elements = node_elements;
+  std::vector<NTL::ZZ_p> split_elements(node_elements);
   leaf = false;
   node_elements.clear();
-  try{
-    commit_node();
-  }
-  catch (...){
-    syslog(LOG_NOTICE, "Impossibile committare il nodo!");
-  }
+  if ((node_elements.size() != 0) || (split_elements.size() == 0))
+      g_logger.log(Logger_level::CRITICAL, "you did something wrong");
+  
+  commit_node();
+
   //create child nodes
   auto num = 1 << uint32_t(bq);
   std::vector<Pnode*> child_vec;
 
-  for (int i=0; i< num; i++){
+  for (uint32_t i=0; i< num; i++){
     Pnode* child_node = new_child(this, i);
-    try{
-      child_node->commit_node();
-    }catch (...){
-      //do something
-    }
+    child_node->commit_node(true);
     child_vec.push_back(child_node);
   }
   //move elements into child nodes
@@ -345,9 +358,13 @@ void Pnode::split(int depth){
 
     int index = next(bs, depth);
     Pnode* child_node = child_vec[index];
-    std::vector<ZZ_p> marray = child_node->add_element_array(z);
+    std::vector<NTL::ZZ_p> marray = child_node->add_element_array(z);
     child_node->insert(z, marray, bs, depth+1);
   }
+  
+  //cleanup
+  for (Pnode* n : child_vec)
+      delete n;
 }
 
 Pnode* Pnode::parent(){
@@ -361,7 +378,7 @@ Pnode* Pnode::parent(){
   return parent;
 }
  
-void Pnode::remove(ZZ_p z, std::vector<ZZ_p> marray, bitset bs, int depth){
+void Pnode::remove(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth){
   Pnode *cur_node = this;
   while(1){
     cur_node->update_svalues(marray,z);
@@ -404,28 +421,34 @@ void Pnode::remove(ZZ_p z, std::vector<ZZ_p> marray, bitset bs, int depth){
   cur_node->commit_node();
 }
 
-void Pnode::update_svalues(std::vector<ZZ_p> marray, ZZ_p z){
+void Pnode::update_svalues(std::vector<NTL::ZZ_p> marray, NTL::ZZ_p z){
   if (marray.size() != get_points().size()) syslog(LOG_NOTICE, "marray e points sono di dimensione diversa!");
   for (long i=0; i < marray.size(); i++){
       node_svalues[i] = node_svalues[i] * marray[i];
   }
 }
 
-void Pnode::insert(ZZ_p z, std::vector<ZZ_p> marray, bitset bs, int depth){
+void Pnode::insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth){
     Pnode* cur_node = this;
     while(1){
         cur_node->update_svalues(marray, z);
         cur_node->set_num_elements(cur_node->get_num_elements() + 1);
         if (cur_node->is_leaf()){
+            g_logger.log(Logger_level::DEBUG, "current node is a leaf, number of elements " + std::to_string(cur_node->get_node_elements().size()));
             if (cur_node->get_node_elements().size() > split_threshold){
+                g_logger.log(Logger_level::DEBUG, "...splitting!");
                 cur_node->split(depth);
             }
             else {
+                g_logger.log(Logger_level::DEBUG, "...inserting the new element and committing");
+                g_logger.log(Logger_level::DEBUG, "current node number of elements " + std::to_string(cur_node->get_node_elements().size()));
                 cur_node->insert_element(z);
+                g_logger.log(Logger_level::DEBUG, "current node number of elements " + std::to_string(cur_node->get_node_elements().size()));
                 cur_node->commit_node();
                 return;
             }
         }
+        g_logger.log(Logger_level::DEBUG, "current node is an intermediate, searching the next one...");
         cur_node->commit_node();
         int child_index = cur_node->next(bs, depth);
         std::vector<Pnode*> child_vec = cur_node->children();
