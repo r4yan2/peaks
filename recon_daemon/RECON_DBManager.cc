@@ -21,11 +21,15 @@ RECON_DBManager::RECON_DBManager() {
     
     get_pnode_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT * FROM ptree WHERE node_key = (?)"));
 
-    insert_pnode_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT INTO ptree VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE node_svalues = (?), num_elements = (?), leaf = (?), node_elements = (?)"));
+    insert_pnode_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT INTO ptree VALUES (?,?,?,?,?)"));
+
+    update_pnode_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE ptree SET node_svalues = (?), num_elements = (?), leaf = (?), node_elements = (?) WHERE node_key = (?)"));
                                       
     delete_pnode_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("DELETE FROM ptree WHERE node_key = (?)"));
 
-    get_all_hash_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT hash FROM gpg_keyserver"));
+    get_all_hash_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT hash FROM gpg_keyserver USE INDEX ()"));
+
+    check_key_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT * FROM gpg_keyserver where hash = (?)"));
 
 }
 RECON_DBManager::~RECON_DBManager(){
@@ -55,10 +59,6 @@ void RECON_DBManager::insert_node(const DBStruct::node &n){
     insert_pnode_stmt->setInt(3, n.num_elements);
     insert_pnode_stmt->setBoolean(4, n.leaf);
     insert_pnode_stmt->setString(5, n.elements);
-    insert_pnode_stmt->setString(6, n.svalues);
-    insert_pnode_stmt->setInt(7, n.num_elements);
-    insert_pnode_stmt->setBoolean(8, n.leaf);
-    insert_pnode_stmt->setString(9, n.elements);
     insert_pnode_stmt->executeQuery();
   }
   catch (SQLException &e){
@@ -70,6 +70,24 @@ void RECON_DBManager::insert_node(const DBStruct::node &n){
     }
   }
   
+void RECON_DBManager::update_node(const DBStruct::node &n){
+  try{
+    update_pnode_stmt->setString(1, n.svalues);
+    update_pnode_stmt->setInt(2, n.num_elements);
+    update_pnode_stmt->setBoolean(3, n.leaf);
+    update_pnode_stmt->setString(4, n.elements);
+    update_pnode_stmt->setString(5, n.key);
+    update_pnode_stmt->executeQuery();
+  }
+  catch (SQLException &e){
+    if(e.getErrorCode() == 1062){
+      syslog(LOG_INFO, "update pnode failed %s", e.what());
+    }else{
+      syslog(LOG_ERR, "update pnode failed - %s", e.what());
+    }
+    }
+}
+
 DBStruct::node RECON_DBManager::get_node(const std::string k){
   DBStruct::node n;
   get_pnode_stmt->setString(1, k);
@@ -96,5 +114,16 @@ void RECON_DBManager::delete_node(const std::string k){
   } catch (exception &e){
     syslog(LOG_WARNING, "Hash not found: %s", k.c_str());
   }
+}
+
+bool RECON_DBManager::check_key(const std::string k){
+    try{
+        check_key_stmt->setString(1,k);
+        result = shared_ptr<ResultSet>(check_key_stmt->executeQuery());
+        result->next();
+    } catch (exception &e){
+        return false;
+    }
+    return true;
 }
 

@@ -7,7 +7,7 @@
 #include <forward_list>
 #include <vector>
 #include <regex>
-//#include <Key.h>
+#include "logger.h"
 #include <iostream>
 #include "DBStruct.h"
 
@@ -19,8 +19,10 @@ public:
 
     DBStruct::node get_node(const std::string key);
     void insert_node(const DBStruct::node &n);
+    void update_node(const DBStruct::node &n);
     void delete_node(const std::string key);
     std::vector<std::string> get_all_hash();
+    bool check_key(std::string key);
     void lockTables();
     void unlockTables();
     
@@ -30,8 +32,10 @@ private:
     std::shared_ptr<sql::Connection> con;
     std::shared_ptr<sql::PreparedStatement> get_pnode_stmt;
     std::shared_ptr<sql::PreparedStatement> insert_pnode_stmt;
+    std::shared_ptr<sql::PreparedStatement> update_pnode_stmt;
     std::shared_ptr<sql::PreparedStatement> delete_pnode_stmt;
     std::shared_ptr<sql::PreparedStatement> get_all_hash_stmt;
+    std::shared_ptr<sql::PreparedStatement> check_key_stmt;
     std::shared_ptr<sql::ResultSet> result;
 };
 
