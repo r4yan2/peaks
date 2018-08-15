@@ -39,13 +39,12 @@ public:
 
   bool has_key(std::string key);
   void insert(NTL::ZZ_p z);
+  void insert(std::string hash, bool build=false);
 
   Pnode* new_child(Pnode* parent, int child_index);
   //insert a new node
   Pnode* node(bitset key);
 
-  void populate(std::vector<std::string> hashes);
-  
   void remove(NTL::ZZ_p z);
 };
 
@@ -74,6 +73,7 @@ public:
   std::vector<NTL::ZZ_p> get_node_elements();
   
   std::vector<Pnode*> children();
+  Pnode* children(int c_index);
   void commit_node(bool newnode = false);
   void delete_node();
   void delete_elements();
@@ -83,6 +83,8 @@ public:
   void insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth);
   void insert_element(NTL::ZZ_p elem);
   int next(bitset bs, int depth);
+  int next_sks(bitset bs, int depth);
+  int next_hockeypuck(bitset bs, int depth);
   Pnode* parent();
   void remove(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth);
   void split(int depth);

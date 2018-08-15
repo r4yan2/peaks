@@ -10,7 +10,6 @@
 #include "pTreeDB.h"
 #include "exception.h"
 #include <cmath>
-#include <NTL/vector.h>
 #include <NTL/mat_ZZ_p.h>
 #include <NTL/ZZ_pX.h>
 #include <NTL/ZZ_pXFactoring.h>
@@ -24,8 +23,7 @@
 #include <curlpp/Exception.hpp>
 #include "../dump_import/dump_import.h"
 #include <unistd.h>
-
-using namespace NTL;
+#include <chrono>
 
 /*
  * this will be send via networking
@@ -41,6 +39,7 @@ struct Communication{
     bool send;
     Communication_status status;
     std::vector<Message*> messages;
+    Communication():send(false), status(Communication_status::NONE){}
 };
 
 struct request_entry{
@@ -48,11 +47,13 @@ struct request_entry{
     bitset key;
 };
 
-enum class recon_state {Bottom=0, FlushEnded=1};
+namespace recon_state{
+enum recon_state: int {Bottom=0, FlushEnded=1};
+}
 
 struct bottom_entry{
     request_entry request;
-    recon_state state;
+    uint8_t state;
 };
 
 class Peer{
@@ -82,18 +83,16 @@ class Peer{
 
         void serve(); /**< recon as server */
 
-        void start_recon(peertype);
-        std::vector<ZZ_p> interact_with_client();
+        std::vector<NTL::ZZ_p> interact_with_client(peertype remote_peer);
 
         /** fetch the given element from the peer */
-        void fetch_elements(peertype peer, std::vector<ZZ_p> elements);
+        void fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems);
 
-        void serve_client(peertype peer);
         Communication request_poly_handler(ReconRequestPoly* req);
         Communication request_full_handler(ReconRequestFull* req);
-        std::pair<std::vector<ZZ_p>,std::vector<ZZ_p>> solve(std::vector<ZZ_p> r_samples, int r_size, std::vector<ZZ_p> l_samples, int l_size, std::vector<ZZ_p> points);
+        std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> solve(std::vector<NTL::ZZ_p> r_samples, int r_size, std::vector<NTL::ZZ_p> l_samples, int l_size, std::vector<NTL::ZZ_p> points);
 
-        void request_chunk(peertype peer, std::vector<ZZ_p> elements);
+        std::vector<std::string> request_chunk(peertype peer, std::vector<NTL::ZZ_p> elements);
 };
 
 class Recon_manager{
@@ -101,9 +100,10 @@ class Recon_manager{
         std::deque<request_entry> request_queue;
         std::deque<bottom_entry> bottom_queue;
         zset remote_set;
-        bool flushing;
+        bool flushing=false;
         std::vector<Message*> messages;
         Connection_Manager cn;
+        int clientfd;
     public:
         Recon_manager(Connection_Manager conn_manager);
         ~Recon_manager();
@@ -122,7 +122,7 @@ class Recon_manager{
         int bottom_queue_size();
         int request_queue_size();
         bool is_flushing();
-        std::vector<ZZ_p> elements();
+        std::vector<NTL::ZZ_p> elements();
 };
 
 #endif //RECON_PEER_H 

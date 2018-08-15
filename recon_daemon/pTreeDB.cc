@@ -1,5 +1,19 @@
 #include "pTreeDB.h"
 
+//ASCII loockup table
+int ASCIIHexToInt[] =
+{
+    // ASCII
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+     0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
+    -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+};
+
 Ptree::Ptree(){
 }
 
@@ -57,37 +71,45 @@ Pnode* Ptree::get_node(std::string key){
   nd->set_num_elements(n.num_elements);
   nd->set_leaf(n.leaf);
   nd->set_node_elements(node_elements);
-  std::ostringstream os;
-  os << "Fetched node: " << nd->get_node_key() << ", num_elements: " << nd->get_num_elements() << ", node elements size: " << nd->get_node_elements().size() << ", leaf " << nd->is_leaf();
-  g_logger.log(Logger_level::DEBUG, os.str());
+  //std::ostringstream os;
+  //os << "Fetched node: " << nd->get_node_key() << ", num_elements: " << nd->get_num_elements() << ", node elements size: " << nd->get_node_elements().size() << ", leaf " << nd->is_leaf();
+  //g_logger.log(Logger_level::DEBUG, os.str());
   return nd;
 } 
 
 bool Ptree::has_key(std::string key){
-  try{
-    dbm->get_node(key);
-    return true;
-  } catch (...){
-      return false;
-  }
+  return dbm->check_key(key);
+}
+
+void Ptree::insert(std::string hash, bool build){
+    if (!build && has_key(hash)){
+      g_logger.log(Logger_level::WARNING, "Blocked insert of duplicate node!");
+      return;
+    }
+    std::vector<unsigned int> inthash;
+    for (int i=0; i<hash.size(); i+=2)
+        inthash.push_back(16 * ASCIIHexToInt[hash[i]] + ASCIIHexToInt[hash[i+1]]);
+
+    NTL::ZZ_p elem(0);
+    if (recon_settings.sks_compliant == 1){
+        for (int i=0; i < inthash.size(); i++){
+            elem = elem * (2<<7) + inthash[i];
+        }
+    }else{
+        std::reverse(inthash.begin(), inthash.end());
+        for (int i=0; i < inthash.size(); i++)
+            elem += (2<<(7*i)) * inthash[i];
+    }
+    insert(elem);
 }
 
 void Ptree::insert(NTL::ZZ_p z){
-    std::ostringstream os;
-    os << z;
-  g_logger.log(Logger_level::DEBUG, "Inserting NTL::ZZ_p: " + os.str());
-  bitset bs = Utils::ZZp_to_bitset(z);
-  std::string key;
-  to_string(bs, key);
-  try{
-    DBStruct::node res = dbm->get_node(key);
-    g_logger.log(Logger_level::WARNING, "Tentato inserimento di nodo già presente!");
-  }catch (...){ 
+    bitset bs = Utils::ZZp_to_bitset(z);
+    std::string key;
+    to_string(bs, key);
     Pnode* root_node = get_root();
     std::vector<NTL::ZZ_p> marray = add_element_array(z);
     root_node->insert(z, marray, bs, 0);
-    dbm->insert_node(DBStruct::node{key, "", 0, true, ""});
-  }
 }
 
 Pnode* Ptree::new_child(Pnode* parent, int child_index){
@@ -143,22 +165,6 @@ Pnode* Ptree::node(bitset key){
         to_string(key, str_key);
     }
     return n;
-}
-
-void Ptree::populate(std::vector<std::string> hashes){
-    NTL::ZZ_p base(16);
-    for (auto hash : hashes){
-        NTL::ZZ_p new_elem;
-        size_t limit = hash.size();
-        for (size_t i=1; i <= limit; i++){
-            char hexchar = hash[limit - i];
-            int val = (hexchar >= 'A') ? (hexchar - 'A' + 10) : (hexchar - '0');            
-            NTL::ZZ_p res;
-            power(res, base,(i-1));
-            new_elem += NTL::conv<NTL::ZZ_p>(val) * res;
-        }
-        insert(new_elem);
-    }
 }
 
 void Ptree::remove(NTL::ZZ_p z){
@@ -225,6 +231,25 @@ void Pnode::set_leaf(bool new_leaf){
     leaf = new_leaf;
 }
 
+Pnode* Pnode::children(int c_index){
+    if (is_leaf())
+        return NULL;
+    std::string key = get_node_key();
+    bitset child_key(key);
+    int key_size = child_key.size();
+    child_key.resize(key_size + recon_settings.bq);
+    for (int j=0; j<recon_settings.bq; j++){
+      if ((1<<uint32_t(j)&c_index) == 0){
+        child_key.reset(key_size + j);
+      }
+      else{
+        child_key.set(key_size + j);
+      }
+    }
+    Pnode* child = node(child_key);
+    return child;
+}
+
 std::vector<Pnode*> Pnode::children(){
   std::vector<Pnode*> result;
   if (is_leaf()){
@@ -257,9 +282,9 @@ void Pnode::commit_node(bool newnode){
   n.num_elements = num_elements;
   n.leaf = leaf;
   n.elements = Utils::marshall_vec_zz_p(get_node_elements());
-  std::ostringstream os;
-  os << "committing node:\nnode_key " << n.key << " tester svalue " << n.svalues[0] << " num elements " << n.num_elements << " leaf " << n.leaf << "node elements number" << get_node_elements().size() << " is a newnode?" << newnode << std::endl;
-  g_logger.log(Logger_level::DEBUG, os.str());
+  //std::ostringstream os;
+  //os << "committing node:\nnode_key " << n.key << " num elements " << n.num_elements << " leaf " << n.leaf << "node elements number" << get_node_elements().size() << " is a newnode?" << newnode << std::endl;
+  //g_logger.log(Logger_level::DEBUG, os.str());
   if (newnode)
       dbm->insert_node(n);
   else
@@ -320,20 +345,54 @@ void Pnode::join(){
 }
 
 void Pnode::insert_element(NTL::ZZ_p elem){
-    g_logger.log(Logger_level::DEBUG, "inserted element into node");
+    //g_logger.log(Logger_level::DEBUG, "inserted element into node");
   node_elements.push_back(elem);
 }
 
 int Pnode::next(bitset bs, int depth){
+    int key;
+    key = next_hockeypuck(bs, depth);
+    g_logger.log(Logger_level::DEBUG, "Calculated key hockeypuck way " + std::to_string(key));
+    return key;
+    //key = next_sks(bs, depth);
+    //g_logger.log(Logger_level::DEBUG, "Calculated key sks way " + std::to_string(key));
+}
+
+int Pnode::next_hockeypuck(bitset bs, int depth){
   if (is_leaf()){
     throw std::invalid_argument("il nodo è una foglia e tu vorresti i successori?");
   }
   int childIndex = 0;
-  for (int i=0; i<bq; i++){
+  for (int i=0; i<recon_settings.bq; i++){
     auto mask = 1 << uint32_t(i);
-    if (bs.test(depth*bq+i)) childIndex |= mask;
+    if (bs.test(depth*recon_settings.bq+i)) childIndex |= mask;
   }
   return childIndex;
+}
+
+int Pnode::next_sks(bitset bs, int depth){
+    int lowbit = depth * recon_settings.bq;
+    int highbit = lowbit + recon_settings.bq + 1;
+    int lowbyte = lowbit / 8;
+    lowbit = lowbit % 8;
+    int highbyte = highbit / 8;
+    highbit = highbit % 8;
+    std::vector<unsigned char> blocks;
+    to_block_range(bs, std::back_inserter(blocks));
+    std::reverse(blocks.begin(), blocks.end());
+    int key;
+    if (lowbyte == highbyte){
+        bitset byte(blocks[lowbyte]);
+        key = ((byte.to_ulong() >> (7 - highbit)) & (255 >> (8 - highbit - lowbit + 1)));
+    }
+    else{
+        bitset byte1(blocks[lowbyte]);
+        bitset byte2(blocks[highbyte]);
+        int key1 = (byte1.to_ulong() & (255 >> (8 - 8 - lowbit))) << (highbit + 1);
+        int key2 = (byte2.to_ulong() & (255 << (8 - highbit + 1))) >> (7 - highbit);
+        key = key1 | key2;
+    }
+    return key;
 }
 
 void Pnode::split(int depth){
@@ -436,25 +495,30 @@ void Pnode::insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int de
         cur_node->update_svalues(marray, z);
         cur_node->set_num_elements(cur_node->get_num_elements() + 1);
         if (cur_node->is_leaf()){
-            g_logger.log(Logger_level::DEBUG, "current node is a leaf, number of elements " + std::to_string(cur_node->get_node_elements().size()));
-            if (cur_node->get_node_elements().size() > split_threshold){
-                g_logger.log(Logger_level::DEBUG, "...splitting!");
+            //g_logger.log(Logger_level::DEBUG, "current node is a leaf, number of elements " + std::to_string(cur_node->get_node_elements().size()));
+            if (cur_node->get_node_elements().size() > recon_settings.split_threshold){
+                //g_logger.log(Logger_level::DEBUG, "...splitting!");
                 cur_node->split(depth);
             }
             else {
-                g_logger.log(Logger_level::DEBUG, "...inserting the new element and committing");
-                g_logger.log(Logger_level::DEBUG, "current node number of elements " + std::to_string(cur_node->get_node_elements().size()));
+                std::ostringstream os;
+                os << z;
+                g_logger.log(Logger_level::DEBUG, "Inserting " + os.str() + " to node " + cur_node->node_key);
                 cur_node->insert_element(z);
-                g_logger.log(Logger_level::DEBUG, "current node number of elements " + std::to_string(cur_node->get_node_elements().size()));
                 cur_node->commit_node();
                 return;
             }
         }
-        g_logger.log(Logger_level::DEBUG, "current node is an intermediate, searching the next one...");
+        //g_logger.log(Logger_level::DEBUG, "current node is an intermediate, searching the next one...");
         cur_node->commit_node();
+        
         int child_index = cur_node->next(bs, depth);
+        cur_node = cur_node->children(child_index);
+        /*
         std::vector<Pnode*> child_vec = cur_node->children();
         cur_node = child_vec[child_index];
+        */
+
         depth += 1;
     }
 }
