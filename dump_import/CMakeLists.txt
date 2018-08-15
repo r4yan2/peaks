@@ -6,7 +6,7 @@ set(CMAKE_CXX_FLAGS "-march=native -Wall -lbz2 -lz \
             -lmysqlcppconn -static-libgcc -pthread -lstdc++ -pipe -lgmp -lboost_system -lboost_filesystem")
 
 add_definitions(-DGPG_COMPATIBLE)
-add_definitions(-DTMP_FOLDER_CSV="/var/lib/mysql-files/gpg_keyserver/dump_import/")
+add_definitions(-DTMP_FOLDER_CSV="/tmp/dump_import/")
 add_definitions(-DERROR_FOLDER="/tmp/gpg_keyserver_ERRORS/dump_import_errors/")
 add_definitions(-DDEFAULT_DUMP_PATH="/tmp/pgp_dump/")
 
