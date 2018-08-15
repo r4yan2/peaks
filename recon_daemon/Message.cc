@@ -1,14 +1,14 @@
 #include "Message.h"
 
 
-void ReconRequestPoly::marshal(buftype &buf){
+void ReconRequestPoly::marshal(Buffer &buf){
  
     buf.write_bitset(prefix);
     buf.write_int(size);
     buf.write_zz_array(samples);
 }
 
-void ReconRequestPoly::unmarshal(sbuftype buf){
+void ReconRequestPoly::unmarshal(Buffer buf){
      g_logger.log(Logger_level::DEBUG, "unpacking reconrequestpoly");
      prefix = buf.read_bitset();
      size = buf.read_int();
@@ -20,69 +20,69 @@ void ReconRequestPoly::unmarshal(sbuftype buf){
      g_logger.log(Logger_level::DEBUG, "prefix: " + test + " size: " + std::to_string(size));
 }
 
-void ReconRequestFull::marshal(buftype &buf){
+void ReconRequestFull::marshal(Buffer &buf){
     buf.write_bitset(prefix);
     buf.write_zset(samples);
 }
 
-void ReconRequestFull::unmarshal(sbuftype buf){
+void ReconRequestFull::unmarshal(Buffer buf){
     prefix = buf.read_bitset();
     samples = buf.read_zset();
 }
 
-void Elements::marshal(buftype &buf){
+void Elements::marshal(Buffer &buf){
     buf.write_zset(samples);
 }
 
-void Elements::unmarshal(sbuftype buf){
+void Elements::unmarshal(Buffer buf){
     samples = buf.read_zset();
 }
 
-void FullElements::marshal(buftype &buf){
+void FullElements::marshal(Buffer &buf){
     buf.write_zset(samples);
 }
 
-void FullElements::unmarshal(sbuftype buf){
+void FullElements::unmarshal(Buffer buf){
     samples = buf.read_zset();
 }
 
-void SyncFail::marshal(buftype &buf){}
+void SyncFail::marshal(Buffer &buf){}
 
-void SyncFail::unmarshal(sbuftype buf){}
+void SyncFail::unmarshal(Buffer buf){}
 
-void Done::marshal(buftype &buf){}
+void Done::marshal(Buffer &buf){}
 
-void Done::unmarshal(sbuftype buf){}
+void Done::unmarshal(Buffer buf){}
 
-void Flush::marshal(buftype &buf){}
+void Flush::marshal(Buffer &buf){}
 
-void Flush::unmarshal(sbuftype buf){}
+void Flush::unmarshal(Buffer buf){}
 
-void ErrorType::marshal(buftype &buf){
+void Error::marshal(Buffer &buf){
     buf.write_string(text);
 }
 
-void ErrorType::unmarshal(sbuftype buf){
+void Error::unmarshal(Buffer buf){
     text = buf.read_string();
 }
 
-void DBRequest::marshal(buftype &buf){
+void DBRequest::marshal(Buffer &buf){
     buf.write_string(text);
 }
 
-void DBRequest::unmarshal(sbuftype buf){
+void DBRequest::unmarshal(Buffer buf){
     text = buf.read_string();
 }
 
-void DBReply::marshal(buftype &buf){
+void DBReply::marshal(Buffer &buf){
     buf.write_string(text);
 }
 
-void DBReply::unmarshal(sbuftype buf){
+void DBReply::unmarshal(Buffer buf){
     text = buf.read_string();
 }
 
-void Peer_config::marshal(buftype &buf){
+void Peer_config::marshal(Buffer &buf){
     /*
      * 5 is the number of field into Peer_config
      * + length of other
@@ -109,7 +109,7 @@ void Peer_config::marshal(buftype &buf){
     }
 }
 
-void Peer_config::unmarshal(sbuftype buf){
+void Peer_config::unmarshal(Buffer buf){
      std::string key;
      std::uint32_t val;
      std::string value;
@@ -133,12 +133,12 @@ void Peer_config::unmarshal(sbuftype buf){
                }
 }
 
-void Config_mismatch::marshal(buftype &buf){
+void Config_mismatch::marshal(Buffer &buf){
     buf.write_string(failed);
     buf.write_string(reason);
 }
 
-void Config_ok::marshal(buftype &buf){
+void Config_ok::marshal(Buffer &buf){
     buf.write_string(passed);
 }
 

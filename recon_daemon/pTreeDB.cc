@@ -98,8 +98,8 @@ Pnode* Ptree::new_child(Pnode* parent, int child_index){
     std::string parent_key_string = parent->get_node_key();
     key = bitset(parent_key_string);
     int key_size = key.size();
-    key.resize(key_size + bq);
-    for (int j=0; j<bq; j++){
+    key.resize(key_size + recon_settings.bq);
+    for (int j=0; j<recon_settings.bq; j++){
        if (((1<<uint32_t(j))&child_index) == 0) {
          key.reset(key_size + j);
        } else {
@@ -109,9 +109,11 @@ Pnode* Ptree::new_child(Pnode* parent, int child_index){
   }
   std::string node_key;
   to_string(key, node_key);
+  if (parent!=NULL)
+    g_logger.log(Logger_level::DEBUG, "Creating node with key" + node_key + " son of " + parent->get_node_key());
   n->set_node_key(node_key);
-  std::vector<NTL::ZZ_p> svalues(num_samples);
-  for (int i=0; i<num_samples; i++){
+  std::vector<NTL::ZZ_p> svalues(recon_settings.num_samples);
+  for (int i=0; i < recon_settings.num_samples; i++){
     NTL::ZZ_p z(1);
     svalues[i] = z;
   }
@@ -137,7 +139,7 @@ Pnode* Ptree::node(bitset key){
         }
         if (key.size() == 0) break;
   
-        key.resize(key.size() - bq);
+        key.resize(key.size() - recon_settings.bq);
         to_string(key, str_key);
     }
     return n;
@@ -229,12 +231,12 @@ std::vector<Pnode*> Pnode::children(){
     return result;
   }
   std::string key = get_node_key();
-  auto num_children = 1 << uint32_t(bq);
+  auto num_children = 1 << uint32_t(recon_settings.bq);
   for (int i=0; i < num_children; i++){
     bitset child_key(key);
     int key_size = child_key.size();
-    child_key.resize(key_size + bq);
-    for (int j=0; j<bq; j++){
+    child_key.resize(key_size + recon_settings.bq);
+    for (int j=0; j<recon_settings.bq; j++){
       if ((1<<uint32_t(j)&i) == 0){
         child_key.reset(key_size + j);
       }
@@ -344,7 +346,7 @@ void Pnode::split(int depth){
   commit_node();
 
   //create child nodes
-  auto num = 1 << uint32_t(bq);
+  auto num = 1 << uint32_t(recon_settings.bq);
   std::vector<Pnode*> child_vec;
 
   for (uint32_t i=0; i< num; i++){
@@ -371,7 +373,7 @@ Pnode* Pnode::parent(){
   std::string key = get_node_key();
   if (key.size()==0) return NULL;
   bitset parent_key(key);
-  parent_key.resize(key.size() - bq);
+  parent_key.resize(key.size() - recon_settings.bq);
   std::string parent_key_str;
   to_string(parent_key, parent_key_str);
   Pnode* parent = get_node(parent_key_str);
@@ -386,7 +388,7 @@ void Pnode::remove(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int de
     if (cur_node->is_leaf()){
       break;
     } else{
-      if (cur_node->get_num_elements() <= join_threshold){
+      if (cur_node->get_num_elements() <= recon_settings.join_threshold){
         try{
           cur_node->join();
         } catch (...){

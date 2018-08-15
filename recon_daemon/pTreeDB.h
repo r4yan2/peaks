@@ -1,7 +1,6 @@
 #ifndef RECON_PTREEDB_H
 #define RECON_PTREEDB_H
 
-#include "Recon_settings.h"
 #include "RECON_DBManager.h"
 #include "Utils.h"
 #include <syslog.h>
@@ -9,8 +8,7 @@
 #include <boost/dynamic_bitset.hpp>
 #include <stdexcept>
 #include "logger.h"
-
-using namespace Recon_settings;
+#include "Recon_settings.h"
 
 typedef boost::dynamic_bitset<unsigned char> bitset;
 

@@ -7,6 +7,8 @@
 #include <NTL/ZZ_p.h>
 #include <NTL/ZZ.h>
 #include <fstream>
+#include <boost/algorithm/string.hpp>
+#include "Recon_settings.h"
 
 /*int create_folder(std::string directory){
   boost::system::error_code returnedError;
@@ -22,8 +24,9 @@
   }
   return 0;
 }
-
 */
+
+
 namespace Utils{
 
 /** marshal NTL std::vector into suitable data for database insert */

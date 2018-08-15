@@ -1,20 +1,32 @@
 #include "Utils.h"
 
+
+
 std::string Utils::marshall_vec_zz_p(std::vector<NTL::ZZ_p> elements){
     if (elements.empty()) return "";
     std::ostringstream os;
-    std::copy(elements.begin(), elements.end()-1, std::ostream_iterator<NTL::ZZ_p>(os, " "));
-    os << elements.back();
-    return os.str();
+    std::copy(elements.begin(), elements.end(), std::ostream_iterator<NTL::ZZ_p>(os, " "));
+    std::string res(os.str());
+    return res.substr(0,res.size() - 1);
 }
 
 std::vector<NTL::ZZ_p> Utils::unmarshall_vec_zz_p(std::string blob){
+    /*
   std::vector<NTL::ZZ_p> elements;
   std::istringstream is(blob);
   NTL::ZZ_p elem;
   while (is >> elem)
       elements.push_back(elem);
   return elements;
+  */
+    std::vector<NTL::ZZ_p> res;
+    if (blob == "")
+        return res;
+    std::vector<std::string> splitted;
+    boost::split(splitted, blob, boost::is_any_of("\t "));
+    for (auto str: splitted)
+        res.push_back(NTL::conv<NTL::ZZ_p>(NTL::conv<NTL::ZZ>(str.c_str())));
+    return res;
 }
 
 std::vector<NTL::ZZ_p> Utils::Zpoints(int num_samples){

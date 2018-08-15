@@ -2,7 +2,7 @@
 
 Logger g_logger;
 
-void Logger::init(int verb){
+void Logger::init(bool verb){
     verbose = verb;
 }
 

@@ -6,11 +6,12 @@
 #include "myset.h"
 #include <map>
 #include "logger.h"
+#include <istream>
+#include <sstream>
 #include "Recon_settings.h"
 
 typedef boost::dynamic_bitset<unsigned char> bitset;
-using namespace NTL;
-typedef Myset<ZZ_p> zset;
+typedef Myset<NTL::ZZ_p> zset;
 
 namespace Msg_type{
 enum Msg_type : int {
@@ -21,7 +22,7 @@ enum Msg_type : int {
     SyncFail=4,
     Done=5,
     Flush=6,
-    ErrorType=7,
+    Error=7,
     DBRequest=8,
     DBReply=9,
     Peer_config=10,
@@ -42,30 +43,27 @@ class Buffer{
         unsigned char* data();
         int size();
         void set_read_only();
-        std::vector<unsigned char> buffer();
+        std::vector<unsigned char> vector();
         std::string to_str();
         void write_int(int);
         void write_string(std::string);
         void write_zset(zset);
         void write_bitset(bitset);
-        void write_zz_p(ZZ_p);
-        void write_zz_array(std::vector<ZZ_p>);
+        void write_zz_p(NTL::ZZ_p, int pad_to = recon_settings.sks_zp_bytes);
+        void write_zz_array(std::vector<NTL::ZZ_p>);
         void write_self_len();
         int read_int(bool check_len=false);
         uint8_t read_uint8();
         std::string read_string();
         zset read_zset();
         bitset read_bitset();
-        ZZ_p read_zz_p();
-        std::vector<ZZ_p> read_zz_array();
+        NTL::ZZ_p read_zz_p();
+        std::vector<NTL::ZZ_p> read_zz_array();
         std::vector<unsigned char> read_bytes(int size);
         void push_back(unsigned char);
-        void append(Buffer);
         void padding(int padding_len);
+        void append(Buffer other);
 };
-
-typedef Buffer buftype;
-typedef Buffer sbuftype;
 
 struct Message{
     uint8_t type;
@@ -77,9 +75,9 @@ struct ReconRequestPoly: Message{
     ReconRequestPoly():Message(Msg_type::ReconRequestPoly){}
     bitset prefix;
     int size;
-    std::vector<ZZ_p> samples;
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    std::vector<NTL::ZZ_p> samples;
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
 
@@ -87,61 +85,61 @@ struct ReconRequestFull: Message{
     ReconRequestFull():Message(Msg_type::ReconRequestFull){}
     bitset prefix;
     zset samples;
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
 struct Elements: Message{
     Elements():Message(Msg_type::Elements){}
     zset samples;
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
 struct FullElements: Message{
     FullElements():Message(Msg_type::FullElements){}
     zset samples;
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
 struct SyncFail: Message{
     SyncFail():Message(Msg_type::SyncFail){}
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
 struct Done: Message{
     Done():Message(Msg_type::Done){}
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
 struct Flush: Message{
     Flush():Message(Msg_type::Flush){}
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
-struct ErrorType: Message{
-    ErrorType():Message(Msg_type::ErrorType){}
+struct Error: Message{
+    Error():Message(Msg_type::Error){}
     std::string text;
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
 struct DBRequest: Message{
     DBRequest():Message(Msg_type::DBRequest){}
     std::string text;
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
 struct DBReply: Message{
     DBReply():Message(Msg_type::DBReply){}
     std::string text;
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
 struct Peer_config: Message{
@@ -152,21 +150,21 @@ struct Peer_config: Message{
     int mbar;
     std::string filters;
     std::map<std::string, std::string> other;
-    void marshal(buftype &buf);
-    void unmarshal(sbuftype buf);
+    void marshal(Buffer &buf);
+    void unmarshal(Buffer buf);
 };
 
 struct Config_mismatch: Message{
     Config_mismatch():Message(Msg_type::Config_mismatch){}
     std::string failed = "failed";
     std::string reason;
-    void marshal(buftype &buf);
+    void marshal(Buffer &buf);
 };
 
 struct Config_ok: Message{
     Config_ok():Message(Msg_type::Config_ok){}
     std::string passed = "passed";
-    void marshal(buftype &buf);
+    void marshal(Buffer &buf);
 };
 
 #endif
