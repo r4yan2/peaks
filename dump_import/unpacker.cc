@@ -8,10 +8,22 @@ namespace Unpacker {
     void unpack_string_th(const vector<string> keys){
         shared_ptr<DBManager> dbm(new DBManager());
         dbm->openCSVFiles();
+        int i=0;
         for (auto key_str : keys){
-            Key::Ptr key;
-            key = std::make_shared<Key>(key_str);
-            unpack(key, dbm);
+            i+=1;
+            try{
+                Key::Ptr key;
+                key = std::make_shared<Key>(key_str);
+                unpack(key, dbm);
+            }catch (exception &e){
+                syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", e.what());
+                cerr << "Key not unpacked due to not meaningfulness (" << e.what() << ")." << endl;
+                continue;
+            }catch (error_code &ec){
+                syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", ec.message().c_str());
+                cerr << "Key not unpacked due to not meaningfulness (" << ec.message() << ")." << endl;
+                continue;
+            }
         }
     }
 

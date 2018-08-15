@@ -28,12 +28,7 @@ vector<string> dump_import(vector<string> keys){
     openlog("pgp_dump_import", LOG_PID, LOG_USER);
     setlogmask (LOG_UPTO (LOG_NOTICE));
     syslog(LOG_NOTICE, "Dump_import is starting up!");
-    unsigned int nThreads = thread::hardware_concurrency() / 2;
-    unsigned int key_per_thread = KEY_PER_THREAD_DEFAULT;
     boost::filesystem::path path = DEFAULT_DUMP_PATH;
-    path = DEFAULT_DUMP_PATH;
-    nThreads = thread::hardware_concurrency() / 2;
-    key_per_thread = KEY_PER_THREAD_DEFAULT;
 
     if(Utils::create_folders() == -1){
         exit(-1);
@@ -41,27 +36,7 @@ vector<string> dump_import(vector<string> keys){
 
     shared_ptr<DBManager> dbm = make_shared<DBManager>();
 
-    shared_ptr<Thread_Pool> pool = make_shared<Thread_Pool>();
-    vector<thread> pool_vect(nThreads);
-
-    for (unsigned int i = 0; i < nThreads; i++){
-        pool_vect[i] = thread([=] { pool->Infinite_loop_function(); });
-    }
-
-    for (unsigned int i = 0; i < keys.size();){
-        vector<string> dump_file_tmp;
-        for (unsigned int j = 0; i < keys.size() && j < key_per_thread; j++, i++){
-            dump_file_tmp.push_back(keys[i]);
-        }
-        pool->Add_Job([=] { return Unpacker::unpack_dump_th(dump_file_tmp); });
-    }
-
-    pool->Stop_Filling_UP();
-
-    for (auto &th: pool_vect){
-        while (!th.joinable()){}
-        th.join();
-    }
+    Unpacker::unpack_string_th(keys);
 
 
     dbm->lockTables();
