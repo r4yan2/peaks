@@ -24,18 +24,18 @@
 #include "exception.h"
 #include "Message.h"
 #include "logger.h"
-#include "Recon_settings.h"
 #include <algorithm>
+#include "Recon_settings.h"
 
 typedef std::pair<std::string, int> peertype;
-using namespace NTL;
 typedef boost::dynamic_bitset<unsigned char> bitset;
-typedef Myset<ZZ_p> zset;
+typedef Myset<NTL::ZZ_p> zset;
 
 class Connection_Manager{
     private:
-        int sockfd = 0;
-        int listenfd = 0;
+        int sockfd = -1;
+        int tmpfd = -1;
+        int listenfd = -1;
     public:
 
         /** default constructor */
@@ -43,10 +43,14 @@ class Connection_Manager{
 
         /** init connection as client 
          * with given peer peer */
-        void init(peertype peer);
+        int init_peer(peertype peer);
 
         /** init server listener on the given port */
         void setup_listener(int portno);
+
+        void close_connection();
+
+        bool check_socket_status(int sock);
 
         /** acceptor (this is only the accept part, 
          * has to be called in a loop to be effective 
@@ -55,10 +59,10 @@ class Connection_Manager{
         /** helper method to activate keep-alive
          * on a given socket
          */
-        bool toggle_keep_alive(int socket, int toggle, int idle, int interval, int count);
+        bool toggle_keep_alive(int toggle, int idle, int interval, int count);
 
         /** helper method to set timeout on a given socket */
-        void set_timeout(int socket, unsigned int timeout);
+        void set_timeout(unsigned int timeout);
 
         /** exchange and validate config with peer */
         int check_remote_config();
@@ -67,19 +71,30 @@ class Connection_Manager{
         ~Connection_Manager();
 
         /** read only n bytes from network, and store into buf */
-        bool read_n_bytes(void *buf, std::size_t n);
+        bool read_n_bytes(void *buf, std::size_t n, bool tmp_socket=false, int signal=MSG_WAITALL);
 
         /** read a sks-type Message */
-        Message* read_message();
+        Message* read_message(bool tmp_socket=false, int signal=MSG_WAITALL);
+
+        Message* read_message_async();
 
         /** perform the actual send */
-        void send_message(buftype& buf);
+        void send_peer(Buffer& buf, bool tmp_socket=false);
+
+        void send_message(Message*, bool tmp_socket=false);
+
+        void send_bulk_messages(std::vector<Message*>);
+
+        void send_message_direct(Message*);
 
         /** directòy read a string from the network */
         std::string read_string_direct();
 
         /** send a sks-type message */
-        void write_message(Message* m, bool wrap=true);
+        void write_message(Buffer &buffer, Message* m, bool wrap=true);
+
+
+        void early_fail(std::string);
 };
 
 #endif
