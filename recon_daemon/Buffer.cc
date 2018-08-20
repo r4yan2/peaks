@@ -62,26 +62,15 @@ void Buffer::write_bitset(bitset to_write){
     write_int(to_write.size());
     write_int(to_write.num_blocks());
 
-    int sz = buf.size();
+    std::string str_to_write;
+    to_string(to_write, str_to_write);
+    std::reverse(str_to_write.begin(), str_to_write.end());
+
+    bitset tmp(str_to_write);
+
     auto ii = std::back_inserter(buf);
-    to_block_range(to_write, ii);
-    for (it=buf.begin()+sz; it<buf.end(); it++){
-        *it = (*it & 0xF0) >> 4 | (*it & 0x0F) << 4;
-        *it = (*it & 0xCC) >> 2 | (*it & 0x33) << 2;
-        *it = (*it & 0xAA) >> 1 | (*it & 0x55) << 1;
-    }
-  /*  
-    bitset tmp;
-    for (it=; i<8; i++){
-        
-    }
-    if (to_write.size() > 0){
-        unsigned long tmp = to_write.to_ulong();
-        unsigned char *p = (unsigned char *)&tmp;
-    //std::cout << sizeof(p[0]) << std::endl;
-        buf.push_back(p[0]<<6);
-    }
-    */
+    to_block_range(tmp, ii);
+    g_logger.log(Logger_level::DEBUG, "Write bitset: " + str_to_write);
     
 }
 
@@ -131,17 +120,25 @@ int Buffer::read_int(bool check_len){
 // Reads bitset from data chunk
 bitset Buffer::read_bitset() {
     int bs_size = read_int();
-    int bytes = read_int();
+    int n_bytes = read_int();
+
     bitset bs;
-    if (bytes != 0){
-        bs.append(it, it+bytes);
-        it+=bytes;
-    }
-    bs.resize(bs_size);
-    std::ostringstream os;
-    os << bs;
-    g_logger.log(Logger_level::DEBUG, os.str());
-    return bs;
+    if (n_bytes == 0)
+        return bs;
+
+    std::vector<unsigned int> bytes(it, it + n_bytes);
+    it += n_bytes;
+
+    bs.append(bytes.rbegin(), bytes.rend());
+
+    std::string str_res;
+    to_string(bs, str_res);
+    std::reverse(str_res.begin(), str_res.end());
+
+    bitset res(str_res);
+    res.resize(bs_size);
+    g_logger.log(Logger_level::DEBUG, "Read bitset: " + str_res);
+    return res;
 }
 
 std::vector<NTL::ZZ_p> Buffer::read_zz_array(){
@@ -150,26 +147,10 @@ std::vector<NTL::ZZ_p> Buffer::read_zz_array(){
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(recon_settings.P_SKS_STRING.c_str()));
     int array_size = read_int();
     std::vector<NTL::ZZ_p> array(array_size);
-    /*
-    g_logger.log(Logger_level::DEBUG, "zz array size set accordingly");
-    std::ostringstream os;
-    os << "resulting zz array: [";
-    */
     for (int i=0; i<array_size; i++){
         std::vector<unsigned char> zbytes = read_bytes(recon_settings.sks_zp_bytes);
-        NTL::ZZ_p dst;
-        NTL::ZZ_p a(256);
-        for (int i=0; i<zbytes.size(); i++){
-            NTL::ZZ_p x;
-            power(x, a, i);
-            dst += x * (uint8_t)zbytes[i];
-        }
-        array[i]=dst;
-        //os << dst;
-        //os << " ";
+        array[i] = Utils::bytes_to_zz(zbytes);
     }
-    //os << "]" << std::endl;
-    //g_logger.log(Logger_level::DEBUG, os.str());
     return array;
 }
 

@@ -247,7 +247,6 @@ void Peer::client_recon(peertype peer){
             case Msg_type::ReconRequestFull:{
                 //Request Full
                 comm = request_full_handler((ReconRequestFull*) msg); 
-                g_logger.log(Logger_level::DEBUG, "comm samples size: " + std::to_string(comm.samples.size()));
                 delete ((ReconRequestFull*) msg);
                 g_logger.log(Logger_level::DEBUG, "comm samples size: " + std::to_string(comm.samples.size()));
                 break;
@@ -292,7 +291,7 @@ void Peer::client_recon(peertype peer){
         }
         for (auto m: comm.messages)
             g_logger.log(Logger_level::DEBUG, "Adding Message type " + std::to_string(m->type));
-        g_logger.log(Logger_level::DEBUG, "Resulting communication has" + std::to_string(comm.messages.size()) + " messages");
+        g_logger.log(Logger_level::DEBUG, "Resulting communication has " + std::to_string(comm.messages.size()) + " messages");
         pending.insert(pending.end(), comm.messages.begin(), comm.messages.end());
         g_logger.log(Logger_level::DEBUG, "There are now " + std::to_string(pending.size()) + " pending messages");
         if (comm.send){
@@ -300,13 +299,8 @@ void Peer::client_recon(peertype peer){
             g_logger.log(Logger_level::DEBUG, "sending pending messages");
             cn.send_bulk_messages(pending);
             pending.clear();
-            g_logger.log(Logger_level::DEBUG, "Pending size after sending should be 0: " + std::to_string(pending.size()));
         }
         response.add(comm.samples.elements());
-        std::ostringstream os;
-        for (auto e: response.elements())
-            os << e << " ";
-        g_logger.log(Logger_level::DEBUG, "response set now contains: " + os.str());
     }
 }
 

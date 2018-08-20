@@ -9,6 +9,7 @@
 #include <istream>
 #include <sstream>
 #include "Recon_settings.h"
+#include "Utils.h"
 
 typedef boost::dynamic_bitset<unsigned char> bitset;
 typedef Myset<NTL::ZZ_p> zset;

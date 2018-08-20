@@ -43,11 +43,14 @@ boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
 
 std::string ZZp_to_bitstring(NTL::ZZ_p num);
 
+NTL::ZZ_p bytes_to_zz(std::vector<unsigned char> bytes);
+
 /** generate a random number bounded by max_val */
 template<typename I> static I get_random(I max_val){
     return static_cast <I> (rand()) / (static_cast <I> (RAND_MAX/max_val));
 }
 
+NTL::ZZ_p hex_to_zz(std::string hash);
 
 /** swap endianess of an int */
 int swap(int d);

@@ -1,19 +1,5 @@
 #include "pTreeDB.h"
 
-//ASCII loockup table
-int ASCIIHexToInt[] =
-{
-    // ASCII
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-     0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
-    -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-};
-
 Ptree::Ptree(){
 }
 
@@ -86,20 +72,7 @@ void Ptree::insert(std::string hash, bool build){
       g_logger.log(Logger_level::WARNING, "Blocked insert of duplicate node!");
       return;
     }
-    std::vector<unsigned int> inthash;
-    for (int i=0; i<hash.size(); i+=2)
-        inthash.push_back(16 * ASCIIHexToInt[hash[i]] + ASCIIHexToInt[hash[i+1]]);
-
-    NTL::ZZ_p elem(0);
-    if (recon_settings.sks_compliant == 1){
-        for (int i=0; i < inthash.size(); i++){
-            elem = elem * (2<<7) + inthash[i];
-        }
-    }else{
-        std::reverse(inthash.begin(), inthash.end());
-        for (int i=0; i < inthash.size(); i++)
-            elem += (2<<(7*i)) * inthash[i];
-    }
+    NTL::ZZ_p elem = Utils::hex_to_zz(hash);
     insert(elem);
 }
 
@@ -353,9 +326,9 @@ int Pnode::next(bitset bs, int depth){
     int key;
     key = next_hockeypuck(bs, depth);
     g_logger.log(Logger_level::DEBUG, "Calculated key hockeypuck way " + std::to_string(key));
+    key = next_sks(bs, depth);
+    g_logger.log(Logger_level::DEBUG, "Calculated key sks way " + std::to_string(key));
     return key;
-    //key = next_sks(bs, depth);
-    //g_logger.log(Logger_level::DEBUG, "Calculated key sks way " + std::to_string(key));
 }
 
 int Pnode::next_hockeypuck(bitset bs, int depth){
@@ -377,17 +350,25 @@ int Pnode::next_sks(bitset bs, int depth){
     lowbit = lowbit % 8;
     int highbyte = highbit / 8;
     highbit = highbit % 8;
+
+    std::string rev;
+    to_string(bs, rev);
+    std::reverse(rev.begin(), rev.end());
+    bitset newbs(rev);
+
     std::vector<unsigned char> blocks;
-    to_block_range(bs, std::back_inserter(blocks));
-    std::reverse(blocks.begin(), blocks.end());
+    to_block_range(newbs, std::back_inserter(blocks));
     int key;
     if (lowbyte == highbyte){
-        bitset byte(blocks[lowbyte]);
+        bitset byte;
+        byte.append(blocks[lowbyte]);
         key = ((byte.to_ulong() >> (7 - highbit)) & (255 >> (8 - highbit - lowbit + 1)));
     }
     else{
-        bitset byte1(blocks[lowbyte]);
-        bitset byte2(blocks[highbyte]);
+        bitset byte1;
+        byte1.append(blocks[lowbyte]);
+        bitset byte2;
+        byte2.append(blocks[highbyte]);
         int key1 = (byte1.to_ulong() & (255 >> (8 - 8 - lowbit))) << (highbit + 1);
         int key2 = (byte2.to_ulong() & (255 << (8 - highbit + 1))) >> (7 - highbit);
         key = key1 | key2;
