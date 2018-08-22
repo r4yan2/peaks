@@ -60,18 +60,8 @@ void Buffer::write_zset(zset to_write){
 
 void Buffer::write_bitset(bitset to_write){
     write_int(to_write.size());
-    write_int(to_write.num_blocks());
-
-    std::string str_to_write;
-    to_string(to_write, str_to_write);
-    std::reverse(str_to_write.begin(), str_to_write.end());
-
-    bitset tmp(str_to_write);
-
-    auto ii = std::back_inserter(buf);
-    to_block_range(tmp, ii);
-    g_logger.log(Logger_level::DEBUG, "Write bitset: " + str_to_write);
-    
+	std::string tmp(to_write.rep().begin(), to_write.rep().end());
+    write_string(tmp);
 }
 
 void Buffer::write_string(std::string to_write){
@@ -121,24 +111,9 @@ int Buffer::read_int(bool check_len){
 bitset Buffer::read_bitset() {
     int bs_size = read_int();
     int n_bytes = read_int();
-
-    bitset bs;
-    if (n_bytes == 0)
-        return bs;
-
-    std::vector<unsigned int> bytes(it, it + n_bytes);
-    it += n_bytes;
-
-    bs.append(bytes.rbegin(), bytes.rend());
-
-    std::string str_res;
-    to_string(bs, str_res);
-    std::reverse(str_res.begin(), str_res.end());
-
-    bitset res(str_res);
-    res.resize(bs_size);
-    g_logger.log(Logger_level::DEBUG, "Read bitset: " + str_res);
-    return res;
+    bitset bs(read_bytes(n_bytes));
+    bs.resize(bs_size);
+    return bs;
 }
 
 std::vector<NTL::ZZ_p> Buffer::read_zz_array(){

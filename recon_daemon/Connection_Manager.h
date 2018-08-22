@@ -28,7 +28,6 @@
 #include "Recon_settings.h"
 
 typedef std::pair<std::string, int> peertype;
-typedef boost::dynamic_bitset<unsigned char> bitset;
 typedef Myset<NTL::ZZ_p> zset;
 
 class Connection_Manager{

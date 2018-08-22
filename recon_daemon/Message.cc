@@ -15,8 +15,7 @@ void ReconRequestPoly::unmarshal(Buffer buf){
      samples = buf.read_zz_array();
 
      //DEBUG
-     std::string test;
-     to_string(prefix, test);
+     std::string test = prefix.to_string();
      g_logger.log(Logger_level::DEBUG, "prefix: " + test + " size: " + std::to_string(size));
 }
 

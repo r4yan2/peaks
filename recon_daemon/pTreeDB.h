@@ -9,8 +9,9 @@
 #include <stdexcept>
 #include "logger.h"
 #include "Recon_settings.h"
+#include "Bitset.h"
 
-typedef boost::dynamic_bitset<unsigned char> bitset;
+typedef Bitset bitset;
 
 class Pnode;
 

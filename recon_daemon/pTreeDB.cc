@@ -38,7 +38,7 @@ std::vector<NTL::ZZ_p> Ptree::delete_element_array(NTL::ZZ_p z){
 
 void Ptree::create(){
   if (get_root()==NULL){
-      bitset bs;
+      bitset bs(0);
       root = node(bs);
       if (root == NULL){
         root = new_child(NULL, 0);
@@ -77,9 +77,7 @@ void Ptree::insert(std::string hash, bool build){
 }
 
 void Ptree::insert(NTL::ZZ_p z){
-    bitset bs = Utils::ZZp_to_bitset(z);
-    std::string key;
-    to_string(bs, key);
+    bitset bs(z);
     Pnode* root_node = get_root();
     std::vector<NTL::ZZ_p> marray = add_element_array(z);
     root_node->insert(z, marray, bs, 0);
@@ -95,15 +93,14 @@ Pnode* Ptree::new_child(Pnode* parent, int child_index){
     int key_size = key.size();
     key.resize(key_size + recon_settings.bq);
     for (int j=0; j<recon_settings.bq; j++){
-       if (((1<<uint32_t(j))&child_index) == 0) {
-         key.reset(key_size + j);
+       if (((1<<uint32_t(j))&child_index) == 0){
+         key.clear(key_size + j);
        } else {
          key.set(key_size + j);
           }
     }
   }
-  std::string node_key;
-  to_string(key, node_key);
+  std::string node_key = key.to_string();
   if (parent!=NULL)
     g_logger.log(Logger_level::DEBUG, "Creating node with key" + node_key + " son of " + parent->get_node_key());
   n->set_node_key(node_key);
@@ -122,7 +119,7 @@ Pnode* Ptree::node(bitset key){
     if (key.size() == 0)
         str_key = "";
     else
-        to_string(key, str_key);
+        str_key = key.to_string();
     Pnode* n = NULL;
     while(1){
         try{
@@ -135,15 +132,14 @@ Pnode* Ptree::node(bitset key){
         if (key.size() == 0) break;
   
         key.resize(key.size() - recon_settings.bq);
-        to_string(key, str_key);
+        str_key = key.to_string();
     }
     return n;
 }
 
 void Ptree::remove(NTL::ZZ_p z){
-  bitset bs = Utils::ZZp_to_bitset(z);
-  std::string key;
-  to_string(bs, key);
+  bitset bs(z);
+  std::string key = bs.to_string();
   try{
     dbm->get_node(key);
   }catch (...){
@@ -213,7 +209,7 @@ Pnode* Pnode::children(int c_index){
     child_key.resize(key_size + recon_settings.bq);
     for (int j=0; j<recon_settings.bq; j++){
       if ((1<<uint32_t(j)&c_index) == 0){
-        child_key.reset(key_size + j);
+        child_key.clear(key_size + j);
       }
       else{
         child_key.set(key_size + j);
@@ -236,7 +232,7 @@ std::vector<Pnode*> Pnode::children(){
     child_key.resize(key_size + recon_settings.bq);
     for (int j=0; j<recon_settings.bq; j++){
       if ((1<<uint32_t(j)&i) == 0){
-        child_key.reset(key_size + j);
+        child_key.clear(key_size + j);
       }
       else{
         child_key.set(key_size + j);
@@ -351,26 +347,14 @@ int Pnode::next_sks(bitset bs, int depth){
     int highbyte = highbit / 8;
     highbit = highbit % 8;
 
-    std::string rev;
-    to_string(bs, rev);
-    std::reverse(rev.begin(), rev.end());
-    bitset newbs(rev);
-
-    std::vector<unsigned char> blocks;
-    to_block_range(newbs, std::back_inserter(blocks));
+    std::vector<unsigned char> bytes = bs.rep();
     int key;
     if (lowbyte == highbyte){
-        bitset byte;
-        byte.append(blocks[lowbyte]);
-        key = ((byte.to_ulong() >> (7 - highbit)) & (255 >> (8 - highbit - lowbit + 1)));
+        key = ((bytes[lowbyte] >> (7 - highbit)) & (255 >> (8 - highbit - lowbit + 1)));
     }
     else{
-        bitset byte1;
-        byte1.append(blocks[lowbyte]);
-        bitset byte2;
-        byte2.append(blocks[highbyte]);
-        int key1 = (byte1.to_ulong() & (255 >> (8 - 8 - lowbit))) << (highbit + 1);
-        int key2 = (byte2.to_ulong() & (255 << (8 - highbit + 1))) >> (7 - highbit);
+        int key1 = (bytes[lowbyte] & (255 >> (8 - 8 - lowbit))) << (highbit + 1);
+        int key2 = (bytes[highbyte] & (255 << (8 - highbit + 1))) >> (7 - highbit);
         key = key1 | key2;
     }
     return key;
@@ -396,7 +380,7 @@ void Pnode::split(int depth){
   }
   //move elements into child nodes
   for (auto z : split_elements){
-    bitset bs = Utils::ZZp_to_bitset(z);
+    bitset bs(z);
 
     int index = next(bs, depth);
     Pnode* child_node = child_vec[index];
@@ -414,8 +398,7 @@ Pnode* Pnode::parent(){
   if (key.size()==0) return NULL;
   bitset parent_key(key);
   parent_key.resize(key.size() - recon_settings.bq);
-  std::string parent_key_str;
-  to_string(parent_key, parent_key_str);
+  std::string parent_key_str = parent_key.to_string();
   Pnode* parent = get_node(parent_key_str);
   return parent;
 }

@@ -39,7 +39,7 @@ std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(std::string blob);
 std::vector<NTL::ZZ_p> Zpoints(int num_samples);
 
 /** convert a number in finite field (ZZ_p) into a bitstring representation */
-boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
+//boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
 
 std::string ZZp_to_bitstring(NTL::ZZ_p num);
 

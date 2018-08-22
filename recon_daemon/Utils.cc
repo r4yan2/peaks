@@ -88,15 +88,9 @@ std::vector<NTL::ZZ_p> Utils::Zpoints(int num_samples){
   return points;
 }
 
-boost::dynamic_bitset<unsigned char> Utils::ZZp_to_bitset(NTL::ZZ_p num){
-  boost::dynamic_bitset<unsigned char> bs;  
-  for (NTL::ZZ tmp(NTL::rep(num)); !(NTL::IsZero(tmp)); tmp/=2) bs.push_back(tmp%2);
-  return bs;
-}
-
 std::string Utils::ZZp_to_bitstring(NTL::ZZ_p num){
-    std::ostringstream res; 
-    res << ZZp_to_bitset(num);
+    std::ostringstream res;
+    for (NTL::ZZ tmp(NTL::rep(num)); !(NTL::IsZero(tmp)); tmp/=2) res << (tmp%2);
     return res.str();
 }
 

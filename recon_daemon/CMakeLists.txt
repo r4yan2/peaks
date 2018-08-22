@@ -8,7 +8,7 @@ add_definitions(-DGPG_COMPATIBLE)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g3 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -Werror")
 
-set(SOURCE_FILES main.cc peer.cc recon_manager.cc Connection_Manager.cc Message.cc Buffer.cc logger.cc exception.cc myset.cc pTreeDB.cc RECON_DBManager.cc DB_info.h Utils.cc DBStruct.h)
+set(SOURCE_FILES main.cc peer.cc recon_manager.cc Connection_Manager.cc Message.cc Buffer.cc Bitset.cc logger.cc exception.cc myset.cc pTreeDB.cc RECON_DBManager.cc DB_info.h Utils.cc DBStruct.h)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 add_executable(recon_daemon ${SOURCE_FILES})

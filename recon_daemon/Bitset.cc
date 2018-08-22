@@ -1,0 +1,98 @@
+#include "Bitset.h"
+
+Bitset::Bitset(){}
+
+Bitset::Bitset(int nbits){
+    n_bits = nbits;
+    int bytes_size = (nbits%8 == 0) ? nbits/8 : nbits/8 + 1;
+	if (nbits > 0){
+    	bytes.resize(bytes_size);
+    	bzero(bytes.data(), bytes_size);
+	}
+}
+
+Bitset::Bitset(NTL::ZZ_p num){
+    NTL::ZZ znum = NTL::rep(num);
+    bytes.resize(NumBytes(znum));
+    bzero(bytes.data(), bytes.size());
+    n_bits = NumBits(znum);
+    for (int i=0; i<n_bits; i++)
+        if (bit(znum, n_bits - i - 1) == 1)
+		    set(i);
+}
+
+Bitset::Bitset(bytestype newbytes){
+    n_bits = newbytes.size() * 8;
+    bytes = newbytes;
+}
+
+Bitset::Bitset(std::string bitstring){
+    n_bits = bitstring.size();
+    int bytes_size = (n_bits%8 == 0) ? n_bits/8 : n_bits/8 + 1;
+    bytes.resize(bytes_size);
+    bzero(bytes.data(), bytes_size);
+    for (int i=0; i<n_bits; i++)
+        if (bitstring[i] == '1')
+            set(i);
+}
+
+int Bitset::size(){
+    return n_bits;
+}
+
+int Bitset::num_blocks(){
+    return bytes.size();
+}
+
+bytestype Bitset::rep(){
+    return bytes;
+}
+
+void Bitset::resize(int new_bitsize){
+    int n = new_bitsize/8;
+    if (new_bitsize%8 > 0)
+        n += 1;
+    if (new_bitsize > n_bits){
+        for (int i=bytes.size(); i<n; i++)
+            bytes.push_back(0x00);
+        n_bits = new_bitsize;
+    }else if (new_bitsize < n_bits){
+        bytes.resize(n);
+        n_bits = new_bitsize;
+    }
+}
+
+bool Bitset::test(int bitpos){
+    if (bitpos > n_bits)
+        throw std::exception();
+    int byte_pos = bitpos/8;
+    int bit_pos = bitpos%8;
+    return ((bytes[byte_pos] & (1 << (8 - bit_pos - 1))) != 0);
+}
+
+void Bitset::set(int bitpos){
+    if (bitpos > n_bits)
+        throw std::exception();
+    int byte_pos = bitpos/8;
+    int bit_pos = bitpos%8;
+    bytes[byte_pos] |= (1 << (8 - bit_pos - 1));
+}
+
+void Bitset::clear(int bitpos){
+    if (bitpos > n_bits)
+        throw std::exception();
+    int byte_pos = bitpos/8;
+    int bit_pos = bitpos%8;
+    bytes[byte_pos] &= ~(1 << (8 - bit_pos - 1));
+}
+
+std::string Bitset::to_string(){
+    std::ostringstream res;
+    for (int i=0; i<n_bits; i++){
+        if (test(i))
+            res << 1;
+        else
+            res << 0;
+    }
+    return res.str();
+}

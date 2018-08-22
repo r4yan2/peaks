@@ -10,8 +10,10 @@
 #include <sstream>
 #include "Recon_settings.h"
 #include "Utils.h"
+#include "Bitset.h"
 
-typedef boost::dynamic_bitset<unsigned char> bitset;
+//typedef boost::dynamic_bitset<unsigned char> bitset;
+typedef Bitset bitset;
 typedef Myset<NTL::ZZ_p> zset;
 
 namespace Msg_type{
