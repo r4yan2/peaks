@@ -2,7 +2,6 @@
 #define MESSAGE_H
 #include <NTL/ZZ_p.h>
 #include <NTL/ZZ.h>
-#include <boost/dynamic_bitset.hpp>
 #include "myset.h"
 #include <map>
 #include "logger.h"

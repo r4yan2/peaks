@@ -16,7 +16,7 @@ template<typename T> Myset<T>::Myset(const Myset& a){
 }
 
 template<typename T> bool Myset<T>::add(const T& elem){
-    for (int i=0; i<elems.size(); i++)
+    for (size_t i=0; i<elems.size(); i++)
         if (elem == elems[i]) return false;
     elems.push_back(elem);
     return false;
@@ -32,7 +32,7 @@ template<typename T> void Myset<T>::add(const Myset<T>& a){
 }
 
 template<typename T> std::pair<bool,int> Myset<T>::contains(const T& elem){
-    for (int i=0; i<elems.size(); i++)
+    for (size_t i=0; i<elems.size(); i++)
         if (elem == elems[i]) return std::make_pair(true,i);
     return std::make_pair(false, -1);
 }
@@ -42,8 +42,8 @@ template<typename T> bool Myset<T>::del(const T& elem){
     std::pair<bool,int> res = contains(elem);
     if (res.first){
         std::vector<T> new_elems;
-        for (int i=0; i<elems.size(); i++)
-            if (i!=res.second) new_elems.push_back(elems[i]);
+        for (int i=0; i<size(); i++)
+            if (i != res.second) new_elems.push_back(elems[i]);
         elems = new_elems;
     }
     return res.first;
@@ -69,7 +69,7 @@ template<typename T> std::pair<std::vector<T>, std::vector<T>> Myset<T>::symmetr
         if (contains(elem).first) d.add(elem);
         else c.push_back(elem);
     }
-    for (int i=0; i<elems.size(); i++){
+    for (int i=0; i<size(); i++){
         auto elem = elems[i];
         if (!(d.contains(elem).first)) e.push_back(elem);
     }

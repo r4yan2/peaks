@@ -71,7 +71,7 @@ void Buffer::write_string(std::string to_write){
 
 void Buffer::write_zz_array(std::vector<NTL::ZZ_p> to_write){
     write_int(to_write.size());
-    for (int i=0; i<to_write.size(); i++) 
+    for (size_t i=0; i<to_write.size(); i++) 
         write_zz_p(to_write[i]);
     g_logger.log(Logger_level::DEBUG, "Wrote NTL::ZZ_p array to buffer succesfully");
 }
@@ -99,7 +99,7 @@ uint8_t Buffer::read_uint8(){
 
 // Read int from data chunk
 int Buffer::read_int(bool check_len){
-    int res;
+    unsigned int res;
     unsigned char *dst = (unsigned char *)&res;
 
     for (int i=3; i>=0; i--, it++) dst[i] = *it;

@@ -5,7 +5,6 @@
 #include "Utils.h"
 #include <syslog.h>
 #include <iostream>
-#include <boost/dynamic_bitset.hpp>
 #include <stdexcept>
 #include "logger.h"
 #include "Recon_settings.h"

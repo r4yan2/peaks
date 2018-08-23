@@ -8,7 +8,7 @@ struct Configtype{
     int max_ptree_nodes;
     int ptree_thresh_mult;
     int num_samples;
-    int split_threshold;
+    unsigned int split_threshold;
     int join_threshold;
     std::string P_SKS_STRING;
     int sks_zp_bytes;
@@ -20,11 +20,11 @@ struct Configtype{
     std::string peaks_filters;
     std::string name;
     int gossip_interval;
-    int max_read_len;
+    unsigned int max_read_len;
     int max_read_len_shift;
     int max_recover_size;
     int default_timeout;
-    int max_request_queue_len;
+    unsigned int max_request_queue_len;
     int request_chunk_size;
     int max_outstanding_recon_req;
     int sks_compliant;

@@ -21,7 +21,7 @@ std::vector<NTL::ZZ_p>Ptree::get_points(){
 
 std::vector<NTL::ZZ_p> Ptree::add_element_array(NTL::ZZ_p z){
   std::vector<NTL::ZZ_p> marray(points.size());
-  for(int i=0; i<points.size(); i++){
+  for(size_t i=0; i<points.size(); i++){
     marray[i] = points[i] - z;
     if (marray[i] == 0) throw std::invalid_argument("marray element 0");
   }
@@ -30,7 +30,7 @@ std::vector<NTL::ZZ_p> Ptree::add_element_array(NTL::ZZ_p z){
 
 std::vector<NTL::ZZ_p> Ptree::delete_element_array(NTL::ZZ_p z){
   std::vector<NTL::ZZ_p> marray(points.size());
-  for(int i=0; i<points.size(); i++){
+  for(size_t i=0; i<points.size(); i++){
     marray[i] = inv(points[i] - z);
   }
   return marray;
@@ -57,9 +57,6 @@ Pnode* Ptree::get_node(std::string key){
   nd->set_num_elements(n.num_elements);
   nd->set_leaf(n.leaf);
   nd->set_node_elements(node_elements);
-  //std::ostringstream os;
-  //os << "Fetched node: " << nd->get_node_key() << ", num_elements: " << nd->get_num_elements() << ", node elements size: " << nd->get_node_elements().size() << ", leaf " << nd->is_leaf();
-  //g_logger.log(Logger_level::DEBUG, os.str());
   return nd;
 } 
 
@@ -155,8 +152,6 @@ void Ptree::remove(NTL::ZZ_p z){
 Pnode::Pnode(std::shared_ptr<RECON_DBManager> dbp){
     dbm = dbp;
     num_elements = 0;
-    //node_key = "";
-    //node_svalues = //initialize}
     }
 Pnode::~Pnode(){}
 
@@ -251,9 +246,6 @@ void Pnode::commit_node(bool newnode){
   n.num_elements = num_elements;
   n.leaf = leaf;
   n.elements = Utils::marshall_vec_zz_p(get_node_elements());
-  //std::ostringstream os;
-  //os << "committing node:\nnode_key " << n.key << " num elements " << n.num_elements << " leaf " << n.leaf << "node elements number" << get_node_elements().size() << " is a newnode?" << newnode << std::endl;
-  //g_logger.log(Logger_level::DEBUG, os.str());
   if (newnode)
       dbm->insert_node(n);
   else
@@ -314,7 +306,6 @@ void Pnode::join(){
 }
 
 void Pnode::insert_element(NTL::ZZ_p elem){
-    //g_logger.log(Logger_level::DEBUG, "inserted element into node");
   node_elements.push_back(elem);
 }
 
@@ -370,10 +361,10 @@ void Pnode::split(int depth){
   commit_node();
 
   //create child nodes
-  auto num = 1 << uint32_t(recon_settings.bq);
+  uint32_t num = 1 << uint32_t(recon_settings.bq);
   std::vector<Pnode*> child_vec;
 
-  for (uint32_t i=0; i< num; i++){
+  for (uint32_t i=0; i < num; i++){
     Pnode* child_node = new_child(this, i);
     child_node->commit_node(true);
     child_vec.push_back(child_node);
@@ -448,7 +439,7 @@ void Pnode::remove(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int de
 
 void Pnode::update_svalues(std::vector<NTL::ZZ_p> marray, NTL::ZZ_p z){
   if (marray.size() != get_points().size()) syslog(LOG_NOTICE, "marray e points sono di dimensione diversa!");
-  for (long i=0; i < marray.size(); i++){
+  for (size_t i=0; i < marray.size(); i++){
       node_svalues[i] = node_svalues[i] * marray[i];
   }
 }
@@ -459,9 +450,7 @@ void Pnode::insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int de
         cur_node->update_svalues(marray, z);
         cur_node->set_num_elements(cur_node->get_num_elements() + 1);
         if (cur_node->is_leaf()){
-            //g_logger.log(Logger_level::DEBUG, "current node is a leaf, number of elements " + std::to_string(cur_node->get_node_elements().size()));
             if (cur_node->get_node_elements().size() > recon_settings.split_threshold){
-                //g_logger.log(Logger_level::DEBUG, "...splitting!");
                 cur_node->split(depth);
             }
             else {
@@ -473,15 +462,10 @@ void Pnode::insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int de
                 return;
             }
         }
-        //g_logger.log(Logger_level::DEBUG, "current node is an intermediate, searching the next one...");
         cur_node->commit_node();
         
         int child_index = cur_node->next(bs, depth);
         cur_node = cur_node->children(child_index);
-        /*
-        std::vector<Pnode*> child_vec = cur_node->children();
-        cur_node = child_vec[child_index];
-        */
 
         depth += 1;
     }

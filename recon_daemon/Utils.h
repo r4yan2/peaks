@@ -2,12 +2,14 @@
 #define RECON_UTILS_H
 
 #include <iostream>
-#include <boost/dynamic_bitset.hpp>
 #include <sstream>
 #include <NTL/ZZ_p.h>
 #include <NTL/ZZ.h>
 #include <fstream>
-#include <boost/algorithm/string.hpp>
+#include <ostream>
+#include <vector>
+#include <iterator>
+#include <algorithm>
 #include "Recon_settings.h"
 
 /*int create_folder(std::string directory){

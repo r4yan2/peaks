@@ -37,7 +37,7 @@ std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> a
     char ip_str[INET_ADDRSTRLEN];
     inet_ntop( AF_INET, &ipAddr, ip_str, INET_ADDRSTRLEN );
     std::vector<std::string>::iterator it = find(addresses.begin(), addresses.end(), ip_str);
-    int pos = it - addresses.begin();
+    size_t pos = it - addresses.begin();
     if (pos >= addresses.size()){
         // ip does not belong to membership
         g_logger.log(Logger_level::WARNING, std::string(ip_str) + " blocked because not in membership");
@@ -354,6 +354,8 @@ Message* Connection_Manager::read_message(bool tmp_socket, int signal) {
        g_logger.log(Logger_level::WARNING, "Unexpected end of stream");
        throw std::underflow_error("Unexpected end of stream");
    }
+   Error* data = new Error;
+   return data;
 }
 
 void Connection_Manager::write_message(Buffer &buffer, Message* m, bool wrap){

@@ -83,7 +83,7 @@ class Peer{
 
         void serve(); /**< recon as server */
 
-        std::vector<NTL::ZZ_p> interact_with_client(peertype remote_peer);
+        void interact_with_client(peertype remote_peer);
 
         /** fetch the given element from the peer */
         void fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems);

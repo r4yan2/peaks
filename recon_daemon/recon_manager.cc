@@ -95,7 +95,7 @@ void Recon_manager::handle_reply(Message* msg, request_entry request){
                 g_logger.log(Logger_level::DEBUG, "sending ReconRequestFull for the following node: " + children[0]->get_node_key() + ", which contains " + std::to_string(children[0]->elements().size()) + " elements");
                 req.node = children[0];
                 push_request(req);
-                for (int i=1; i<children.size(); i++){
+                for (size_t i=1; i<children.size(); i++){
                     request_entry req;
                     req.key = bitset(children[i]->get_node_key());
                     g_logger.log(Logger_level::DEBUG, "sending ReconRequestFull for the following node: " + children[i]->get_node_key() + ", which contains " + std::to_string(children[i]->elements().size()) + " elements");

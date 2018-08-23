@@ -137,7 +137,7 @@ std::vector<std::string> Peer::request_chunk(peertype peer, std::vector<NTL::ZZ_
     return keys;
 }
 
-std::vector<NTL::ZZ_p> Peer::interact_with_client(peertype remote_peer){
+void Peer::interact_with_client(peertype remote_peer){
     Recon_manager recon = Recon_manager(cn);
     Pnode* root = tree.get_root();
     bitset newset(0);
@@ -306,16 +306,17 @@ void Peer::client_recon(peertype peer){
 
 std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(std::vector<NTL::ZZ_p> r_samples, int r_size, std::vector<NTL::ZZ_p> l_samples, int l_size, std::vector<NTL::ZZ_p> points){
     std::vector<NTL::ZZ_p> values;
-    for (int i=0; i<r_samples.size(); i++)
+    for (size_t i=0; i < r_samples.size(); i++)
         values.push_back(r_samples[i]/l_samples[i]);
-    int size_diff = r_size-l_size;
+    int diff = r_size - l_size;
+    size_t size_diff = (diff > 0) ? diff : (- diff);
 
     //Interpolation
     //Need to go through
     //all the steps because
     //we need the Lagrange form of
     //the interpolating polynomial
-    if (std::abs(size_diff) > values.size()-1){
+    if (size_diff > values.size()-1){
         g_logger.log(Logger_level::WARNING, "Could not interpolate because size_diff > size of values!");
         throw solver_exception();
         }

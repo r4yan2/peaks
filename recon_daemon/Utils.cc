@@ -26,18 +26,18 @@ std::string Utils::marshall_vec_zz_p(std::vector<NTL::ZZ_p> elements){
 NTL::ZZ_p Utils::hex_to_zz(std::string hash){
 
     std::vector<unsigned int> inthash;
-    for (int i=0; i<hash.size(); i+=2)
-        inthash.push_back(16 * ASCIIHexToInt[hash[i]] + ASCIIHexToInt[hash[i+1]]);
+    for (size_t i=0; i<hash.size(); i+=2)
+        inthash.push_back(16 * ASCIIHexToInt[int(hash[i])] + ASCIIHexToInt[int(hash[i+1])]);
 
     NTL::ZZ_p elem(0);
     std::reverse(inthash.begin(), inthash.end());
     
     if (recon_settings.sks_compliant == 1){
-        for (int i=0; i < inthash.size(); i++){
+        for (size_t i=0; i < inthash.size(); i++){
             elem = elem * (2<<7) + inthash[i];
         }
     }else{
-        for (int i=0; i < inthash.size(); i++)
+        for (size_t i=0; i < inthash.size(); i++)
             elem += (2<<(7*i)) * inthash[i];
     }
     return elem;
@@ -48,11 +48,11 @@ NTL::ZZ_p Utils::bytes_to_zz(std::vector<unsigned char> bytes){
     std::reverse(bytes.begin(), bytes.end());
 
     if (recon_settings.sks_compliant == 1){
-        for (int i=0; i < bytes.size(); i++){
+        for (size_t i=0; i < bytes.size(); i++){
             elem = elem * (2<<7) + (uint8_t) bytes[i];
         }
     }else{
-        for (int i=0; i < bytes.size(); i++)
+        for (size_t i=0; i < bytes.size(); i++)
             elem += (2<<(7*i)) * (uint8_t) bytes[i];
     }
     return elem;
@@ -60,14 +60,14 @@ NTL::ZZ_p Utils::bytes_to_zz(std::vector<unsigned char> bytes){
 }
 
 std::vector<NTL::ZZ_p> Utils::unmarshall_vec_zz_p(std::string blob){
-    /*
+  
   std::vector<NTL::ZZ_p> elements;
   std::istringstream is(blob);
   NTL::ZZ_p elem;
   while (is >> elem)
       elements.push_back(elem);
   return elements;
-  */
+  /*
     std::vector<NTL::ZZ_p> res;
     if (blob == "")
         return res;
@@ -76,6 +76,7 @@ std::vector<NTL::ZZ_p> Utils::unmarshall_vec_zz_p(std::string blob){
     for (auto str: splitted)
         res.push_back(NTL::conv<NTL::ZZ_p>(NTL::conv<NTL::ZZ>(str.c_str())));
     return res;
+    */
 }
 
 std::vector<NTL::ZZ_p> Utils::Zpoints(int num_samples){
