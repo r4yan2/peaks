@@ -9,10 +9,13 @@
 #include "logger.h"
 #include "Recon_settings.h"
 #include "Bitset.h"
+#include "myset.h"
+#include <queue>
 
 typedef Bitset bitset;
 
 class Pnode;
+class Memnode;
 
 class Ptree{
 protected: 
@@ -57,6 +60,7 @@ private:
   std::vector<NTL::ZZ_p> node_elements;
 
 public:
+  Pnode();
   Pnode(std::shared_ptr<RECON_DBManager>);
   ~Pnode();
   
@@ -71,6 +75,8 @@ public:
   int get_num_elements();
   bool is_leaf();
   std::vector<NTL::ZZ_p> get_node_elements();
+
+  void clear_node_elements();
   
   std::vector<Pnode*> children();
   Pnode* children(int c_index);
@@ -91,4 +97,32 @@ public:
   std::vector<NTL::ZZ_p> svalues();
   void update_svalues(std::vector<NTL::ZZ_p> marray, NTL::ZZ_p z);
 };
+
+
+class MemTree: public Ptree{
+    public:
+        MemTree();
+        MemTree(std::shared_ptr<RECON_DBManager>, std::vector<NTL::ZZ_p>);
+        ~MemTree();
+        Memnode* get_node(std::string key);
+        void commit_memtree();
+        Memnode* new_child(Memnode* parent, int child_index);
+        void insert(NTL::ZZ_p z);
+        void insert(std::string hash);
+};
+
+class Memnode: public MemTree, public Pnode{
+    private:
+        Memnode* root;
+        std::vector<Memnode*> child_vec;
+    public:
+        Memnode();
+        ~Memnode();
+
+        void split(int depth);
+        void insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth);
+        std::vector<Memnode*> children();
+        Memnode* children(int cindex);
+};
+
 #endif //RECON_PTREEDB_H

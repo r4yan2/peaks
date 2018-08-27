@@ -21,3 +21,5 @@ max_request_queue_len = 60000
 request_chunk_size = 100
 max_outstanding_recon_requests = 100
 sks_compliant = 1
+custom_hash_file_on = 1
+custom_hash_file = tmp

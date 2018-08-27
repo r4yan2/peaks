@@ -49,6 +49,7 @@ class Buffer{
         std::string to_str();
         void write_int(int);
         void write_string(std::string);
+        void write_bytes(std::vector<unsigned char>);
         void write_zset(zset);
         void write_bitset(bitset);
         void write_zz_p(NTL::ZZ_p, int pad_to = recon_settings.sks_zp_bytes);

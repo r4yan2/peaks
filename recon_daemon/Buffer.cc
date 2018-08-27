@@ -60,11 +60,15 @@ void Buffer::write_zset(zset to_write){
 
 void Buffer::write_bitset(bitset to_write){
     write_int(to_write.size());
-	std::string tmp(to_write.rep().begin(), to_write.rep().end());
-    write_string(tmp);
+    write_bytes(to_write.rep());
 }
 
 void Buffer::write_string(std::string to_write){
+    write_int(to_write.size());
+    buf.insert(buf.end(),to_write.begin(),to_write.end());
+}
+
+void Buffer::write_bytes(std::vector<unsigned char> to_write){
     write_int(to_write.size());
     buf.insert(buf.end(),to_write.begin(),to_write.end());
 }

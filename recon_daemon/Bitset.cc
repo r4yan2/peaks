@@ -1,6 +1,9 @@
 #include "Bitset.h"
 
-Bitset::Bitset(){}
+Bitset::Bitset(){
+    n_bits = 0;
+    bytes.clear();
+}
 
 Bitset::Bitset(int nbits){
     n_bits = nbits;
@@ -16,9 +19,12 @@ Bitset::Bitset(NTL::ZZ_p num){
     bytes.resize(NumBytes(znum));
     bzero(bytes.data(), bytes.size());
     n_bits = NumBits(znum);
+    /*
     for (int i=0; i<n_bits; i++)
         if (bit(znum, n_bits - i - 1) == 1)
 		    set(i);
+    */
+    BytesFromZZ(bytes.data(), znum, bytes.size());
 }
 
 Bitset::Bitset(bytestype newbytes){
@@ -49,17 +55,21 @@ bytestype Bitset::rep(){
 }
 
 void Bitset::resize(int new_bitsize){
-    int n = new_bitsize/8;
-    if (new_bitsize%8 > 0)
-        n += 1;
-    if (new_bitsize > n_bits){
-        for (int i=bytes.size(); i<n; i++)
-            bytes.push_back(0x00);
-        n_bits = new_bitsize;
-    }else if (new_bitsize < n_bits){
-        bytes.resize(n);
-        n_bits = new_bitsize;
+    int byte_pos = new_bitsize/8;
+    int bit_pos = new_bitsize%8;
+    int old_size = bytes.size();
+    int new_size = byte_pos;
+    if (bit_pos > 0)
+        new_size += 1;
+    bytes.resize(new_size);
+    if (new_size > old_size)
+        for (int i=old_size; i<new_size; i++)
+            bytes[i] = 0x00;
+    if (bit_pos != 0){
+        int mask = ~((1 << (8-bit_pos))-1);
+        bytes[byte_pos] &= mask;
     }
+    n_bits = new_bitsize;
 }
 
 bool Bitset::test(int bitpos){

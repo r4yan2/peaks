@@ -28,6 +28,9 @@ struct Configtype{
     int request_chunk_size;
     int max_outstanding_recon_req;
     int sks_compliant;
+    int custom_hash_file_on;
+    std::string custom_hash_file;
+    int sks_bitstring;
 };
 
 extern Configtype recon_settings;

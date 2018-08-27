@@ -11,6 +11,7 @@ void help();
 void parse_config(std::string filename);
 void build();
 void run();
+std::vector<NTL::ZZ_p> parse_custom_hash_file();
 
 int main(int argc, char* argv[]){
 
@@ -127,6 +128,12 @@ void parse_config(std::string filename){
                 recon_settings.max_outstanding_recon_req = std::stoi(value);
             else if (name == "sks_compliant")
                 recon_settings.sks_compliant = std::stoi(value);
+            else if (name == "custom_hash_file_on")
+                recon_settings.custom_hash_file_on = std::stoi(value);
+            else if (name == "custom_hash_file")
+                recon_settings.custom_hash_file = value;
+            else if (name == "sks_bitstring")
+                recon_settings.sks_bitstring = std::stoi(value);
         }
         recon_settings.num_samples = recon_settings.mbar + 1;
         recon_settings.split_threshold = recon_settings.ptree_thresh_mult * recon_settings.mbar;
@@ -141,25 +148,46 @@ void parse_config(std::string filename){
     }
 }
 
+std::vector<NTL::ZZ_p> parse_custom_hash_file(){
+    std::ifstream infile(recon_settings.custom_hash_file);
+    NTL::ZZ_p hash;
+    std::vector<NTL::ZZ_p> res;
+    while (infile >> hash)
+        res.push_back(hash);
+    return res;
+}
+
 void build(){
     
     std::cout << "Starting ptree builder" << std::endl;
     const std::vector<NTL::ZZ_p> points = Utils::Zpoints(recon_settings.num_samples);
-    std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(); 
-    std::vector<std::string> hashes = dbm->get_all_hash();
-    g_logger.log(Logger_level::DEBUG, "fetched hashes from DB");
-    Ptree tree(dbm, points);
-    tree.create();
+    std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>();
+    MemTree tree(dbm, points);
     g_logger.log(Logger_level::DEBUG, "created empty ptree");
+    int entries;
+    if (recon_settings.custom_hash_file_on == 1){
+        std::vector<NTL::ZZ_p> hashes = parse_custom_hash_file();
+        entries = hashes.size();
+        for (auto hash : hashes){
+            tree.insert(hash);
+        }
+    }
+    else{
+        std::vector<std::string> hashes;
+        hashes = dbm->get_all_hash();
+        entries = hashes.size();
+        for (auto hash : hashes){
+            tree.insert(hash);
+        }
+    }
+    g_logger.log(Logger_level::DEBUG, "fetched hashes from DB");
 
     dbm->lockTables();
-    for (auto hash : hashes){
-        tree.insert(hash, true);
-    }
+    tree.commit_memtree();
     dbm->unlockTables();
     g_logger.log(Logger_level::DEBUG, "populated ptree");
-    std::cout << "Inserted " << hashes.size() << " entry!" << std::endl; 
-    std::cout << "Now run without -b to start reconing!" << std::endl; 
+    std::cout << "Inserted " << entries << " entry!" << std::endl; 
+    std::cout << "Finished! Now run without -b to start reconing!" << std::endl; 
     exit(0);
 }
 

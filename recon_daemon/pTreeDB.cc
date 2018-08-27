@@ -58,17 +58,17 @@ Pnode* Ptree::get_node(std::string key){
   nd->set_leaf(n.leaf);
   nd->set_node_elements(node_elements);
   return nd;
-} 
+}
 
 bool Ptree::has_key(std::string key){
   return dbm->check_key(key);
 }
 
 void Ptree::insert(std::string hash, bool build){
-    if (!build && has_key(hash)){
-      g_logger.log(Logger_level::WARNING, "Blocked insert of duplicate node!");
-      return;
-    }
+    //if (!build && has_key(hash)){
+    //  g_logger.log(Logger_level::WARNING, "Blocked insert of duplicate node!");
+    //  return;
+    //}
     NTL::ZZ_p elem = Utils::hex_to_zz(hash);
     insert(elem);
 }
@@ -89,12 +89,23 @@ Pnode* Ptree::new_child(Pnode* parent, int child_index){
     key = bitset(parent_key_string);
     int key_size = key.size();
     key.resize(key_size + recon_settings.bq);
-    for (int j=0; j<recon_settings.bq; j++){
-       if (((1<<uint32_t(j))&child_index) == 0){
-         key.clear(key_size + j);
-       } else {
-         key.set(key_size + j);
-          }
+
+    if (recon_settings.sks_bitstring == 1){
+        for (int j=0; j<recon_settings.bq; j++){
+           if (((1<<j)&child_index) == 0){
+             key.clear(key_size + j);
+           } else {
+             key.set(key_size + j);
+              }
+        }
+    }else{
+        for (int j=recon_settings.bq - 1; j>=0; j--){
+            if ((child_index & 1) == 1)
+                key.set(key_size + j);
+            else
+                key.clear(key_size + j);
+            child_index >>= 1;
+        }
     }
   }
   std::string node_key = key.to_string();
@@ -149,10 +160,13 @@ void Ptree::remove(NTL::ZZ_p z){
   dbm->delete_node(key);
 }
 
+Pnode::Pnode(){}
+
 Pnode::Pnode(std::shared_ptr<RECON_DBManager> dbp){
     dbm = dbp;
     num_elements = 0;
-    }
+}
+
 Pnode::~Pnode(){}
 
 int Pnode::get_num_elements(){
@@ -202,14 +216,26 @@ Pnode* Pnode::children(int c_index){
     bitset child_key(key);
     int key_size = child_key.size();
     child_key.resize(key_size + recon_settings.bq);
-    for (int j=0; j<recon_settings.bq; j++){
-      if ((1<<uint32_t(j)&c_index) == 0){
-        child_key.clear(key_size + j);
-      }
-      else{
-        child_key.set(key_size + j);
-      }
+
+    if (recon_settings.sks_bitstring == 0){
+        for (int j=0; j<recon_settings.bq; j++){
+          if ((1<<uint32_t(j)&c_index) == 0){
+            child_key.clear(key_size + j);
+          }
+          else{
+            child_key.set(key_size + j);
+          }
+        }
+    }else{
+        for (int j=recon_settings.bq-1; j>=0; j--){
+          if ((c_index & 1) == 1)
+              child_key.set(key_size + j);
+          else
+              child_key.clear(key_size + j);
+          c_index >>= 1;
+        }
     }
+
     Pnode* child = node(child_key);
     return child;
 }
@@ -221,22 +247,44 @@ std::vector<Pnode*> Pnode::children(){
   }
   std::string key = get_node_key();
   auto num_children = 1 << uint32_t(recon_settings.bq);
-  for (int i=0; i < num_children; i++){
-    bitset child_key(key);
-    int key_size = child_key.size();
-    child_key.resize(key_size + recon_settings.bq);
-    for (int j=0; j<recon_settings.bq; j++){
-      if ((1<<uint32_t(j)&i) == 0){
-        child_key.clear(key_size + j);
+  if (recon_settings.sks_bitstring == 1){
+      for (int i=num_children - 1; i>= 0; i--){
+          bitset child_key(key);
+          int key_size = child_key.size();
+          child_key.resize(key_size + recon_settings.bq);
+          for (int j=recon_settings.bq-1; j>=0; j--){
+            if ((i & 1) == 1)
+                child_key.set(key_size + j);
+            else
+                child_key.clear(key_size + j);
+            i >>= 1;
+          }
+          Pnode* child = node(child_key);
+          result.push_back(child);
       }
-      else{
-        child_key.set(key_size + j);
+      std::reverse(result.begin(), result.end());
+  }else{
+      for (int i=0; i < num_children; i++){
+        bitset child_key(key);
+        int key_size = child_key.size();
+        child_key.resize(key_size + recon_settings.bq);
+        for (int j=0; j<recon_settings.bq; j++){
+          if ((1<<uint32_t(j)&i) == 0){
+            child_key.clear(key_size + j);
+          }
+          else{
+            child_key.set(key_size + j);
+          }
+        }
+        Pnode* child = node(child_key);
+        result.push_back(child);
       }
-    }
-    Pnode* child = node(child_key);
-    result.push_back(child);
   }
   return result;
+}
+
+void Pnode::clear_node_elements(){
+    node_elements.clear();
 }
 
 void Pnode::commit_node(bool newnode){
@@ -311,10 +359,13 @@ void Pnode::insert_element(NTL::ZZ_p elem){
 
 int Pnode::next(bitset bs, int depth){
     int key;
-    key = next_hockeypuck(bs, depth);
-    g_logger.log(Logger_level::DEBUG, "Calculated key hockeypuck way " + std::to_string(key));
-    key = next_sks(bs, depth);
-    g_logger.log(Logger_level::DEBUG, "Calculated key sks way " + std::to_string(key));
+    int h_key = next_hockeypuck(bs, depth);
+    int s_key = next_sks(bs, depth);
+    g_logger.log(Logger_level::DEBUG, "Calculated next child - hockeypuck: " + std::to_string(h_key) + " sks: " + std::to_string(s_key));
+    if (recon_settings.sks_bitstring == 1)
+        key = s_key;
+    else
+        key = h_key;
     return key;
 }
 
@@ -332,7 +383,7 @@ int Pnode::next_hockeypuck(bitset bs, int depth){
 
 int Pnode::next_sks(bitset bs, int depth){
     int lowbit = depth * recon_settings.bq;
-    int highbit = lowbit + recon_settings.bq + 1;
+    int highbit = lowbit + recon_settings.bq - 1;
     int lowbyte = lowbit / 8;
     lowbit = lowbit % 8;
     int highbyte = highbit / 8;
@@ -341,11 +392,11 @@ int Pnode::next_sks(bitset bs, int depth){
     std::vector<unsigned char> bytes = bs.rep();
     int key;
     if (lowbyte == highbyte){
-        key = ((bytes[lowbyte] >> (7 - highbit)) & (255 >> (8 - highbit - lowbit + 1)));
+        key = ((bytes[lowbyte] >> (7 - highbit)) & (255 >> (8 - (highbit - lowbit + 1))));
     }
     else{
-        int key1 = (bytes[lowbyte] & (255 >> (8 - 8 - lowbit))) << (highbit + 1);
-        int key2 = (bytes[highbyte] & (255 << (8 - highbit + 1))) >> (7 - highbit);
+        int key1 = (bytes[lowbyte] & (255 >> (8 - (8 - lowbit)))) << (highbit + 1);
+        int key2 = (bytes[highbyte] & (255 << (8 - (highbit + 1)))) >> (7 - highbit);
         key = key1 | key2;
     }
     return key;
@@ -471,3 +522,180 @@ void Pnode::insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int de
     }
 }
 
+MemTree::MemTree(){}
+MemTree::~MemTree(){}
+
+MemTree::MemTree(std::shared_ptr<RECON_DBManager> newdbm, std::vector<NTL::ZZ_p> new_points){
+    dbm = newdbm;
+    points = new_points;
+    root = new_child(NULL, 0);
+}
+
+Memnode* MemTree::get_node(std::string key){
+    std::queue<Memnode*> node_list;
+    Memnode* cur_node = (Memnode*) get_root();
+    bool not_found = true;
+    while (not_found){
+        if (key == cur_node->get_node_key())
+            not_found = false;
+        if (cur_node->is_leaf()){
+            if (node_list.empty())
+                break;
+        }else{
+            for (auto n: cur_node->children())
+                node_list.push(n);
+        }
+        cur_node = node_list.front();
+        node_list.pop();
+    }
+    if (not_found)
+        cur_node = NULL;
+    return cur_node;
+}
+
+Memnode* Memnode::children(int cindex){
+    return child_vec[cindex];
+}
+
+std::vector<Memnode*> Memnode::children(){
+    return child_vec;
+}
+
+Memnode::Memnode(){
+  std::vector<NTL::ZZ_p> svalues(recon_settings.num_samples);
+  for (int i=0; i < recon_settings.num_samples; i++){
+    NTL::ZZ_p z(1);
+    svalues[i] = z;
+  }
+  set_node_svalues(svalues);
+}
+
+void Memnode::split(int depth){
+  std::vector<NTL::ZZ_p> split_elements(get_node_elements());
+  set_leaf(false);
+  clear_node_elements();
+  if ((get_node_elements().size() != 0) || (split_elements.size() == 0))
+      g_logger.log(Logger_level::CRITICAL, "you did something wrong");
+
+  //create child nodes
+  uint32_t num = 1 << uint32_t(recon_settings.bq);
+
+  for (uint32_t i=0; i < num; i++){
+    Memnode* child_node = MemTree::new_child(this, i);
+    child_vec.push_back(child_node);
+  }
+  //move elements into child nodes
+  for (auto z : split_elements){
+    bitset bs(z);
+
+    int index = next(bs, depth);
+    Memnode* child_node = child_vec[index];
+    std::vector<NTL::ZZ_p> marray = child_node->MemTree::add_element_array(z);
+    child_node->insert(z, marray, bs, depth+1);
+  }
+}
+
+void Memnode::insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth){
+    Memnode* cur_node = this;
+    while(1){
+        cur_node->update_svalues(marray, z);
+        cur_node->set_num_elements(cur_node->get_num_elements() + 1);
+        if (cur_node->is_leaf()){
+            if (cur_node->get_node_elements().size() > recon_settings.split_threshold){
+                cur_node->split(depth);
+            }
+            else{
+                std::ostringstream os;
+                os << z;
+                g_logger.log(Logger_level::DEBUG, "Inserting " + os.str() + " to node " + cur_node->get_node_key());
+                cur_node->insert_element(z);
+                return;
+            }
+        }
+        int child_index = cur_node->next(bs, depth);
+        cur_node = cur_node->children(child_index);
+
+        depth += 1;
+    }
+}
+
+
+Memnode* MemTree::new_child(Memnode* parent, int child_index){
+  Memnode* n = new Memnode();
+  n->set_leaf(true);
+  bitset key;
+  if (parent != NULL){
+    std::string parent_key_string = parent->get_node_key();
+    key = bitset(parent_key_string);
+    int key_size = key.size();
+    key.resize(key_size + recon_settings.bq);
+
+    if (recon_settings.sks_bitstring == 1){
+        for (int j=0; j<recon_settings.bq; j++){
+           if (((1<<j)&child_index) == 0){
+             key.clear(key_size + j);
+           } else {
+             key.set(key_size + j);
+              }
+        }
+    }else{
+        for (int j=recon_settings.bq - 1; j>=0; j--){
+            if ((child_index & 1) == 1)
+                key.set(key_size + j);
+            else
+                key.clear(key_size + j);
+            child_index >>= 1;
+        }
+    }
+
+  }
+  std::string node_key = key.to_string();
+  if (parent!=NULL)
+    g_logger.log(Logger_level::DEBUG, "Creating node with key" + node_key + " son of " + parent->get_node_key());
+  n->set_node_key(node_key);
+  std::vector<NTL::ZZ_p> svalues(recon_settings.num_samples);
+  for (int i=0; i < recon_settings.num_samples; i++){
+    NTL::ZZ_p z(1);
+    svalues[i] = z;
+  }
+  n->set_node_svalues(svalues);
+  return n;
+}
+
+void MemTree::commit_memtree(){
+    std::queue<Memnode*> node_list;
+    Memnode* cur_node = (Memnode*) get_root();
+    bool not_done = true;
+    while(not_done){
+        if (cur_node->is_leaf()){
+            if (node_list.empty())
+                not_done = false;
+        }else{
+            for (auto n: cur_node->children())
+                node_list.push(n);
+        }
+
+        DBStruct::node n;
+        n.key = cur_node->get_node_key();
+        n.svalues = Utils::marshall_vec_zz_p(cur_node->get_node_svalues());
+        n.num_elements = cur_node->get_num_elements();
+        n.leaf = cur_node->is_leaf();
+        n.elements = Utils::marshall_vec_zz_p(cur_node->get_node_elements());
+        dbm->insert_node(n);
+
+        cur_node = node_list.front();
+        node_list.pop();
+    }
+}
+
+void MemTree::insert(std::string hash){
+    NTL::ZZ_p elem = Utils::hex_to_zz(hash);
+    insert(elem);
+}
+
+void MemTree::insert(NTL::ZZ_p z){
+    bitset bs(z);
+    Memnode* root_node = (Memnode*) get_root();
+    std::vector<NTL::ZZ_p> marray = add_element_array(z);
+    root_node->insert(z, marray, bs, 0);
+}

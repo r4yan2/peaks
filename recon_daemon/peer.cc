@@ -70,7 +70,7 @@ void Peer::fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems){
     g_logger.log(Logger_level::DEBUG, os.str());
     std::vector<NTL::ZZ_p> elements;
     for (auto e: elems){
-        if (!(tree.has_key(Utils::ZZp_to_bitstring(e))))
+        //if (!(tree.has_key(Utils::ZZp_to_bitstring(e))))
             elements.push_back(e);
     }
 
