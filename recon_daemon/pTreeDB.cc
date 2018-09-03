@@ -90,7 +90,7 @@ Pnode* Ptree::new_child(Pnode* parent, int child_index){
     int key_size = key.size();
     key.resize(key_size + recon_settings.bq);
 
-    if (recon_settings.sks_bitstring == 1){
+    if (recon_settings.sks_bitstring == 0){
         for (int j=0; j<recon_settings.bq; j++){
            if (((1<<j)&child_index) == 0){
              key.clear(key_size + j);
@@ -630,7 +630,7 @@ Memnode* MemTree::new_child(Memnode* parent, int child_index){
     int key_size = key.size();
     key.resize(key_size + recon_settings.bq);
 
-    if (recon_settings.sks_bitstring == 1){
+    if (recon_settings.sks_bitstring == 0){
         for (int j=0; j<recon_settings.bq; j++){
            if (((1<<j)&child_index) == 0){
              key.clear(key_size + j);

@@ -439,7 +439,8 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
         std::tie(local_samples, remote_samples) = solve(r_samples, r_size, l_samples, l_size, points);
         g_logger.log(Logger_level::DEBUG, "solved interpolation succesfully!");
     }
-    catch (solver_exception& e){
+    //catch (solver_exception& e){
+    catch (std::exception &e){
         g_logger.log(Logger_level::DEBUG, "catched logger exception: " + std::string(e.what()));
         if ((strncmp(e.what(),"low_mbar",8)) && 
                     (
