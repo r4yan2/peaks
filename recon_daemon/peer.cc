@@ -139,7 +139,7 @@ std::vector<std::string> Peer::request_chunk(peertype peer, std::vector<NTL::ZZ_
 
 void Peer::interact_with_client(peertype remote_peer){
     Recon_manager recon = Recon_manager(cn);
-    Pnode* root = tree.get_root();
+    pnode_ptr root = tree.get_root();
     bitset newset(0);
     request_entry req = request_entry{.node = root, .key = newset};
     recon.push_request(req);
@@ -274,7 +274,21 @@ void Peer::client_recon(peertype peer){
                 g_logger.log(Logger_level::WARNING, "ERROR, UNKNOWN MESSAGE");
                 comm.status = Communication_status::ERROR;
         }
+        g_logger.log(Logger_level::DEBUG, "samples gained:");
+        for (auto elem: comm.samples.elements())
+        {
+            std::ostringstream os;
+            os << elem;
+            g_logger.log(Logger_level::DEBUG, os.str());
+    }
         n += comm.samples.size();
+        response.add(comm.samples.elements());
+        g_logger.log(Logger_level::DEBUG, "response now contains:");
+        for (auto elem: response.elements()){
+            std::ostringstream os;
+            os << elem;
+            g_logger.log(Logger_level::DEBUG, os.str());
+        }
         g_logger.log(Logger_level::DEBUG, "current value of n: " + std::to_string(n));
 
         if (comm.status == Communication_status::ERROR){
@@ -300,7 +314,6 @@ void Peer::client_recon(peertype peer){
             cn.send_bulk_messages(pending);
             pending.clear();
         }
-        response.add(comm.samples.elements());
     }
 }
 
@@ -429,7 +442,7 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     bitset key = req->prefix;
     std::string prefix_str = key.to_string();
     g_logger.log(Logger_level::DEBUG, "ReconRequestPoly for node: " + prefix_str);
-    Pnode* node = tree.node(key);
+    pnode_ptr node = tree.node(key);
     std::vector<NTL::ZZ_p> l_samples = node->get_node_svalues();
     int l_size = node->get_num_elements();
     std::vector<NTL::ZZ_p> elements;
@@ -479,7 +492,7 @@ Communication Peer::request_full_handler(ReconRequestFull* req){
     Myset<NTL::ZZ_p> local_set;
     Communication newcomm;
     try{
-        Pnode* node = tree.node(req->prefix);
+        pnode_ptr node = tree.node(req->prefix);
         local_set.add(node->elements());
     } catch (std::exception& e){
         newcomm.status = Communication_status::ERROR;

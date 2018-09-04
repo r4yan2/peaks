@@ -11,15 +11,19 @@
 #include "Bitset.h"
 #include "myset.h"
 #include <queue>
+#include <memory>
 
 typedef Bitset bitset;
 
 class Pnode;
 class Memnode;
 
+typedef std::shared_ptr<Pnode> pnode_ptr;
+typedef std::shared_ptr<Pnode> memnode_ptr;
+
 class Ptree{
 protected: 
-  Pnode* root;
+  pnode_ptr root;
   std::shared_ptr<RECON_DBManager> dbm;
   std::vector<NTL::ZZ_p> points;
   
@@ -29,7 +33,7 @@ public:
   ~Ptree();
  
   //getters
-  Pnode* get_root();
+  pnode_ptr get_root();
   std::vector<NTL::ZZ_p> get_points();
   
   std::vector<NTL::ZZ_p> add_element_array(NTL::ZZ_p z);
@@ -38,15 +42,15 @@ public:
   void create();
 
   //search for a specific node in the DB
-  Pnode* get_node(std::string key);
+  pnode_ptr get_node(std::string key);
 
   bool has_key(std::string key);
   void insert(NTL::ZZ_p z);
   void insert(std::string hash, bool build=false);
 
-  Pnode* new_child(Pnode* parent, int child_index);
+  pnode_ptr new_child(pnode_ptr parent, int child_index);
   //insert a new node
-  Pnode* node(bitset key);
+  pnode_ptr node(bitset key);
 
   void remove(NTL::ZZ_p z);
 };
@@ -78,8 +82,8 @@ public:
 
   void clear_node_elements();
   
-  std::vector<Pnode*> children();
-  Pnode* children(int c_index);
+  std::vector<pnode_ptr> children();
+  pnode_ptr children(int c_index);
   void commit_node(bool newnode = false);
   void delete_node();
   void delete_elements();
@@ -91,7 +95,7 @@ public:
   int next(bitset bs, int depth);
   int next_sks(bitset bs, int depth);
   int next_hockeypuck(bitset bs, int depth);
-  Pnode* parent();
+  pnode_ptr parent();
   void remove(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth);
   void split(int depth);
   std::vector<NTL::ZZ_p> svalues();
@@ -104,25 +108,25 @@ class MemTree: public Ptree{
         MemTree();
         MemTree(std::shared_ptr<RECON_DBManager>, std::vector<NTL::ZZ_p>);
         ~MemTree();
-        Memnode* get_node(std::string key);
+        memnode_ptr get_node(std::string key);
         void commit_memtree();
-        Memnode* new_child(Memnode* parent, int child_index);
+        memnode_ptr new_child(memnode_ptr parent, int child_index);
         void insert(NTL::ZZ_p z);
         void insert(std::string hash);
 };
 
 class Memnode: public MemTree, public Pnode{
     private:
-        Memnode* root;
-        std::vector<Memnode*> child_vec;
+        memnode_ptr root;
+        std::vector<memnode_ptr> child_vec;
     public:
         Memnode();
         ~Memnode();
 
         void split(int depth);
         void insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth);
-        std::vector<Memnode*> children();
-        Memnode* children(int cindex);
+        std::vector<memnode_ptr> children();
+        memnode_ptr children(int cindex);
 };
 
 #endif //RECON_PTREEDB_H

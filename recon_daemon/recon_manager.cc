@@ -89,7 +89,7 @@ void Recon_manager::handle_reply(Message* msg, request_entry request){
                     delete (SyncFail*) msg;
                     return;
                 }
-                std::vector<Pnode*> children = request.node->children();
+                std::vector<pnode_ptr> children = request.node->children();
                 request_entry req;
                 req.key = bitset(children[0]->get_node_key());
                 g_logger.log(Logger_level::DEBUG, "sending ReconRequestFull for the following node: " + children[0]->get_node_key() + ", which contains " + std::to_string(children[0]->elements().size()) + " elements");
