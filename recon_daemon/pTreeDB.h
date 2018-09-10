@@ -19,7 +19,7 @@ class Pnode;
 class Memnode;
 
 typedef std::shared_ptr<Pnode> pnode_ptr;
-typedef std::shared_ptr<Pnode> memnode_ptr;
+typedef std::shared_ptr<Memnode> memnode_ptr;
 
 class Ptree{
 protected: 
@@ -55,7 +55,8 @@ public:
   void remove(NTL::ZZ_p z);
 };
 
-class Pnode: public Ptree{
+class Pnode: public Ptree, public std::enable_shared_from_this<Pnode>{
+    
 private:
   std::string node_key;
   std::vector<NTL::ZZ_p> node_svalues;
@@ -104,21 +105,27 @@ public:
 
 
 class MemTree: public Ptree{
+    private:
+        memnode_ptr root;
+        std::shared_ptr<RECON_DBManager> dbm;
+        std::vector<NTL::ZZ_p> points;
     public:
         MemTree();
         MemTree(std::shared_ptr<RECON_DBManager>, std::vector<NTL::ZZ_p>);
         ~MemTree();
+        std::vector<NTL::ZZ_p> get_points();
         memnode_ptr get_node(std::string key);
         void commit_memtree();
         memnode_ptr new_child(memnode_ptr parent, int child_index);
+        memnode_ptr get_root();
         void insert(NTL::ZZ_p z);
         void insert(std::string hash);
 };
 
 class Memnode: public MemTree, public Pnode{
     private:
-        memnode_ptr root;
         std::vector<memnode_ptr> child_vec;
+		memnode_ptr shared_from_this();
     public:
         Memnode();
         ~Memnode();

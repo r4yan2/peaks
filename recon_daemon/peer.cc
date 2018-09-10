@@ -70,7 +70,7 @@ void Peer::fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems){
     g_logger.log(Logger_level::DEBUG, os.str());
     std::vector<NTL::ZZ_p> elements;
     for (auto e: elems){
-        //if (!(tree.has_key(Utils::ZZp_to_bitstring(e))))
+        if (!(tree.has_key(Utils::zz_to_hex(e))))
             elements.push_back(e);
     }
 
@@ -274,6 +274,7 @@ void Peer::client_recon(peertype peer){
                 g_logger.log(Logger_level::WARNING, "ERROR, UNKNOWN MESSAGE");
                 comm.status = Communication_status::ERROR;
         }
+        n += comm.samples.size();
         g_logger.log(Logger_level::DEBUG, "samples gained:");
         for (auto elem: comm.samples.elements())
         {
@@ -281,7 +282,6 @@ void Peer::client_recon(peertype peer){
             os << elem;
             g_logger.log(Logger_level::DEBUG, os.str());
     }
-        n += comm.samples.size();
         response.add(comm.samples.elements());
         g_logger.log(Logger_level::DEBUG, "response now contains:");
         for (auto elem: response.elements()){
