@@ -16,12 +16,12 @@ set(BOOST_LIBRARYDIR "/usr/local/include/boost")
 set(BOOST_ROOT "/usr/local/include")
 
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 
-set(OpenPGP_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../OpenPGP)
-set(SOURCE_FILES main.cc dump_import.cc DBManager.cc Thread_Pool.cc unpacker.cc DBStruct.h utils.cc Key_Tools.cc DB_info.h)
+#set(OpenPGP_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../OpenPGP)
+set(SOURCE_FILES dump_import.cc DBManager.cc Thread_Pool.cc unpacker.cc DBStruct.h utils.cc Key_Tools.cc DB_info.h)
 add_library(dump_import ${SOURCE_FILES})
-include_directories(dump_import PRIVATE ${OpenPGP_DIRECTORY})
+include_directories(${OpenPGP_DIRECTORY})
 
 find_package(Boost REQUIRED COMPONENTS system filesystem)
 

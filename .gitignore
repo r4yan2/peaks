@@ -13,10 +13,10 @@ tests/
 *.py
 *.vim
 *.a
+.*
 cmake-3.12.0*
 curlpp-0.8.1*
 *.tex
 *.pdf
 cgi_handler/config.js
 cgi_handler/DB_info.h
-.gitignore

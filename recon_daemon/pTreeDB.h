@@ -2,12 +2,12 @@
 #define RECON_PTREEDB_H
 
 #include "RECON_DBManager.h"
+#include "Recon_settings.h"
 #include "Utils.h"
 #include <syslog.h>
 #include <iostream>
 #include <stdexcept>
 #include "logger.h"
-#include "Recon_settings.h"
 #include "Bitset.h"
 #include "myset.h"
 #include <queue>
@@ -29,7 +29,7 @@ protected:
   
 public:
   Ptree();
-  Ptree(std::shared_ptr<RECON_DBManager> dbm, std::vector<NTL::ZZ_p> points);
+  Ptree(std::shared_ptr<RECON_DBManager> dbp, std::vector<NTL::ZZ_p> point);
   ~Ptree();
  
   //getters

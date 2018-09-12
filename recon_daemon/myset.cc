@@ -19,7 +19,7 @@ template<typename T> bool Myset<T>::add(const T& elem){
     for (size_t i=0; i<elems.size(); i++)
         if (elem == elems[i]) return false;
     elems.push_back(elem);
-    return false;
+    return true;
 }
 
 template<typename T> void Myset<T>::add(const std::vector<T>& elem){

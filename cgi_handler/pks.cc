@@ -380,23 +380,3 @@ string Pks::genEntry(DB_Key *keyInfo) {
                                userID.c_str());
 }
 
-
-int main(int argc, char ** argv) {
-    openlog("peaks", LOG_PID, LOG_USER);
-    setlogmask (LOG_UPTO (LOG_NOTICE));
-    syslog(LOG_NOTICE, "peaks server is starting up!");
-    try {
-        cppcms::service srv(argc, argv);
-        srv.applications_pool().mount(
-            cppcms::applications_factory<Pks>()
-        );
-        srv.run();
-    }
-    catch(exception const &e) {
-        cerr << e.what() << endl;
-        syslog(LOG_CRIT, "Error during starting up: %s", e.what());
-    }
-
-    cout << "Exiting..." << endl;
-    closelog();
-}

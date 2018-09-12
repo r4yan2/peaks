@@ -15,6 +15,8 @@ int ASCIIHexToInt[] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 };
 
+char int2hex[] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
+
 std::string Utils::marshall_vec_zz_p(std::vector<NTL::ZZ_p> elements){
     if (elements.empty()) return "";
     std::ostringstream os;
@@ -45,12 +47,14 @@ NTL::ZZ_p Utils::hex_to_zz(std::string hash){
 
 NTL::ZZ_p Utils::bytes_to_zz(std::vector<unsigned char> bytes){
     NTL::ZZ_p elem;
-    std::reverse(bytes.begin(), bytes.end());
+    //std::reverse(bytes.begin(), bytes.end());
 
     if (recon_settings.sks_compliant == 1){
+        /*
         for (size_t i=0; i < bytes.size(); i++){
             elem = elem * (2<<7) + (uint8_t) bytes[i];
-        }
+            */
+        elem = NTL::conv<NTL::ZZ_p>(NTL::ZZFromBytes(bytes.data(), bytes.size()));
     }else{
         for (size_t i=0; i < bytes.size(); i++)
             elem += (2<<(7*i)) * (uint8_t) bytes[i];
@@ -93,6 +97,25 @@ std::string Utils::ZZp_to_bitstring(NTL::ZZ_p num){
     std::ostringstream res;
     for (NTL::ZZ tmp(NTL::rep(num)); !(NTL::IsZero(tmp)); tmp/=2) res << (tmp%2);
     return res.str();
+}
+
+std::string Utils::zz_to_hex(NTL::ZZ_p num, int padding){
+    std::string res;
+    NTL::ZZ n = NTL::rep(num);
+    std::vector<unsigned char> p(NumBytes(n));
+    BytesFromZZ(p.data(), n, NumBytes(n));
+    std::reverse(p.begin(), p.end());
+    ZZFromBytes(n, p.data(), NumBytes(n));
+    while (n > 0){
+        res.insert(res.begin(), int2hex[n%16]);
+        n /= 16;
+        }
+    int pad_len = padding - res.size();
+    while (pad_len > 0){
+        res.insert(res.begin(), '0');
+        pad_len -= 1;
+        }
+    return res;
 }
 
 int Utils::swap(int d){

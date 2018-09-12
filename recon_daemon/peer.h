@@ -21,7 +21,7 @@
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
 #include <curlpp/Exception.hpp>
-#include "../dump_import/dump_import.h"
+#include <dump_import.h>
 #include <unistd.h>
 #include <chrono>
 

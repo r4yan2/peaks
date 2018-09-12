@@ -54,6 +54,8 @@ template<typename I> static I get_random(I max_val){
 
 NTL::ZZ_p hex_to_zz(std::string hash);
 
+std::string zz_to_hex(NTL::ZZ_p num, int padding=32);
+
 /** swap endianess of an int */
 int swap(int d);
 
