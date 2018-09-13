@@ -66,7 +66,7 @@ private:
 
 public:
   Pnode();
-  Pnode(std::shared_ptr<RECON_DBManager>);
+  Pnode(std::shared_ptr<RECON_DBManager>, std::vector<NTL::ZZ_p>);
   ~Pnode();
   
   void set_node_key(std::string key);

@@ -54,7 +54,7 @@ pnode_ptr Ptree::get_node(std::string key){
   DBStruct::node n = dbm->get_node(key);
   std::vector<NTL::ZZ_p> node_elements = Utils::unmarshall_vec_zz_p(n.elements);
   std::vector<NTL::ZZ_p> node_svalues = Utils::unmarshall_vec_zz_p(n.svalues);
-  pnode_ptr nd(new Pnode(dbm));
+  pnode_ptr nd(new Pnode(dbm, get_points()));
   nd->set_node_key(key);
   nd->set_node_svalues(node_svalues);
   nd->set_num_elements(n.num_elements);
@@ -68,10 +68,6 @@ bool Ptree::has_key(std::string key){
 }
 
 void Ptree::insert(std::string hash, bool build){
-    //if (!build && has_key(hash)){
-    //  g_logger.log(Logger_level::WARNING, "Blocked insert of duplicate node!");
-    //  return;
-    //}
     NTL::ZZ_p elem = Utils::hex_to_zz(hash);
     insert(elem);
 }
@@ -84,7 +80,7 @@ void Ptree::insert(NTL::ZZ_p z){
 }
 
 pnode_ptr Ptree::new_child(pnode_ptr parent, int child_index){
-  pnode_ptr n(new Pnode(dbm));
+  pnode_ptr n(new Pnode(dbm, get_points()));
   n->set_leaf(true);
   bitset key;
   if (parent != NULL){
@@ -165,9 +161,10 @@ void Ptree::remove(NTL::ZZ_p z){
 
 Pnode::Pnode(){}
 
-Pnode::Pnode(std::shared_ptr<RECON_DBManager> dbp){
+Pnode::Pnode(std::shared_ptr<RECON_DBManager> dbp, std::vector<NTL::ZZ_p> point){
     dbm = dbp;
     num_elements = 0;
+    points = point;
 }
 
 Pnode::~Pnode(){}

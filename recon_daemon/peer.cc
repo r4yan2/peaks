@@ -54,7 +54,7 @@ void Peer::serve(){
             try{
                 interact_with_client(remote_peer);
             }catch(std::exception &e){
-                g_logger.log(Logger_level::DEBUG, std::string(e.what()));
+                g_logger.log(Logger_level::WARNING, std::string(e.what()));
             }
         }
     }
@@ -62,12 +62,7 @@ void Peer::serve(){
 
 void Peer::fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems){
 
-    g_logger.log(Logger_level::DEBUG, "Should recover " + std::to_string(elems.size()) + " elements");
-    g_logger.log(Logger_level::DEBUG, "Some sample: ");
-    std::ostringstream os;
-    for (int i=0; i<5; i++)
-        os << Utils::ZZp_to_bitstring(elems[i]) << "\t";
-    g_logger.log(Logger_level::DEBUG, os.str());
+    g_logger.log(Logger_level::DEBUG, "Should recover " + std::to_string(elems.size()) + " elements, starting double elements check...");
     std::vector<NTL::ZZ_p> elements;
     for (auto e: elems){
         if (!(tree.has_key(Utils::zz_to_hex(e))))
@@ -80,7 +75,7 @@ void Peer::fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems){
         return;
     }
     int c_size = recon_settings.request_chunk_size;
-    g_logger.log(Logger_level::DEBUG, "Elements to recover: " + std::to_string(elements_size));
+    g_logger.log(Logger_level::DEBUG, "Will recover: " + std::to_string(elements_size));
     std::vector<std::string> keys;
     if (c_size > elements_size){
         g_logger.log(Logger_level::DEBUG, "requesting all element at once!");
@@ -99,7 +94,13 @@ void Peer::fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems){
     }
     g_logger.log(Logger_level::DEBUG, "fetched " + std::to_string(keys.size()) + " keys from peer!");
     std::vector<std::string> hashes = dump_import(keys);
-    g_logger.log(Logger_level::DEBUG, "inserted keys into DB, (gained " +std::to_string(hashes.size())  + " hashes)");
+    if (hashes.size() != elements.size()){
+        g_logger.log(Logger_level::DEBUG, "number of recovered keys does not match number of hashes recovered, aborting recon operation!");
+        std::runtime_error("number of recovered keys does not match recovered hashes!");
+    }
+    for (auto hash: hashes)
+        if (std::find(elements.begin(), elements.end(), Utils::hex_to_zz(hash)) == elements.end())
+            std::runtime_error("requested " + hash + " but got a different key!");
     for (auto hash: hashes)
         tree.insert(hash);
     g_logger.log(Logger_level::DEBUG, "inserted hashes into ptree");
@@ -213,6 +214,8 @@ void Peer::gossip(){
             client_recon(peer);
         } catch (connection_exception &e){
             g_logger.log(Logger_level::DEBUG, std::string(e.what()));
+        } catch (...){
+            g_logger.log(Logger_level::DEBUG, "something wen wrong...");
         }
         g_logger.log(Logger_level::DEBUG, "going to sleep...");
         std::this_thread::sleep_for(std::chrono::seconds{recon_settings.gossip_interval});
