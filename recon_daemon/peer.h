@@ -25,15 +25,12 @@
 #include <unistd.h>
 #include <chrono>
 
-/*
- * this will be send via networking
- * to the other peer for config
- * syncronization before actual
- * gossiping can occur
- */
-
 enum class Communication_status {NONE, ERROR, DONE};
 
+/** Communication struct is needed to 
+ * keep track of the messages between 
+ * server and client.
+ */
 struct Communication{
     zset samples;
     bool send;
@@ -56,6 +53,10 @@ struct bottom_entry{
     uint8_t state;
 };
 
+/** Peer class represent a peer during recon.
+ * This class hold all the main code needed
+ * for recon.
+ */
 class Peer{
     private:
         /** hold the Connection Manager reference*/
@@ -88,10 +89,16 @@ class Peer{
         /** fetch the given element from the peer */
         void fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems);
 
+        /** handler of recon request poly messages */
         Communication request_poly_handler(ReconRequestPoly* req);
+
+        /** handler of recon request full messages */
         Communication request_full_handler(ReconRequestFull* req);
+
+        /** implementation of linear interpolation */
         std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> solve(std::vector<NTL::ZZ_p> r_samples, int r_size, std::vector<NTL::ZZ_p> l_samples, int l_size, std::vector<NTL::ZZ_p> points);
 
+        /** method used to request a chunk of data from the other peer */
         std::vector<std::string> request_chunk(peertype peer, std::vector<NTL::ZZ_p> elements);
 };
 
