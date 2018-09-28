@@ -77,6 +77,12 @@ class Peer{
         /** start recon daemon processes */
         void start();
 
+        /** start only server recon */
+        void start_server();
+
+        /** start only client recon */
+        void start_client();
+
         /** recon as client with choosen peer */
         void client_recon(peertype);
 

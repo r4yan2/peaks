@@ -20,7 +20,7 @@ void parse_config(std::string filename);
 void serve(int argc, char* argv[]);
 void import(int argc, char* argv[]);
 void build();
-void recon();
+void recon(int mode);
 char* convert(const std::string & s);
 std::vector<NTL::ZZ_p> parse_custom_hash_file();
 
@@ -78,7 +78,17 @@ int main(int argc, char* argv[]){
 	    }
         else if (cmd == "recon"){
             po::options_description recon_desc("recon options");
-            recon();
+            recon_desc.add_options()
+                ("server-only", "start only sever part of recon")
+                ("client-only", "start only client part of recon");
+            std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
+            opts.erase(opts.begin());
+            po::store(po::command_line_parser(opts).options(recon_desc).run(), vm);	
+            if (vm.count("server-only") == 1)
+                recon(1);
+            else if (vm.count("client-only") == 1)
+                recon(2);
+            else recon(0);
         }
         else {
             help();
@@ -233,7 +243,7 @@ void build(){
     exit(0);
 }
 
-void recon(){
+void recon(int mode){
 
     std::cout << "Starting recon_daemon" << std::endl;
     const std::vector<NTL::ZZ_p> points = Utils::Zpoints(recon_settings.num_samples);
@@ -241,7 +251,12 @@ void recon(){
     Ptree tree(dbm, points);
     tree.create();
     Peer peer = Peer(tree);
-    peer.start();
+    if (mode == 0)
+        peer.start();
+    else if (mode == 1)
+        peer.start_server();
+    else if (mode == 2)
+        peer.start_client();
     exit(0);
 }
 

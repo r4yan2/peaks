@@ -28,9 +28,22 @@ peertype Peer::choose_partner(){
 }
 
 void Peer::start(){
-    //std::thread srv {&Peer::serve, this};
+    std::cout << "starting all" << std::endl;
+    std::thread srv {&Peer::serve, this};
     std::thread gsp {&Peer::gossip, this};
-    //srv.join();
+    srv.join();
+    gsp.join();
+}
+
+void Peer::start_server(){
+    std::cout << "starting only as server" << std::endl;
+    std::thread srv {&Peer::serve, this};
+    srv.join();
+}
+
+void Peer::start_client(){
+    std::cout << "starting only as client" << std::endl;
+    std::thread gsp {&Peer::gossip, this};
     gsp.join();
 }
 
