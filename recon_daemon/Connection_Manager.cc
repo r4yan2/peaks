@@ -8,8 +8,10 @@ void Connection_Manager::setup_listener(int portno){
     struct sockaddr_in serv_addr; 
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (listenfd < 0)
+    if (listenfd < 0){
         g_logger.log(Logger_level::CRITICAL, "error on binding");
+        throw (std::runtime_error("error on binding"));
+    }
     bzero((char *) &serv_addr, sizeof(serv_addr));
 
     serv_addr.sin_family = AF_INET;
@@ -52,12 +54,11 @@ std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> a
     return std::make_pair(true, remote_peer);
 }
 
-void Connection_Manager::set_timeout(unsigned int timeout){
+void Connection_Manager::set_timeout(){
   struct timeval tv;
-  tv.tv_sec  = timeout;
-  tv.tv_usec = 0;
+  tv.tv_sec  = recon_settings.async_timeout_sec;
+  tv.tv_usec = recon_settings.async_timeout_usec;
   setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-  setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 }
 
 void Connection_Manager::early_fail(std::string reason){
@@ -193,7 +194,7 @@ int Connection_Manager::check_remote_config(){
     if (!(toggle_keep_alive(1, 1, 1, 60)))
         g_logger.log(Logger_level::WARNING, "could not enable keep alive");
     
-    set_timeout(300);
+    set_timeout();
     
     return http_port;
 }
@@ -257,7 +258,7 @@ std::string Connection_Manager::read_string_direct(){
 }
 
 Message* Connection_Manager::read_message_async(){
-    return read_message(false, MSG_DONTWAIT);
+    return read_message(false, 0);
 }
 
 // Reads message from network
@@ -419,7 +420,6 @@ void Connection_Manager::write_message(Buffer &buffer, Message* m, bool wrap){
     }
     if (wrap)
         partial_buffer.write_self_len();
-    g_logger.log(Logger_level::DEBUG, "partial buffer filled with message");
     buffer.append(partial_buffer);
     g_logger.log(Logger_level::DEBUG, "buffer filled with partial buffer");
 }

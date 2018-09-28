@@ -109,11 +109,11 @@ void Peer::fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems){
     std::vector<std::string> hashes = dump_import(keys);
     if (hashes.size() != elements.size()){
         g_logger.log(Logger_level::DEBUG, "number of recovered keys does not match number of hashes recovered, aborting recon operation!");
-        std::runtime_error("number of recovered keys does not match recovered hashes!");
+        throw std::runtime_error("number of recovered keys does not match recovered hashes!");
     }
     for (auto hash: hashes)
         if (std::find(elements.begin(), elements.end(), Utils::hex_to_zz(hash)) == elements.end())
-            std::runtime_error("requested " + hash + " but got a different key!");
+            throw std::runtime_error("requested " + hash + " but got a different key!");
     for (auto hash: hashes)
         tree.insert(hash);
     g_logger.log(Logger_level::DEBUG, "inserted hashes into ptree");
@@ -190,7 +190,6 @@ void Peer::interact_with_client(peertype remote_peer){
                                 if (recon.is_flushing()){
                                     recon.pop_bottom();
                                     try{
-                                        cn.set_timeout(3);
                                         msg = cn.read_message();
                                         recon.handle_reply(msg, bottom.request);
                                     }catch(...){
@@ -291,20 +290,7 @@ void Peer::client_recon(peertype peer){
                 comm.status = Communication_status::ERROR;
         }
         n += comm.samples.size();
-        g_logger.log(Logger_level::DEBUG, "samples gained:");
-        for (auto elem: comm.samples.elements())
-        {
-            std::ostringstream os;
-            os << elem;
-            g_logger.log(Logger_level::DEBUG, os.str());
-    }
         response.add(comm.samples.elements());
-        g_logger.log(Logger_level::DEBUG, "response now contains:");
-        for (auto elem: response.elements()){
-            std::ostringstream os;
-            os << elem;
-            g_logger.log(Logger_level::DEBUG, os.str());
-        }
         g_logger.log(Logger_level::DEBUG, "current value of n: " + std::to_string(n));
 
         if (comm.status == Communication_status::ERROR){

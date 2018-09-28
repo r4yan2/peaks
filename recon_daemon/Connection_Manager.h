@@ -61,7 +61,7 @@ class Connection_Manager{
         bool toggle_keep_alive(int toggle, int idle, int interval, int count);
 
         /** helper method to set timeout on a given socket */
-        void set_timeout(unsigned int timeout);
+        void set_timeout();
 
         /** exchange and validate config with peer */
         int check_remote_config();

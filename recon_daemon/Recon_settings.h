@@ -31,6 +31,8 @@ struct Configtype{
     int custom_hash_file_on;
     std::string custom_hash_file;
     int sks_bitstring;
+    int async_timeout_sec;
+    int async_timeout_usec;
 };
 
 extern Configtype recon_settings;

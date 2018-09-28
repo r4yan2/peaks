@@ -186,6 +186,10 @@ void parse_config(std::string filename){
                 recon_settings.custom_hash_file = value;
             else if (name == "sks_bitstring")
                 recon_settings.sks_bitstring = std::stoi(value);
+            else if (name == "async_timeout_sec")
+                recon_settings.async_timeout_sec = std::stoi(value);
+            else if (name == "async_timeout_usec")
+                recon_settings.async_timeout_usec = std::stoi(value);
         }
         recon_settings.num_samples = recon_settings.mbar + 1;
         recon_settings.split_threshold = recon_settings.ptree_thresh_mult * recon_settings.mbar;
