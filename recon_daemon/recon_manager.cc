@@ -65,7 +65,7 @@ bool Recon_manager::bottom_queue_empty(){
 
 void Recon_manager::send_request(request_entry request){
     Message* msg;
-    if ((request.node->is_leaf()) || (request.node->get_num_elements() < recon_settings.ptree_thresh_mult * recon_settings.mbar)){
+    if ((request.node->is_leaf()) || (request.node->get_num_elements() < recon_settings.split_threshold)){
         msg = new ReconRequestFull;
         ((ReconRequestFull*) msg)->prefix = request.key;
         ((ReconRequestFull*) msg)->samples = zset(request.node->elements());
@@ -116,7 +116,7 @@ void Recon_manager::handle_reply(Message* msg, request_entry request){
             }
         case (Msg_type::FullElements):
             {
-                std::vector<NTL::ZZ_p> elements = request.node->get_node_elements();
+                std::vector<NTL::ZZ_p> elements = request.node->elements();
                 zset local_set = zset(elements);
                 zset local_needs, remote_needs;
                 std::tie(local_needs, remote_needs) = ((FullElements*)msg)->samples.symmetric_difference(local_set);
