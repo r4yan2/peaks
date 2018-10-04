@@ -111,12 +111,12 @@ void Peer::fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems){
         g_logger.log(Logger_level::DEBUG, "number of recovered keys does not match number of hashes recovered, aborting recon operation!");
         throw std::runtime_error("number of recovered keys does not match recovered hashes!");
     }
-    for (auto hash: hashes)
-        if (std::find(elements.begin(), elements.end(), Utils::hex_to_zz(hash)) == elements.end())
-            throw std::runtime_error("requested " + hash + " but got a different key!");
+    for (auto hash: elements)
+        if (std::find(hashes.begin(), hashes.end(), Utils::zz_to_hex(hash)) == hashes.end())
+            g_logger.log(Logger_level::DEBUG, "requested " + Utils::zz_to_hex(hash) + " but got a different hash after sync! This is caused by a known bug in Peaks...");
     for (auto hash: hashes)
         tree.insert(hash);
-    g_logger.log(Logger_level::DEBUG, "inserted hashes into ptree");
+    g_logger.log(Logger_level::DEBUG, "inserted " + std::to_string(hashes.size()) + " hashes into ptree");
 }
 
 std::vector<std::string> Peer::request_chunk(peertype peer, std::vector<NTL::ZZ_p> chunk){
@@ -190,7 +190,7 @@ void Peer::interact_with_client(peertype remote_peer){
                                 if (recon.is_flushing()){
                                     recon.pop_bottom();
                                     try{
-                                        msg = cn.read_message();
+                                        msg = cn.read_message_async();
                                         recon.handle_reply(msg, bottom.request);
                                     }catch(...){
                                     }
@@ -226,8 +226,8 @@ void Peer::gossip(){
             client_recon(peer);
         } catch (connection_exception &e){
             g_logger.log(Logger_level::DEBUG, std::string(e.what()));
-        } catch (...){
-            g_logger.log(Logger_level::DEBUG, "something wen wrong...");
+        } catch (std::exception &e){
+            g_logger.log(Logger_level::DEBUG, e.what());
         }
         g_logger.log(Logger_level::DEBUG, "going to sleep...");
         std::this_thread::sleep_for(std::chrono::seconds{recon_settings.gossip_interval});

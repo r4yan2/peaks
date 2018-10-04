@@ -360,13 +360,16 @@ namespace Unpacker {
         switch (ss.pubAlgorithm){
             case PKA::ID::RSA_SIGN_ONLY:
             case PKA::ID::RSA_ENCRYPT_OR_SIGN:
-                ss.s = mpitoraw(algValues[0]);
+                if (algValues.size() > 0) 
+                    ss.s = mpitoraw(algValues[0]);
                 break;
             case PKA::ID::DSA:
             case PKA::ID::ECDSA:
             case PKA::ID::EdDSA:
-                ss.r = mpitoraw(algValues[0]);
-                ss.s = mpitoraw(algValues[1]);
+                if (algValues.size() > 1){
+                    ss.r = mpitoraw(algValues[0]);
+                    ss.s = mpitoraw(algValues[1]);
+                }
                 break;
             default:
                 syslog(LOG_ERR, "Not valid/implemented algorithm found: %i", ss.hashAlgorithm);
@@ -468,7 +471,7 @@ namespace Unpacker {
 
         PKA::Values algValues = k->get_mpi();
 
-        if (pk.version < 4) {
+        if (pk.version < 4 && algValues.size() > 1) {
             pk.algValue.at(0) = mpitoraw(algValues[1]);
             pk.algValue.at(1) = mpitoraw(algValues[0]);
         } else {
@@ -476,25 +479,33 @@ namespace Unpacker {
                 case PKA::ID::RSA_ENCRYPT_ONLY:
                 case PKA::ID::RSA_ENCRYPT_OR_SIGN:
                 case PKA::ID::RSA_SIGN_ONLY:
-                    pk.algValue.at(0) = mpitoraw(algValues[1]);
-                    pk.algValue.at(1) = mpitoraw(algValues[0]);
+                    if (algValues.size() > 1){
+                        pk.algValue.at(0) = mpitoraw(algValues[1]);
+                        pk.algValue.at(1) = mpitoraw(algValues[0]);
+                    }
                     break;
                 case PKA::ID::ELGAMAL:
-                    pk.algValue.at(2) = mpitoraw(algValues[0]);
-                    pk.algValue.at(4) = mpitoraw(algValues[1]);
-                    pk.algValue.at(5) = mpitoraw(algValues[2]);
+                    if (algValues.size() > 2){
+                        pk.algValue.at(2) = mpitoraw(algValues[0]);
+                        pk.algValue.at(4) = mpitoraw(algValues[1]);
+                        pk.algValue.at(5) = mpitoraw(algValues[2]);
+                    }
                     break;
                 case PKA::ID::DSA:
-                    pk.algValue.at(2) = mpitoraw(algValues[0]);
-                    pk.algValue.at(3) = mpitoraw(algValues[1]);
-                    pk.algValue.at(4) = mpitoraw(algValues[2]);
-                    pk.algValue.at(5) = mpitoraw(algValues[3]);
+                    if (algValues.size() > 3){
+                        pk.algValue.at(2) = mpitoraw(algValues[0]);
+                        pk.algValue.at(3) = mpitoraw(algValues[1]);
+                        pk.algValue.at(4) = mpitoraw(algValues[2]);
+                        pk.algValue.at(5) = mpitoraw(algValues[3]);
+                    }
                     break;
                 case PKA::ID::ECDSA:
                 case PKA::ID::EdDSA:
                 case PKA::ID::ECDH:
-                    pk.algValue.at(2) = mpitoraw(algValues[0]);
-                    pk.curve = hexlify(k->get_curve());
+                    if (algValues.size() > 1){
+                        pk.algValue.at(2) = mpitoraw(algValues[0]);
+                        pk.curve = hexlify(k->get_curve());
+                    }
                     break;
                 default:
                     syslog(LOG_WARNING, "Algorithm type (%i) for pubkey not found.", pk.pubAlgorithm);

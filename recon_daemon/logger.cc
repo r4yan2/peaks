@@ -14,7 +14,7 @@ Logger::~Logger(){
     logfile.close();
 }
 
-void Logger::log(Logger_level level, std::string what){
+void Logger::log(Logger_level level, std::string what, bool cont){
     std::string str_level;
     switch (level){
         case Logger_level::DEBUG: {
@@ -39,6 +39,16 @@ void Logger::log(Logger_level level, std::string what){
     auto t = std::time(nullptr);
     auto tm = *std::localtime(&t);
     mu.lock(); 
-    logfile << std::put_time(&tm, "%Y-%m-%d %H-%M-%S") << str_level << what << std::endl;
+    logfile << std::put_time(&tm, "%Y-%m-%d %H-%M-%S") << str_level << what;
+    if (!cont)
+        logfile << std::endl;
+    mu.unlock();
+}
+
+template <typename T> void Logger::log(std::vector<T> vec){
+    std::ostringstream os;
+    std::copy(vec.begin(), vec.end(), std::ostream_iterator<T>(os, " "));
+    mu.lock();
+    logfile << os.str() << std::endl;
     mu.unlock();
 }

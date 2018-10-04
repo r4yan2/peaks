@@ -8,6 +8,9 @@
 #include "exception.h"
 #include <string>
 #include <mutex>
+#include <vector>
+#include <ostream>
+#include <iterator>
 
 enum class Logger_level {DEBUG=0, WARNING=1, CRITICAL=2};
 
@@ -20,7 +23,8 @@ class Logger{
         Logger();
         void init(bool verb);
         ~Logger();
-        void log(Logger_level level, std::string what);
+        void log(Logger_level level, std::string what, bool cont=false);
+        template <typename T> void log(std::vector<T> vec);
 
 };
 
