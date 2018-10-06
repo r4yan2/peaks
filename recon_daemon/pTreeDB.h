@@ -32,7 +32,6 @@ public:
   Ptree(std::shared_ptr<RECON_DBManager> dbp, std::vector<NTL::ZZ_p> point);
   ~Ptree();
  
-  //getters
   pnode_ptr get_root();
   std::vector<NTL::ZZ_p> get_points();
   
@@ -44,14 +43,22 @@ public:
   //search for a specific node in the DB
   pnode_ptr get_node(const std::string &key);
 
+  /** check if a certain key is in the DB */
   bool has_key(const std::string &key);
+
+  /** insert ZZ into the prefix-tree */
   void insert(const NTL::ZZ_p &z);
+
+  /** insert an hash into the prefix-tree */
   void insert(const std::string &hash, bool build=false);
 
+  /** generate a new child for the given parent */
   pnode_ptr new_child(pnode_ptr parent, int child_index);
-  //insert a new node
+
+  /** insert a new node */
   pnode_ptr node(const bitset &key);
 
+  /** remove a node from the ptree*/
   void remove(const NTL::ZZ_p &z);
 };
 
@@ -77,33 +84,60 @@ public:
   
   std::string get_node_key();
   std::vector<NTL::ZZ_p> get_node_svalues();
+  
+  /** get the number of elements under the given node */
   int get_num_elements();
+
+  /** check if node is leaf */
   bool is_leaf();
+
+  /** get the elements stored in node */
   std::vector<NTL::ZZ_p> get_node_elements();
 
   void clear_node_elements();
   
+  /** fetch the children of current node */
   std::vector<pnode_ptr> children();
+
+  /** fetch a specific children of current node */
   pnode_ptr children(int c_index);
+
+  /** commit node to DB */
   void commit_node(bool newnode = false);
+
+  /** delete node from ptree */
   void delete_node();
   void delete_elements();
   void delete_element(const NTL::ZZ_p &elem);
   std::vector<NTL::ZZ_p> elements();
+
+  /** join a node when the threshold is reached */
   void join();
   void insert(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const bitset &bs, int depth);
   void insert_element(const NTL::ZZ_p &elem);
+
+  /** fetch next node in which element has to be inserted */
   int next(const bitset &bs, int depth);
+
+  /** helper for next (calculated as sks would) */
   int next_sks(const bitset &bs, int depth);
+  /** helper for next (calculated as hockeypuck would) */
   int next_hockeypuck(const bitset &bs, int depth);
+
+  /** get the pointer to the parent node */
   pnode_ptr parent();
   void remove(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const bitset &bs, int depth);
+
+  /** split a node when the threshold is reached */
   void split(int depth);
+
+  /** access the svalues */
   std::vector<NTL::ZZ_p> svalues();
   void update_svalues(const std::vector<NTL::ZZ_p> &marray, const NTL::ZZ_p &z);
 };
 
 
+/** MemTree is a special pTree kept in mem to speed up build process. */
 class MemTree: public Ptree{
     private:
         memnode_ptr root;
@@ -115,6 +149,8 @@ class MemTree: public Ptree{
         ~MemTree();
         std::vector<NTL::ZZ_p> get_points();
         memnode_ptr get_node(const std::string &key);
+
+	/** commit memtree to DB */
         void commit_memtree();
         memnode_ptr new_child(memnode_ptr parent, int child_index);
         memnode_ptr get_root();
@@ -122,10 +158,11 @@ class MemTree: public Ptree{
         void insert(const std::string &hash);
 };
 
+/** Mmenode is a special node which keep a reference to its children */
 class Memnode: public MemTree, public Pnode{
     private:
         std::vector<memnode_ptr> child_vec;
-		memnode_ptr shared_from_this();
+	memnode_ptr shared_from_this();
     public:
         Memnode();
         ~Memnode();

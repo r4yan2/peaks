@@ -12,23 +12,6 @@
 #include <algorithm>
 #include "Recon_settings.h"
 
-/*int create_folder(std::string directory){
-  boost::system::error_code returnedError;
-  if (boost::filesystem::exists(directory)){
-      std::cout << "Directory " << directory << " already exists" << "\n";
-    return 1;
-  } else {
-    boost::filesystem::create_directories(directory, returnedError);  
-    if (returnedError) {
-        std::cout << "Could not create directory (Maybe you miss the correct access right?)" << "\n";
-      return 2;
-    }
-  }
-  return 0;
-}
-*/
-
-
 namespace Utils{
 
 /** marshal NTL std::vector into suitable data for database insert */
@@ -52,8 +35,10 @@ template<typename I> static I get_random(I max_val){
     return static_cast <I> (rand()) / (static_cast <I> (RAND_MAX/max_val));
 }
 
+/** calculate ZZ int number from hex representation */
 NTL::ZZ_p hex_to_zz(const std::string &hash);
 
+/** generate hex string from ZZ number*/
 std::string zz_to_hex(const NTL::ZZ_p &num, int padding=32);
 
 /** swap endianess of an int */
