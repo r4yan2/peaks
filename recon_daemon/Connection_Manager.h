@@ -42,7 +42,7 @@ class Connection_Manager{
 
         /** init connection as client 
          * with given peer peer */
-        int init_peer(peertype peer);
+        int init_peer(peertype & peer const);
 
         /** init server listener on the given port */
         void setup_listener(int portno);
@@ -54,7 +54,7 @@ class Connection_Manager{
         /** acceptor (this is only the accept part, 
          * has to be called in a loop to be effective 
          */
-        std::pair<bool,peertype> acceptor(std::vector<std::string> addresses);
+        std::pair<bool,peertype> acceptor(std::vector<std::string> & addresses const);
         /** helper method to activate keep-alive
          * on a given socket
          */
@@ -82,7 +82,7 @@ class Connection_Manager{
 
         void send_message(Message*, bool tmp_socket=false);
 
-        void send_bulk_messages(std::vector<Message*>);
+        void send_bulk_messages(std::vector<Message*> &);
 
         void send_message_direct(Message*);
 
@@ -92,8 +92,8 @@ class Connection_Manager{
         /** send a sks-type message */
         void write_message(Buffer &buffer, Message* m, bool wrap=true);
 
-
-        void early_fail(std::string);
+	/** fail accordingly to the error passed */
+        void early_fail(std::string&);
 };
 
 #endif

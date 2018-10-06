@@ -6,7 +6,7 @@ Buffer::Buffer(int size){
     bzero(buf.data(), buf.size());
 }
 
-Buffer::Buffer(std::string initializer){
+Buffer::Buffer(std::string &initializer const){
     buf = std::vector<unsigned char>(initializer.begin(), initializer.end());
     it = buf.begin();
 }
@@ -49,38 +49,38 @@ void Buffer::write_int(int to_write){
     for (int i=3; i>=0; i--) buf.push_back(ptr[i]);
 }
 
-void Buffer::append(Buffer other){
+void Buffer::append(Buffer &other const){
     std::vector<unsigned char> v = other.vector();
     buf.insert(buf.end(), v.begin(), v.end());
 }
 
-void Buffer::write_zset(zset to_write){
+void Buffer::write_zset(zset &to_write const){
     write_zz_array(to_write.elements());
 }
 
-void Buffer::write_bitset(bitset to_write){
+void Buffer::write_bitset(bitset &to_write const){
     write_int(to_write.size());
     write_bytes(to_write.rep());
 }
 
-void Buffer::write_string(std::string to_write){
+void Buffer::write_string(std::string &to_write const){
     write_int(to_write.size());
     buf.insert(buf.end(),to_write.begin(),to_write.end());
 }
 
-void Buffer::write_bytes(std::vector<unsigned char> to_write){
+void Buffer::write_bytes(std::vector<unsigned char> &to_write const){
     write_int(to_write.size());
     buf.insert(buf.end(),to_write.begin(),to_write.end());
 }
 
-void Buffer::write_zz_array(std::vector<NTL::ZZ_p> to_write){
+void Buffer::write_zz_array(std::vector<NTL::ZZ_p> &to_write const){
     write_int(to_write.size());
     for (size_t i=0; i<to_write.size(); i++) 
         write_zz_p(to_write[i]);
     g_logger.log(Logger_level::DEBUG, "Wrote NTL::ZZ_p array to buffer succesfully");
 }
 
-void Buffer::write_zz_p(NTL::ZZ_p to_write, int pad_to){
+void Buffer::write_zz_p(NTL::ZZ_p &to_write const, int pad_to){
     //reinit of the module is needed, otherwise ntl will
     //complain
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(recon_settings.P_SKS_STRING.c_str()));

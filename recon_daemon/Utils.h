@@ -32,10 +32,10 @@
 namespace Utils{
 
 /** marshal NTL std::vector into suitable data for database insert */
-std::string marshall_vec_zz_p(std::vector<NTL::ZZ_p> elements);
+std::string marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements);
 
 /** unmarshal NTL std::vector coming from a database query */
-std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(std::string blob);
+std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(const std::string &blob);
 
 /** calculate Zpoints for the current number of samples */
 std::vector<NTL::ZZ_p> Zpoints(int num_samples);
@@ -43,18 +43,18 @@ std::vector<NTL::ZZ_p> Zpoints(int num_samples);
 /** convert a number in finite field (ZZ_p) into a bitstring representation */
 //boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
 
-std::string ZZp_to_bitstring(NTL::ZZ_p num);
+std::string ZZp_to_bitstring(const NTL::ZZ_p &num);
 
-NTL::ZZ_p bytes_to_zz(std::vector<unsigned char> bytes);
+NTL::ZZ_p bytes_to_zz(const std::vector<unsigned char> &bytes);
 
 /** generate a random number bounded by max_val */
 template<typename I> static I get_random(I max_val){
     return static_cast <I> (rand()) / (static_cast <I> (RAND_MAX/max_val));
 }
 
-NTL::ZZ_p hex_to_zz(std::string hash);
+NTL::ZZ_p hex_to_zz(const std::string &hash);
 
-std::string zz_to_hex(NTL::ZZ_p num, int padding=32);
+std::string zz_to_hex(const NTL::ZZ_p &num, int padding=32);
 
 /** swap endianess of an int */
 int swap(int d);

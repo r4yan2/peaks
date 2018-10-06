@@ -67,7 +67,7 @@ class Peer{
         std::vector<peertype> membership;
     public:
         /** constructor take a ptree on which operate */ 
-        Peer(Ptree new_tree);
+        Peer(Ptree &new_tree);
 
         /** choose random peer partner among the
          * one specified in membership
@@ -84,16 +84,16 @@ class Peer{
         void start_client();
 
         /** recon as client with choosen peer */
-        void client_recon(peertype);
+        void client_recon(peertype&);
 
         void gossip(); /**< recon as client */
 
         void serve(); /**< recon as server */
 
-        void interact_with_client(peertype remote_peer);
+        void interact_with_client(peertype &remote_peer);
 
         /** fetch the given element from the peer */
-        void fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems);
+        void fetch_elements(peertype &peer const, std::vector<NTL::ZZ_p> &elems const);
 
         /** handler of recon request poly messages */
         Communication request_poly_handler(ReconRequestPoly* req);
@@ -102,10 +102,10 @@ class Peer{
         Communication request_full_handler(ReconRequestFull* req);
 
         /** implementation of linear interpolation */
-        std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> solve(std::vector<NTL::ZZ_p> r_samples, int r_size, std::vector<NTL::ZZ_p> l_samples, int l_size, std::vector<NTL::ZZ_p> points);
+        std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> solve(std::vector<NTL::ZZ_p> &r_samples const, int r_size, std::vector<NTL::ZZ_p> &l_samples const, int l_size, std::vector<NTL::ZZ_p> &points const);
 
         /** method used to request a chunk of data from the other peer */
-        std::vector<std::string> request_chunk(peertype peer, std::vector<NTL::ZZ_p> elements);
+        std::vector<std::string> request_chunk(peertype &peer const, std::vector<NTL::ZZ_p> &elements const);
 };
 
 class Recon_manager{
@@ -118,18 +118,18 @@ class Recon_manager{
         Connection_Manager cn;
         int clientfd;
     public:
-        Recon_manager(Connection_Manager conn_manager);
+        Recon_manager(Connection_Manager &conn_manager);
         ~Recon_manager();
-        void push_bottom(bottom_entry bottom);
-        void prepend_request(request_entry requests);
-        void push_request(request_entry request);
+        void push_bottom(bottom_entry &bottom);
+        void prepend_request(request_entry &requests);
+        void push_request(request_entry &request);
         bottom_entry top_bottom();
         bottom_entry pop_bottom();
         request_entry pop_request();
         bool done();
         bool bottom_queue_empty();
-        void send_request(request_entry request);
-        void handle_reply(Message* msg,request_entry request);
+        void send_request(request_entry &request);
+        void handle_reply(Message* msg,request_entry &request);
         void flush_queue();
         void toggle_flush(bool new_state);
         int bottom_queue_size();

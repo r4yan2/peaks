@@ -1,22 +1,22 @@
 #include "peer.h"
 
-Recon_manager::Recon_manager(Connection_Manager conn_manager){
+Recon_manager::Recon_manager(Connection_Manager &conn_manager){
     cn = conn_manager;
 }
 
 Recon_manager::~Recon_manager(){}
 
-void Recon_manager::push_bottom(bottom_entry bottom){
+void Recon_manager::push_bottom(bottom_entry &bottom){
     bottom_queue.push_back(bottom);
 }
 
-void Recon_manager::prepend_request(request_entry req){
+void Recon_manager::prepend_request(request_entry &req){
     if (request_queue.size() < recon_settings.max_request_queue_len){
         request_queue.push_front(req);
     }
 }
 
-void Recon_manager::push_request(request_entry request){
+void Recon_manager::push_request(request_entry &request){
     request_queue.push_back(request);
 }
 
@@ -63,7 +63,7 @@ bool Recon_manager::bottom_queue_empty(){
     return bottom_queue.empty();
 }
 
-void Recon_manager::send_request(request_entry request){
+void Recon_manager::send_request(request_entry &request){
     Message* msg;
     if ((request.node->is_leaf()) || (request.node->get_num_elements() < recon_settings.split_threshold)){
         msg = new ReconRequestFull;
@@ -79,7 +79,7 @@ void Recon_manager::send_request(request_entry request){
     bottom_queue.push_back(bottom_entry{.request = request});
 }
 
-void Recon_manager::handle_reply(Message* msg, request_entry request){
+void Recon_manager::handle_reply(Message* msg, request_entry &request){
     g_logger.log(Logger_level::DEBUG, "handling message type " + std::to_string(msg->type));
     switch (msg->type){
         case (Msg_type::SyncFail):

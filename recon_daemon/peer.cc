@@ -1,6 +1,6 @@
 #include "peer.h"
 
-Peer::Peer(Ptree new_tree){
+Peer::Peer(Ptree &new_tree){
     tree = new_tree;
     cn = Connection_Manager();
     std::ifstream f("membership");
@@ -73,7 +73,7 @@ void Peer::serve(){
     }
 }
 
-void Peer::fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems){
+void Peer::fetch_elements(peertype &peer const, std::vector<NTL::ZZ_p> &elems const){
 
     g_logger.log(Logger_level::DEBUG, "Should recover " + std::to_string(elems.size()) + " elements, starting double elements check...");
     std::vector<NTL::ZZ_p> elements;
@@ -119,7 +119,7 @@ void Peer::fetch_elements(peertype peer, std::vector<NTL::ZZ_p> elems){
     g_logger.log(Logger_level::DEBUG, "inserted " + std::to_string(hashes.size()) + " hashes into ptree");
 }
 
-std::vector<std::string> Peer::request_chunk(peertype peer, std::vector<NTL::ZZ_p> chunk){
+std::vector<std::string> Peer::request_chunk(peertype &peer const, std::vector<NTL::ZZ_p> &chunk const){
     Buffer buffer;
     buffer.write_int(chunk.size());
     for (auto zp: chunk){
@@ -151,7 +151,7 @@ std::vector<std::string> Peer::request_chunk(peertype peer, std::vector<NTL::ZZ_
     return keys;
 }
 
-void Peer::interact_with_client(peertype remote_peer){
+void Peer::interact_with_client(peertype &remote_peer){
     Recon_manager recon = Recon_manager(cn);
     pnode_ptr root = tree.get_root();
     bitset newset(0);
@@ -235,7 +235,7 @@ void Peer::gossip(){
     }
 }
 
-void Peer::client_recon(peertype peer){
+void Peer::client_recon(peertype &peer const){
     g_logger.log(Logger_level::DEBUG, "Starting recon as client with peer " + peer.first + ", http_port " + std::to_string(peer.second));
     zset response;
     std::vector<Message*> pending;
@@ -319,7 +319,7 @@ void Peer::client_recon(peertype peer){
     }
 }
 
-std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(std::vector<NTL::ZZ_p> r_samples, int r_size, std::vector<NTL::ZZ_p> l_samples, int l_size, std::vector<NTL::ZZ_p> points){
+std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(std::vector<NTL::ZZ_p> &r_samples const, int r_size, std::vector<NTL::ZZ_p> &l_samples const, int l_size, std::vector<NTL::ZZ_p> &points const){
     std::vector<NTL::ZZ_p> values;
     for (size_t i=0; i < r_samples.size(); i++)
         values.push_back(r_samples[i]/l_samples[i]);
