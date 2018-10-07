@@ -33,3 +33,21 @@ The main **peaks** executable accept the following commands:
 * build - proceed to create the ptree
 * serve - serve the pgp infrastructure through the web interface
 * recon - start reconing with other peers
+
+For the basic (and only) keyserver setup use the following commands:
+
+```./peaks import -p path-to-keydump```
+
+Will init the database with the keydump
+
+```./peaks build```
+
+Will init the ptree with the content of the database
+
+```./peaks serve -c config.js```
+
+Will start the web interface
+
+```./peaks recon```
+
+Will start reconing with the peers defined in your membership file
