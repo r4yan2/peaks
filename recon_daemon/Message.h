@@ -51,12 +51,32 @@ class Buffer{
         /** iterator used to read from the buf vector */
         std::vector<unsigned char>::iterator it;
     public:
+	/** default constructor */
         Buffer();
+        /** 
+	 * buffer constructor with size specifier
+         * @param size of the buffer
+        */
         Buffer(int);
+
+	/**
+	 * buffer constructor with given content
+         * @param string which init buffer
+         */
         Buffer(std::string& const);
+
+	/** access to the underliyng std::vector data */
         unsigned char* data();
+
+        /** return size of the buffer */
         int size();
+
+	/** set the buffer to read only, so initialize the iterator
+         * from this moment the buffer should be accessed only to read
+	 * @WARNING the read-only logic is only conventional and not implemented yet!
+	 */ 
         void set_read_only();
+
         std::vector<unsigned char> vector();
         std::string to_str();
 

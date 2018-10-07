@@ -27,15 +27,21 @@
 
 enum class Communication_status {NONE, ERROR, DONE};
 
-/** Communication struct is needed to 
+/** 
+ * Communication struct is needed to 
  * keep track of the messages between 
  * server and client.
  */
 struct Communication{
+    /** samples resulting from the current communication */
     zset samples;
+    /** flag to mark if queued messages has to be send */
     bool send;
+    /** status of the current message exchange */
     Communication_status status;
+    /** Messages generated from the current message exchange */
     std::vector<Message*> messages;
+    /** Default constructor for this struct, set send to false and communication status to None */
     Communication():send(false), status(Communication_status::NONE){}
 };
 
@@ -53,7 +59,7 @@ struct bottom_entry{
     uint8_t state;
 };
 
-/** Peer class represent a peer during recon.
+/**Peer class represent a peer during recon.
  * This class hold all the main code needed
  * for recon.
  */
@@ -66,7 +72,10 @@ class Peer{
         /** hold the list of peers specified in membership file */
         std::vector<peertype> membership;
     public:
-        /** constructor take a ptree on which operate */ 
+        /** 
+         * constructor take a ptree on which operate
+         * @param new_tree Init with the reference to the curren ptree
+         */ 
         Peer(Ptree &new_tree);
 
         /** choose random peer partner among the
@@ -83,16 +92,27 @@ class Peer{
         /** start only client recon */
         void start_client();
 
-        /** recon as client with choosen peer */
+        /** 
+         * @param Choosen peer from membership file
+         * recon as client with choosen peer
+         */
         void client_recon(peertype&);
 
         void gossip(); /**< recon as client */
 
         void serve(); /**< recon as server */
 
+        /**
+         * Manage interaction with the client during recon
+         * @param remote_peer peer client
+         */
         void interact_with_client(peertype &remote_peer);
 
-        /** fetch the given element from the peer */
+        /** 
+         * fetch the given element from the peer 
+         * @param peer peer from which to fetch elements
+         * @param elems elements to recover
+         */
         void fetch_elements(peertype &peer const, std::vector<NTL::ZZ_p> &elems const);
 
         /** handler of recon request poly messages */
@@ -108,6 +128,9 @@ class Peer{
         std::vector<std::string> request_chunk(peertype &peer const, std::vector<NTL::ZZ_p> &elements const);
 };
 
+/**
+ * Manage the messages queue during recon
+ */
 class Recon_manager{
     private:
         std::deque<request_entry> request_queue;
@@ -138,4 +161,4 @@ class Recon_manager{
         std::vector<NTL::ZZ_p> elements();
 };
 
-#endif //RECON_PEER_H 
+#endif //RECON_PEER_H
