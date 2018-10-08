@@ -3,7 +3,7 @@
 Ptree::Ptree(){
 }
 
-Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbp, std::vector<NTL::ZZ_p> point){
+Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbp, const std::vector<NTL::ZZ_p> &point){
   root = NULL;
   dbm = dbp;
   points = point;
@@ -19,7 +19,7 @@ std::vector<NTL::ZZ_p>Ptree::get_points(){
   return points;
 }
 
-std::vector<NTL::ZZ_p> Ptree::add_element_array(NTL::ZZ_p z){
+std::vector<NTL::ZZ_p> Ptree::add_element_array(const NTL::ZZ_p &z){
   std::vector<NTL::ZZ_p> marray(points.size());
   for(size_t i=0; i<points.size(); i++){
     marray[i] = points[i] - z;
@@ -31,7 +31,7 @@ std::vector<NTL::ZZ_p> Ptree::add_element_array(NTL::ZZ_p z){
   return marray;
 }
 
-std::vector<NTL::ZZ_p> Ptree::delete_element_array(NTL::ZZ_p z){
+std::vector<NTL::ZZ_p> Ptree::delete_element_array(const NTL::ZZ_p &z){
   std::vector<NTL::ZZ_p> marray(points.size());
   for(size_t i=0; i<points.size(); i++){
     marray[i] = inv(points[i] - z);
@@ -50,7 +50,7 @@ void Ptree::create(){
   }
 }
 
-pnode_ptr Ptree::get_node(std::string key){
+pnode_ptr Ptree::get_node(const std::string &key){
   DBStruct::node n = dbm->get_node(key);
   std::vector<NTL::ZZ_p> node_elements = Utils::unmarshall_vec_zz_p(n.elements);
   std::vector<NTL::ZZ_p> node_svalues = Utils::unmarshall_vec_zz_p(n.svalues);
@@ -63,16 +63,16 @@ pnode_ptr Ptree::get_node(std::string key){
   return nd;
 }
 
-bool Ptree::has_key(std::string key){
+bool Ptree::has_key(const std::string &key){
   return dbm->check_key(key);
 }
 
-void Ptree::insert(std::string hash, bool build){
+void Ptree::insert(const std::string &hash, bool build){
     NTL::ZZ_p elem = Utils::hex_to_zz(hash);
     insert(elem);
 }
 
-void Ptree::insert(NTL::ZZ_p z){
+void Ptree::insert(const NTL::ZZ_p &z){
     bitset bs(z);
     pnode_ptr root_node = get_root();
     std::vector<NTL::ZZ_p> marray = add_element_array(z);
@@ -120,7 +120,7 @@ pnode_ptr Ptree::new_child(pnode_ptr parent, int child_index){
   return n;
 }
 
-pnode_ptr Ptree::node(bitset key){
+pnode_ptr Ptree::node(const bitset &key){
    
     std::string str_key;
     if (key.size() == 0)
@@ -144,7 +144,7 @@ pnode_ptr Ptree::node(bitset key){
     return n;
 }
 
-void Ptree::remove(NTL::ZZ_p z){
+void Ptree::remove(const NTL::ZZ_p &z){
   bitset bs(z);
   std::string key = bs.to_string();
   try{
@@ -161,7 +161,7 @@ void Ptree::remove(NTL::ZZ_p z){
 
 Pnode::Pnode(){}
 
-Pnode::Pnode(std::shared_ptr<RECON_DBManager> dbp, std::vector<NTL::ZZ_p> point){
+Pnode::Pnode(std::shared_ptr<RECON_DBManager> dbp, const std::vector<NTL::ZZ_p> &point){
     dbm = dbp;
     num_elements = 0;
     points = point;
@@ -189,7 +189,7 @@ std::vector<NTL::ZZ_p> Pnode::get_node_elements(){
     return node_elements;
 }
 
-void Pnode::set_node_key(std::string new_key){
+void Pnode::set_node_key(const std::string &new_key){
     node_key = new_key;
 }
 
@@ -197,11 +197,11 @@ void Pnode::set_num_elements(int num){
     num_elements = num;
 }
 
-void Pnode::set_node_svalues(std::vector<NTL::ZZ_p> new_values){
+void Pnode::set_node_svalues(const std::vector<NTL::ZZ_p> &new_values){
     node_svalues = new_values;
 }
 
-void Pnode::set_node_elements(std::vector<NTL::ZZ_p> new_elements){
+void Pnode::set_node_elements(const std::vector<NTL::ZZ_p> &new_elements){
     node_elements = new_elements;
 }
 
@@ -309,7 +309,7 @@ void Pnode::delete_elements(){
   commit_node();
 }
 
-void Pnode::delete_element(NTL::ZZ_p elem){
+void Pnode::delete_element(const NTL::ZZ_p &elem){
   std::vector<NTL::ZZ_p> new_elements;
   for (auto element : node_elements){
     if (element != elem) new_elements.push_back(element);  
@@ -351,11 +351,11 @@ void Pnode::join(){
   commit_node();
 }
 
-void Pnode::insert_element(NTL::ZZ_p elem){
+void Pnode::insert_element(const NTL::ZZ_p &elem){
   node_elements.push_back(elem);
 }
 
-int Pnode::next(bitset bs, int depth){
+int Pnode::next(const bitset &bs, int depth){
     int key;
     int h_key = next_hockeypuck(bs, depth);
     int s_key = next_sks(bs, depth);
@@ -367,7 +367,7 @@ int Pnode::next(bitset bs, int depth){
     return key;
 }
 
-int Pnode::next_hockeypuck(bitset bs, int depth){
+int Pnode::next_hockeypuck(const bitset &bs, int depth){
   if (is_leaf()){
     throw std::invalid_argument("il nodo è una foglia e tu vorresti i successori?");
   }
@@ -379,7 +379,7 @@ int Pnode::next_hockeypuck(bitset bs, int depth){
   return childIndex;
 }
 
-int Pnode::next_sks(bitset bs, int depth){
+int Pnode::next_sks(const bitset &bs, int depth){
     int lowbit = depth * recon_settings.bq;
     int highbit = lowbit + recon_settings.bq - 1;
     int lowbyte = lowbit / 8;
@@ -439,7 +439,7 @@ pnode_ptr Pnode::parent(){
   return parent;
 }
  
-void Pnode::remove(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth){
+void Pnode::remove(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const bitset &bs, int depth){
   pnode_ptr cur_node = shared_from_this();
   while(1){
     cur_node->update_svalues(marray,z);
@@ -482,14 +482,14 @@ void Pnode::remove(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int de
   cur_node->commit_node();
 }
 
-void Pnode::update_svalues(std::vector<NTL::ZZ_p> marray, NTL::ZZ_p z){
+void Pnode::update_svalues(const std::vector<NTL::ZZ_p> &marray, const NTL::ZZ_p &z){
   if (marray.size() != get_points().size()) g_logger.log(Logger_level::CRITICAL, "marray and points do not have the same size");
   for (size_t i=0; i < marray.size(); i++){
       node_svalues[i] = node_svalues[i] * marray[i];
   }
 }
 
-void Pnode::insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth){
+void Pnode::insert(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const bitset &bs, int depth){
     pnode_ptr cur_node(shared_from_this());
     while(1){
         cur_node->update_svalues(marray, z);
@@ -519,7 +519,7 @@ void Pnode::insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int de
 MemTree::MemTree(){}
 MemTree::~MemTree(){}
 
-MemTree::MemTree(std::shared_ptr<RECON_DBManager> newdbm, std::vector<NTL::ZZ_p> new_points){
+MemTree::MemTree(std::shared_ptr<RECON_DBManager> newdbm, const std::vector<NTL::ZZ_p> &new_points){
     dbm = newdbm;
     points = new_points;
     root = new_child(NULL, 0);
@@ -529,7 +529,7 @@ std::vector<NTL::ZZ_p> MemTree::get_points(){
     return points;
 }
 
-memnode_ptr MemTree::get_node(std::string key){
+memnode_ptr MemTree::get_node(const std::string &key){
     std::queue<memnode_ptr> node_list;
     memnode_ptr cur_node = get_root();
     bool not_found = true;
@@ -599,7 +599,7 @@ memnode_ptr Memnode::shared_from_this(){
     return std::static_pointer_cast<Memnode>(Pnode::shared_from_this());	
 }
 
-void Memnode::insert(NTL::ZZ_p z, std::vector<NTL::ZZ_p> marray, bitset bs, int depth){
+void Memnode::insert(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const bitset &bs, int depth){
     memnode_ptr cur_node = shared_from_this();
     while(1){
         cur_node->update_svalues(marray, z);
@@ -691,12 +691,12 @@ void MemTree::commit_memtree(){
     }
 }
 
-void MemTree::insert(std::string hash){
+void MemTree::insert(const std::string &hash){
     NTL::ZZ_p elem = Utils::hex_to_zz(hash);
     insert(elem);
 }
 
-void MemTree::insert(NTL::ZZ_p z){
+void MemTree::insert(const NTL::ZZ_p &z){
     bitset bs(z);
     memnode_ptr root_node = get_root();
     std::vector<NTL::ZZ_p> marray = add_element_array(z);

@@ -16,10 +16,10 @@ class Bitset{
         int n_bits;
     public:
         Bitset();
-        Bitset(int nbits);
-        Bitset(NTL::ZZ_p);
-        Bitset(bytestype newbytes);
-        Bitset(std::string bitstring);
+        Bitset(int &nbits);
+        Bitset(const NTL::ZZ_p&);
+        Bitset(const bytestype &newbytes);
+        Bitset(const std::string &bitstring);
 
         int size();
         int num_blocks();
@@ -30,7 +30,7 @@ class Bitset{
         void set(int bitpos);
         void clear(int bitpos);
 
-		std::string to_string();
+	std::string to_string();
 };
 
 #endif

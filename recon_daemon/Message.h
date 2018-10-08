@@ -51,12 +51,32 @@ class Buffer{
         /** iterator used to read from the buf vector */
         std::vector<unsigned char>::iterator it;
     public:
+	/** default constructor */
         Buffer();
+        /** 
+	 * buffer constructor with size specifier
+         * @param size of the buffer
+        */
         Buffer(int);
-        Buffer(std::string);
+
+	/**
+	 * buffer constructor with given content
+         * @param string which init buffer
+         */
+        Buffer(std::string& const);
+
+	/** access to the underliyng std::vector data */
         unsigned char* data();
+
+        /** return size of the buffer */
         int size();
+
+	/** set the buffer to read only, so initialize the iterator
+         * from this moment the buffer should be accessed only to read
+	 * @WARNING the read-only logic is only conventional and not implemented yet!
+	 */ 
         void set_read_only();
+
         std::vector<unsigned char> vector();
         std::string to_str();
 
@@ -69,26 +89,26 @@ class Buffer{
          * First write the length of the string
          * Then write the string itself.
          */
-        void write_string(std::string);
+        void write_string(std::string& const);
 
         /** write a byte string to the buffer.
          * Like write_string
          */
-        void write_bytes(std::vector<unsigned char>);
+        void write_bytes(std::vector<unsigned char>& const);
 
         /** write a set composed of ZZ_p elements.
          * First write the length of the zset
          * Then proceed to write elements one by one
          * using the appropriate method
          */
-        void write_zset(zset);
+        void write_zset(zset& const);
 
         /** write a bitstring.
          * First write the bitlength of the string
          * Then proceed to write the bitstring as a
          * common string, using its byte representation.
          */
-        void write_bitset(bitset);
+        void write_bitset(bitset& const);
 
         /** write a ZZ_p type number to the buffer.
          * The byte representation of the number
@@ -96,14 +116,14 @@ class Buffer{
          * the resulting byte string
          * is sent as a byte string
          */
-        void write_zz_p(NTL::ZZ_p, int pad_to = recon_settings.sks_zp_bytes);
+        void write_zz_p(NTL::ZZ_p& const, int pad_to = recon_settings.sks_zp_bytes);
 
         /** write an array of ZZ_p elements.
          * First write the length of the zset
          * Then proceed to write elements one by one
          * using the appropriate method
          */
-        void write_zz_array(std::vector<NTL::ZZ_p>);
+        void write_zz_array(std::vector<NTL::ZZ_p>& const);
 
         /** write the len of buf array.
          * This is the last write before sending
@@ -175,7 +195,7 @@ class Buffer{
         /** Append another buffer to the
          * end of this.
          */
-        void append(Buffer other);
+        void append(Buffer other& const);
 };
 
 /** Abstract message struct.
@@ -197,7 +217,7 @@ struct ReconRequestPoly: Message{
     int size;
     std::vector<NTL::ZZ_p> samples;
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 /** Recon Request Full type message.
@@ -210,7 +230,7 @@ struct ReconRequestFull: Message{
     bitset prefix;
     zset samples;
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 /** Elements type message.
@@ -222,7 +242,7 @@ struct Elements: Message{
     Elements():Message(Msg_type::Elements){}
     zset samples;
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 /** FullElements type message.
@@ -234,7 +254,7 @@ struct FullElements: Message{
     FullElements():Message(Msg_type::FullElements){}
     zset samples;
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 /** SyncFail type message.
@@ -244,7 +264,7 @@ struct FullElements: Message{
 struct SyncFail: Message{
     SyncFail():Message(Msg_type::SyncFail){}
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 /** Done type message.
@@ -254,7 +274,7 @@ struct SyncFail: Message{
 struct Done: Message{
     Done():Message(Msg_type::Done){}
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 /** Flush type message.
@@ -265,7 +285,7 @@ struct Done: Message{
 struct Flush: Message{
     Flush():Message(Msg_type::Flush){}
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 /** Error type message.
@@ -277,21 +297,21 @@ struct Error: Message{
     Error():Message(Msg_type::Error){}
     std::string text;
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 struct DBRequest: Message{
     DBRequest():Message(Msg_type::DBRequest){}
     std::string text;
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 struct DBReply: Message{
     DBReply():Message(Msg_type::DBReply){}
     std::string text;
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 /** Struct for sending peer data.
@@ -309,7 +329,7 @@ struct Peer_config: Message{
     std::string filters;
     std::map<std::string, std::string> other;
     void marshal(Buffer &buf);
-    void unmarshal(Buffer buf);
+    void unmarshal(Buffer &buf const);
 };
 
 /** Struct for sending a mismatch in config.

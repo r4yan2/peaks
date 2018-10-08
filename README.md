@@ -1,17 +1,53 @@
-# Peaks_Code
+# Peaks
+## Compile
+### Dependencies
 
-Usare schema.sql per generare il database
+* Boost Libraries
+	* System
+	* Filesystem
+	* Program Options
+* cppcms
+* mysqlcppconnector
+* OpenPGP: switch to branch *pks_branch* and compile with ```make gpg-compatible```
+* NTL and GMP: exec ```./compile_libraries.sh release```
 
-Libreria OpenPGP: usare branch *pks_branch* e compilare con ```make gpg-compatible```
+### Database
 
-Librerie NTL e GMP: lanciare ```./compile_libraries.sh release```
+Use schema.sql to init Mysql DB
 
-Applicativi C++: compilare con
+### Peaks
+
 ```bash
 mkdir build && cd build/ \
 && cmake -DCMAKE_BUILD_TYPE=Release .. \
-&& make -j4
+&& make -j$(nproc-1)
 ```
-L'eseguibile verrà creato nella sottocartella *bin*.
 
-Recon Daemon: compilare con il classico *make*
+The binary will output in the **/bin** subdirectory
+
+## Usage
+
+The main **peaks** executable accept the following commands:
+
+* import - will import the pgp dump into the database
+* build - proceed to create the ptree
+* serve - serve the pgp infrastructure through the web interface
+* recon - start reconing with other peers
+
+For the basic (and only) keyserver setup use the following commands:
+
+```./peaks import -p path-to-keydump```
+
+Will init the database with the keydump
+
+```./peaks build```
+
+Will init the ptree with the content of the database
+
+```./peaks serve -c config.js```
+
+Will start the web interface
+
+```./peaks recon```
+
+Will start reconing with the peers defined in your membership file

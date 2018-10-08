@@ -25,7 +25,7 @@ void Connection_Manager::setup_listener(int portno){
     listen(listenfd, 10);
 }
 
-std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> addresses){
+std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> & addresses const){
     peertype remote_peer;
     struct sockaddr_in client_addr;
     socklen_t clilen = sizeof(client_addr);
@@ -92,7 +92,7 @@ bool Connection_Manager::toggle_keep_alive(int toggle, int idle, int interval, i
     return true;
 }
 
-int Connection_Manager::init_peer(peertype peer){
+int Connection_Manager::init_peer(peertype & peer const){
     int portno;
     struct sockaddr_in serv_addr;
     struct hostent *server;
@@ -436,7 +436,7 @@ void Connection_Manager::send_message(Message* m, bool tmp_socket){
     send_peer(buf, tmp_socket);
 }
 
-void Connection_Manager::send_bulk_messages(std::vector<Message*> messages){
+void Connection_Manager::send_bulk_messages(std::vector<Message*> &messages){
     Buffer buf;
     for (Message* m: messages)
         write_message(buf, m);

@@ -18,9 +18,9 @@ namespace po = boost::program_options;
 void help();
 void parse_config(std::string filename);
 void serve(int argc, char* argv[]);
-void import(int argc, char* argv[]);
-void build();
-void recon(int mode);
+void import(po::variables_map vm);
+void build(po::variables_map vm);
+void recon(po::variables_map vm);
 char* convert(const std::string & s);
 std::vector<NTL::ZZ_p> parse_custom_hash_file();
 
@@ -44,39 +44,34 @@ int main(int argc, char* argv[]){
 
 	    std::string cmd = vm["command"].as<std::string>();
 
-        std::string filename = "recon_config";
-        parse_config(filename);
-        g_logger.init(vm.count("debug"));
+            std::string filename = "recon_config";
+            parse_config(filename);
 
 	    if (cmd == "serve"){
             po::options_description serve_desc("serve options");
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-            //should erase first, but insted pass from 1
-            //opts.erase(opts.begin());
             std::vector<char *> new_argv;
             std::transform(opts.begin(), opts.end(), std::back_inserter(new_argv), convert);
             serve(opts.size(), &new_argv[0]);
 	    }
-	    else if (cmd == "build"){
+            else if (cmd == "build"){
             po::options_description build_desc("build options");
             build();
-        }
-        else if (cmd == "import"){
+            }
+            else if (cmd == "import"){
             po::options_description import_desc("import options");
             import_desc.add_options()
-                ("t", po::value<int>(), "set number of threads")
-                ("k", po::value<int>(), "set how many keys a thread has to analyze")
-	            ("p", po::value<std::string>(), "path to the dump");
+                ("threads, t", po::value<unsigned int>(), "set number of threads")
+                ("key, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
+	        ("path, p", po::value<std::string>(), "path to the dump")
+                ("help, h", "peaks import help");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-            //opts.erase(opts.begin());
-            std::vector<char *> new_argv;
-            std::transform(opts.begin(), opts.end(), std::back_inserter(new_argv), convert);
-            import(opts.size(), &new_argv[0]);
-
-            //po::store(po::command_line_parser(opts).options(import_desc).run(), vm);	
-	    }
-        else if (cmd == "recon"){
+            opts.erase(opts.begin());
+            po::store(po::command_line_parser(opts).options(recon_Desc).run(), vm);
+            import(vm);
+            }
+            else if (cmd == "recon"){
             po::options_description recon_desc("recon options");
             recon_desc.add_options()
                 ("server-only", "start only sever part of recon")
@@ -84,15 +79,11 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(recon_desc).run(), vm);	
-            if (vm.count("server-only") == 1)
-                recon(1);
-            else if (vm.count("client-only") == 1)
-                recon(2);
-            else recon(0);
-        }
-        else {
-            help();
-        }
+            recon(vm);
+            }
+            else{
+                help();
+            }
  
     po::notify(vm); // throws on error, so do after help in case 
                       // there are any problems 
@@ -113,7 +104,7 @@ int main(int argc, char* argv[]){
 void help(){
 
     std::cout << "Usage:" << std::endl;
-    std::cout << "recon_daemon [-d|--debug] command [command-options]" << std::endl;
+    std::cout << "peaks [-d|--debug] command [command-options]" << std::endl;
     std::cout << std::endl;
     std::cout << "-d enable more verbose log" << std::endl;
     std::cout << "Commands:" << std::endl;
@@ -213,7 +204,8 @@ std::vector<NTL::ZZ_p> parse_custom_hash_file(){
     return res;
 }
 
-void build(){
+//PEAKS_PTREE_BUILDER
+void build(po::variables_map vm){
     
     std::cout << "Starting ptree builder" << std::endl;
     const std::vector<NTL::ZZ_p> points = Utils::Zpoints(recon_settings.num_samples);
@@ -241,13 +233,13 @@ void build(){
     dbm->lockTables();
     tree.commit_memtree();
     dbm->unlockTables();
-    g_logger.log(Logger_level::DEBUG, "populated ptree");
     std::cout << "Inserted " << entries << " entry!" << std::endl; 
-    std::cout << "Finished! Now recon without -b to start reconing!" << std::endl; 
+    std::cout << "Finished! Now start reconing with 'peaks recon'!" << std::endl; 
     exit(0);
 }
 
-void recon(int mode){
+//PEAKS_RECON_DAEMON
+void recon(po::varialbes_map vm){
 
     std::cout << "Starting recon_daemon" << std::endl;
     const std::vector<NTL::ZZ_p> points = Utils::Zpoints(recon_settings.num_samples);
@@ -255,17 +247,16 @@ void recon(int mode){
     Ptree tree(dbm, points);
     tree.create();
     Peer peer = Peer(tree);
-    if (mode == 0)
-        peer.start();
-    else if (mode == 1)
+    if (vm.count("server-only"))
         peer.start_server();
-    else if (mode == 2)
+    else if (vm.count("client-only"))
         peer.start_client();
+    else
+        peer.start();
     exit(0);
 }
 
 //PEAKS_CGI_HANDLER
-//
 void serve(int argc, char* argv[]){
     openlog("peaks", LOG_PID, LOG_USER);
     setlogmask (LOG_UPTO (LOG_NOTICE));
@@ -285,7 +276,6 @@ void serve(int argc, char* argv[]){
 }
 
 // PEAKS_DB_MAIN
-//
 #include <iostream>
 #include <syslog.h>
 #include <thread>
@@ -296,75 +286,57 @@ void serve(int argc, char* argv[]){
 #include "unpacker.h"
 
 using namespace Utils;
-using namespace std;
-using namespace std::chrono_literals;
 
-void printHelp();
+void import(po::variables_map vm) {
 
-void import(int argc, char* argv[]) {
-
-    cout << Utils::getCurrentTime() << "Starting unpacker" << endl;
+    std::cout << Utils::getCurrentTime() << "Starting unpacker" << std::endl;
 
     openlog("pgp_dump_import", LOG_PID, LOG_USER);
     setlogmask (LOG_UPTO (LOG_NOTICE));
     syslog(LOG_NOTICE, "Dump_import is starting up!");
-    unsigned int nThreads = thread::hardware_concurrency() / 2;
+    unsigned int nThreads = thread::hardware_concurrency() - 1;
     unsigned int key_per_thread = KEY_PER_THREAD_DEFAULT;
     boost::filesystem::path path = DEFAULT_DUMP_PATH;
-    const char *MINUS_T = "-t";
-    const char *MINUS_P = "-p";
-    const char *MINUS_H = "-h";
-    const char *MINUS_K = "-k";
 
-    for (int i = 1; i < argc; i++){
-        if(!strcmp(argv[i], MINUS_H)){
-            printHelp();
-            exit(0);
-        }
-        else if(!strcmp(argv[i], MINUS_P)){
-            try{
-                path = argv[++i];
-            }catch (...){
-                path = DEFAULT_DUMP_PATH;
-            }
-        }
-        else if(!strcmp(argv[i], MINUS_T)){
-            try{
-                nThreads = static_cast<unsigned int>(stoul(argv[++i]));
-            }catch (...){
-                nThreads = thread::hardware_concurrency() / 2;
-            }
-        }
-        else if(!strcmp(argv[i], MINUS_K)){
-            try{
-                key_per_thread = static_cast<unsigned int>(stoul(argv[++i]));
-            }catch (...){
-                key_per_thread = KEY_PER_THREAD_DEFAULT;
-            }
-        }
-        else{
-            cout << "Option not recognized: " << argv[i] << endl;
-            exit(0);
-        }
+    if(vm.count("help")){
+        std::cout << "Peaks import help:" << std::endl;
+        std::cout << "Parameters:" << std::endl;
+        std::cout << "-t: set number of threads" << std::endl;
+        std::cout << "-k: set how many keys a thread has to analyze" << std::endl;
+        std::cout << "-p: set the path of the dump" << std::endl;
+        std::cout << "The default value for this computer are:" << std::endl;
+        std::cout << "t = " << thread::hardware_concurrency() / 2 << std::endl;
+        std::cout << "k = " << KEY_PER_THREAD_DEFAULT << std::endl;
+        std::cout << "p = " << DEFAULT_DUMP_PATH << std::endl;
+        exit(0);
     }
 
+    if(vm.count("path"))
+        path = vm["path"];
+
+    if(vm.count("threads")
+        nThreads = vm["threads"].as<unsigned int>();
+
+    if(vm.count("keys"))
+        key_per_thread = vm["keys"].as<unsigned int>();
+
     if(Utils::create_folders() == -1){
-        cerr << "Unable to create temp folder" << endl;
+        cerr << "Unable to create temp folder" << std::endl;
         exit(-1);
     }
 
-    cout << "Threads: " << nThreads << endl;
-    cout << "Key per Thread: " << key_per_thread << endl;
+    std::cout << "Threads: " << nThreads << std::endl;
+    std::cout << "Key per Thread: " << key_per_thread << std::endl;
 
     shared_ptr<DBManager> dbm = make_shared<DBManager>();
 
-    cout << Utils::getCurrentTime() << "Starting dump read" << endl;
+    std::cout << Utils::getCurrentTime() << "Starting dump read" << std::endl;
 
     vector<string> files;
     try {
         files = Utils::get_dump_files(path);
     }catch (exception &e){
-        cerr << "Unable to read dump folder/files" << endl;
+        cerr << "Unable to read dump folder/files" << std::endl;
         exit(-1);
     }
 
@@ -390,62 +362,50 @@ void import(int argc, char* argv[]) {
         th.join();
     }
 
-    cout << Utils::getCurrentTime() << "Writing dumped packet in DB:" << endl;
+    std::cout << Utils::getCurrentTime() << "Writing dumped packet in DB:" << std::endl;
 
     dbm->lockTables();
-    cout << Utils::getCurrentTime() << "\tInserting Certificates" << endl;
+    std::cout << Utils::getCurrentTime() << "\tInserting Certificates" << std::endl;
     dbm->insertCSV(Utils::get_files(Utils::CERTIFICATE), Utils::CERTIFICATE);
-    cout << Utils::getCurrentTime() << "\tInserting Pubkeys" << endl;
+    std::cout << Utils::getCurrentTime() << "\tInserting Pubkeys" << std::endl;
     dbm->insertCSV(Utils::get_files(Utils::PUBKEY), Utils::PUBKEY);
-    cout << Utils::getCurrentTime() << "\tInserting UserID" << endl;
+    std::cout << Utils::getCurrentTime() << "\tInserting UserID" << std::endl;
     dbm->insertCSV(Utils::get_files(Utils::USERID), Utils::USERID);
-    cout << Utils::getCurrentTime() << "\tInserting User Attributes" << endl;
+    std::cout << Utils::getCurrentTime() << "\tInserting User Attributes" << std::endl;
     dbm->insertCSV(Utils::get_files(Utils::USER_ATTRIBUTES), Utils::USER_ATTRIBUTES);
-    cout << Utils::getCurrentTime() << "\tInserting Signatures" << endl;
+    std::cout << Utils::getCurrentTime() << "\tInserting Signatures" << std::endl;
     dbm->insertCSV(Utils::get_files(Utils::SIGNATURE), Utils::SIGNATURE);
-    cout << Utils::getCurrentTime() << "\tInserting SelfSignatures" << endl;
+    std::cout << Utils::getCurrentTime() << "\tInserting SelfSignatures" << std::endl;
     dbm->insertCSV(Utils::get_files(Utils::SELF_SIGNATURE), Utils::SELF_SIGNATURE);
-    cout << Utils::getCurrentTime() << "\tInserting Unpacker Errors" << endl;
+    std::cout << Utils::getCurrentTime() << "\tInserting Unpacker Errors" << std::endl;
     dbm->insertCSV(Utils::get_files(Utils::UNPACKER_ERRORS), Utils::UNPACKER_ERRORS);
-    cout << Utils::getCurrentTime() << "\tInserting Broken Keys" << endl;
+    std::cout << Utils::getCurrentTime() << "\tInserting Broken Keys" << std::endl;
     dbm->insertCSV(Utils::get_files(Utils::BROKEN_KEY), Utils::BROKEN_KEY);
 
-    cout << Utils::getCurrentTime() << "Updating DB fields:" << endl;
+    std::cout << Utils::getCurrentTime() << "Updating DB fields:" << std::endl;
 
-    cout << Utils::getCurrentTime() << "\tUpdating issuing fingerprint in Signatures" << endl;
+    std::cout << Utils::getCurrentTime() << "\tUpdating issuing fingerprint in Signatures" << std::endl;
     dbm->UpdateSignatureIssuingFingerprint();
 
-    cout << Utils::getCurrentTime() << "\tUpdating issuing username in Signatures" << endl;
+    std::cout << Utils::getCurrentTime() << "\tUpdating issuing username in Signatures" << std::endl;
     dbm->UpdateSignatureIssuingUsername();
 
-    cout << Utils::getCurrentTime() << "\tSetting expired flag" << endl;
+    std::cout << Utils::getCurrentTime() << "\tSetting expired flag" << std::endl;
     dbm->UpdateIsExpired();
 
-    cout << Utils::getCurrentTime() << "\tSetting revoked flag" << endl;
+    std::cout << Utils::getCurrentTime() << "\tSetting revoked flag" << std::endl;
     dbm->UpdateIsRevoked();
 
-    cout << Utils::getCurrentTime() << "\tSetting valid flag" << endl;
+    std::cout << Utils::getCurrentTime() << "\tSetting valid flag" << std::endl;
     dbm->UpdateIsValid();
 
     dbm->unlockTables();
 
     syslog(LOG_NOTICE, "Dump_import is stopping!");
 
-    cout << Utils::getCurrentTime() << "Dump_import terminated. Remember to create the ptree with the SKS executable "
-            "before starting the recon." << endl;
+    std::cout << Utils::getCurrentTime() << "Dump_import terminated. Remember to create the ptree with the SKS executable "
+            "before starting the recon." << std::endl;
 
-}
-
-void printHelp() {
-    cout << "Peaks import help:" << endl;
-    cout << "Parameters:" << endl;
-    cout << "-t: set number of threads" << endl;
-    cout << "-k: set how many keys a thread has to analyze" << endl;
-    cout << "-p: set the path of the dump" << endl;
-    cout << "The default value for this computer are:" << endl;
-    cout << "t = " << thread::hardware_concurrency() / 2 << endl;
-    cout << "k = " << KEY_PER_THREAD_DEFAULT << endl;
-    cout << "p = " << DEFAULT_DUMP_PATH << endl;
 }
 
 char* convert(const std::string & s){

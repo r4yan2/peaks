@@ -12,30 +12,13 @@
 #include <algorithm>
 #include "Recon_settings.h"
 
-/*int create_folder(std::string directory){
-  boost::system::error_code returnedError;
-  if (boost::filesystem::exists(directory)){
-      std::cout << "Directory " << directory << " already exists" << "\n";
-    return 1;
-  } else {
-    boost::filesystem::create_directories(directory, returnedError);  
-    if (returnedError) {
-        std::cout << "Could not create directory (Maybe you miss the correct access right?)" << "\n";
-      return 2;
-    }
-  }
-  return 0;
-}
-*/
-
-
 namespace Utils{
 
 /** marshal NTL std::vector into suitable data for database insert */
-std::string marshall_vec_zz_p(std::vector<NTL::ZZ_p> elements);
+std::string marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements);
 
 /** unmarshal NTL std::vector coming from a database query */
-std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(std::string blob);
+std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(const std::string &blob);
 
 /** calculate Zpoints for the current number of samples */
 std::vector<NTL::ZZ_p> Zpoints(int num_samples);
@@ -43,18 +26,20 @@ std::vector<NTL::ZZ_p> Zpoints(int num_samples);
 /** convert a number in finite field (ZZ_p) into a bitstring representation */
 //boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
 
-std::string ZZp_to_bitstring(NTL::ZZ_p num);
+std::string ZZp_to_bitstring(const NTL::ZZ_p &num);
 
-NTL::ZZ_p bytes_to_zz(std::vector<unsigned char> bytes);
+NTL::ZZ_p bytes_to_zz(const std::vector<unsigned char> &bytes);
 
 /** generate a random number bounded by max_val */
 template<typename I> static I get_random(I max_val){
     return static_cast <I> (rand()) / (static_cast <I> (RAND_MAX/max_val));
 }
 
-NTL::ZZ_p hex_to_zz(std::string hash);
+/** calculate ZZ int number from hex representation */
+NTL::ZZ_p hex_to_zz(const std::string &hash);
 
-std::string zz_to_hex(NTL::ZZ_p num, int padding=32);
+/** generate hex string from ZZ number*/
+std::string zz_to_hex(const NTL::ZZ_p &num, int padding=32);
 
 /** swap endianess of an int */
 int swap(int d);

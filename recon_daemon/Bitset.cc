@@ -14,7 +14,7 @@ Bitset::Bitset(int nbits){
 	}
 }
 
-Bitset::Bitset(NTL::ZZ_p num){
+Bitset::Bitset(const NTL::ZZ_p &num){
     NTL::ZZ znum = NTL::rep(num);
     bytes.resize(NumBytes(znum));
     bzero(bytes.data(), bytes.size());
@@ -27,12 +27,12 @@ Bitset::Bitset(NTL::ZZ_p num){
     BytesFromZZ(bytes.data(), znum, bytes.size());
 }
 
-Bitset::Bitset(bytestype newbytes){
+Bitset::Bitset(const bytestype &newbytes){
     n_bits = newbytes.size() * 8;
     bytes = newbytes;
 }
 
-Bitset::Bitset(std::string bitstring){
+Bitset::Bitset(const std::string &bitstring){
     n_bits = bitstring.size();
     int bytes_size = (n_bits%8 == 0) ? n_bits/8 : n_bits/8 + 1;
     bytes.resize(bytes_size);
