@@ -44,10 +44,10 @@ int main(int argc, char* argv[]){
 
 	    std::string cmd = vm["command"].as<std::string>();
 
-            std::string filename = "recon_config";
-            parse_config(filename);
-
-	    if (cmd == "serve"){
+        std::string filename = "peaks_config";
+        parse_config(filename);
+        
+        if (cmd == "serve"){
             po::options_description serve_desc("serve options");
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             std::vector<char *> new_argv;
