@@ -65,7 +65,7 @@ bool Recon_manager::bottom_queue_empty(){
 
 void Recon_manager::send_request(request_entry request){
     Message* msg;
-    if ((request.node->is_leaf()) || (request.node->get_num_elements() < recon_settings.split_threshold)){
+    if ((request.node->is_leaf()) || (request.node->get_num_elements() < (int) recon_settings.split_threshold)){
         msg = new ReconRequestFull;
         ((ReconRequestFull*) msg)->prefix = request.key;
         ((ReconRequestFull*) msg)->samples = zset(request.node->elements());

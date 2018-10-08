@@ -110,7 +110,7 @@ void Peer_config::marshal(Buffer &buf){
 
 void Peer_config::unmarshal(Buffer buf){
      std::string key;
-     std::uint32_t val;
+     std::uint32_t val = 0;
      std::string value;
      std::uint32_t a = buf.read_int(true);
      for (uint32_t i=0; i<a; i++){
