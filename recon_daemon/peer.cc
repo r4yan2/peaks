@@ -122,7 +122,6 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
 static size_t
 StreamWriteCallback(char * buffer, size_t size, size_t nitems, std::ostream * stream)
 {
-	g_logger.log(Logger_level::DEBUG, "Hello from curl callback");
     size_t realwrote = size * nitems;
     stream->write(buffer, static_cast<std::streamsize>(realwrote));
     if(!(*stream))
@@ -141,7 +140,6 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
         buffer.write_int(hashquery_len);
         buffer.write_zz_p(zp, hashquery_len);
     }
-    g_logger.log(Logger_level::DEBUG, "Will output " + std::to_string(buffer.size()) + " bytes");
     const std::string url = std::string("http://") + peer.first + std::string(":") + std::to_string(peer.second) + std::string("/pks/hashquery");
     g_logger.log(Logger_level::DEBUG, "Requesting url "+url);
     std::ostringstream response;
