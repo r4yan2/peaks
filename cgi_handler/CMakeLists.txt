@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.8)
 project(pks)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS_DEBUG "-march=native -DGPG_COMPATIBLE -g3 -O0 -pthread -lbz2 -lgmp -lz -lcppcms -lmysqlcppconn -lbooster -static-libgcc -lstdc++ -pipe -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "-march=native -DGPG_COMPATIBLE -O2 -pthread -lbz2 -lgmp -lz -lcppcms -lmysqlcppconn -lbooster -static-libgcc -pipe -Wall")
+set(CMAKE_CXX_FLAGS "-march=native -DGPG_COMPATIBLE -static-libgcc -lstdc++ -pipe -Wall")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g3 -O0 -pg")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
 
 set(SOURCE_FILES pks.cc db.cc utils.cc encoder/encoder.cc mitpgpskin.cc PacketReader.cc db_key.h content.h DB_info.h)
 
@@ -15,7 +16,6 @@ add_custom_command(
         DEPENDS ${TEMPLATES}
         )
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 add_library(pks ${SOURCE_FILES})
 
 set(OpenPGP_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../OpenPGP)
@@ -33,3 +33,4 @@ target_link_libraries(pks bz2)
 target_link_libraries(pks z)
 target_link_libraries(pks cppcms)
 target_link_libraries(pks booster)
+target_link_libraries(pks ${CMAKE_THREAD_LIBS_INIT})

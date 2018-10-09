@@ -3,7 +3,7 @@
 Ptree::Ptree(){
 }
 
-Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbp, const std::vector<NTL::ZZ_p> &point){
+Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbp, const std::vector<NTL::ZZ_p>& point){
   root = NULL;
   dbm = dbp;
   points = point;
@@ -120,7 +120,7 @@ pnode_ptr Ptree::new_child(pnode_ptr parent, int child_index){
   return n;
 }
 
-pnode_ptr Ptree::node(const bitset &key){
+pnode_ptr Ptree::node(bitset &key){
    
     std::string str_key;
     if (key.size() == 0)

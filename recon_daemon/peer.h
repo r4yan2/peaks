@@ -17,13 +17,11 @@
 #include "logger.h"
 #include <thread>
 #include <deque>
-#include <curlpp/cURLpp.hpp>
-#include <curlpp/Easy.hpp>
-#include <curlpp/Options.hpp>
-#include <curlpp/Exception.hpp>
+#include <curl/curl.h>
 #include <dump_import.h>
 #include <unistd.h>
 #include <chrono>
+
 
 enum class Communication_status {NONE, ERROR, DONE};
 
@@ -96,7 +94,7 @@ class Peer{
          * @param Choosen peer from membership file
          * recon as client with choosen peer
          */
-        void client_recon(peertype&);
+        void client_recon(const peertype&);
 
         void gossip(); /**< recon as client */
 
@@ -113,7 +111,7 @@ class Peer{
          * @param peer peer from which to fetch elements
          * @param elems elements to recover
          */
-        void fetch_elements(peertype &peer const, std::vector<NTL::ZZ_p> &elems const);
+        void fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &elems);
 
         /** handler of recon request poly messages */
         Communication request_poly_handler(ReconRequestPoly* req);
@@ -122,10 +120,11 @@ class Peer{
         Communication request_full_handler(ReconRequestFull* req);
 
         /** implementation of linear interpolation */
-        std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> solve(std::vector<NTL::ZZ_p> &r_samples const, int r_size, std::vector<NTL::ZZ_p> &l_samples const, int l_size, std::vector<NTL::ZZ_p> &points const);
+        std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> solve(const std::vector<NTL::ZZ_p> &r_samples, const int r_size, const std::vector<NTL::ZZ_p> &l_samples, const int l_size, const std::vector<NTL::ZZ_p> &points);
 
         /** method used to request a chunk of data from the other peer */
-        std::vector<std::string> request_chunk(peertype &peer const, std::vector<NTL::ZZ_p> &elements const);
+        std::vector<std::string> request_chunk(const peertype &peer, const std::vector<NTL::ZZ_p> &elements);
+
 };
 
 /**

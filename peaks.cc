@@ -10,7 +10,14 @@
 #include <NTL/ZZ_p.h>
 #include <iostream>
 #include <boost/program_options.hpp>
-#include <chrono>
+
+#include <syslog.h>
+#include <thread>
+#include <cstring>
+#include "DBManager.h"
+#include "Thread_Pool.h"
+#include "utils.h"
+#include "unpacker.h"
 
 Configtype recon_settings;
 namespace po = boost::program_options;
@@ -46,6 +53,7 @@ int main(int argc, char* argv[]){
 
         std::string filename = "peaks_config";
         parse_config(filename);
+        g_logger.init(vm.count("debug"));
         
         if (cmd == "serve"){
             po::options_description serve_desc("serve options");
@@ -54,24 +62,24 @@ int main(int argc, char* argv[]){
             std::transform(opts.begin(), opts.end(), std::back_inserter(new_argv), convert);
             serve(opts.size(), &new_argv[0]);
 	    }
-            else if (cmd == "build"){
+        else if (cmd == "build"){
             po::options_description build_desc("build options");
-            build();
+            build(vm);
             }
-            else if (cmd == "import"){
+        else if (cmd == "import"){
             po::options_description import_desc("import options");
             import_desc.add_options()
                 ("threads, t", po::value<unsigned int>(), "set number of threads")
                 ("key, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-	        ("path, p", po::value<std::string>(), "path to the dump")
+                ("path, p", po::value<std::string>(), "path to the dump")
                 ("help, h", "peaks import help");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
-            po::store(po::command_line_parser(opts).options(recon_Desc).run(), vm);
+            po::store(po::command_line_parser(opts).options(import_desc).run(), vm);
             import(vm);
             }
-            else if (cmd == "recon"){
+        else if (cmd == "recon"){
             po::options_description recon_desc("recon options");
             recon_desc.add_options()
                 ("server-only", "start only sever part of recon")
@@ -81,7 +89,7 @@ int main(int argc, char* argv[]){
             po::store(po::command_line_parser(opts).options(recon_desc).run(), vm);	
             recon(vm);
             }
-            else{
+        else{
                 help();
             }
  
@@ -239,7 +247,7 @@ void build(po::variables_map vm){
 }
 
 //PEAKS_RECON_DAEMON
-void recon(po::varialbes_map vm){
+void recon(po::variables_map vm){
 
     std::cout << "Starting recon_daemon" << std::endl;
     const std::vector<NTL::ZZ_p> points = Utils::Zpoints(recon_settings.num_samples);
@@ -276,17 +284,6 @@ void serve(int argc, char* argv[]){
 }
 
 // PEAKS_DB_MAIN
-#include <iostream>
-#include <syslog.h>
-#include <thread>
-#include <cstring>
-#include "DBManager.h"
-#include "Thread_Pool.h"
-#include "utils.h"
-#include "unpacker.h"
-
-using namespace Utils;
-
 void import(po::variables_map vm) {
 
     std::cout << Utils::getCurrentTime() << "Starting unpacker" << std::endl;
@@ -294,8 +291,8 @@ void import(po::variables_map vm) {
     openlog("pgp_dump_import", LOG_PID, LOG_USER);
     setlogmask (LOG_UPTO (LOG_NOTICE));
     syslog(LOG_NOTICE, "Dump_import is starting up!");
-    unsigned int nThreads = thread::hardware_concurrency() - 1;
-    unsigned int key_per_thread = KEY_PER_THREAD_DEFAULT;
+    unsigned int nThreads = std::thread::hardware_concurrency() - 1;
+    unsigned int key_per_thread = Utils::KEY_PER_THREAD_DEFAULT;
     boost::filesystem::path path = DEFAULT_DUMP_PATH;
 
     if(vm.count("help")){
@@ -305,50 +302,50 @@ void import(po::variables_map vm) {
         std::cout << "-k: set how many keys a thread has to analyze" << std::endl;
         std::cout << "-p: set the path of the dump" << std::endl;
         std::cout << "The default value for this computer are:" << std::endl;
-        std::cout << "t = " << thread::hardware_concurrency() / 2 << std::endl;
-        std::cout << "k = " << KEY_PER_THREAD_DEFAULT << std::endl;
+        std::cout << "t = " << std::thread::hardware_concurrency() / 2 << std::endl;
+        std::cout << "k = " << Utils::KEY_PER_THREAD_DEFAULT << std::endl;
         std::cout << "p = " << DEFAULT_DUMP_PATH << std::endl;
         exit(0);
     }
 
     if(vm.count("path"))
-        path = vm["path"];
+        path = vm["path"].as<boost::filesystem::path>();
 
-    if(vm.count("threads")
+    if(vm.count("threads"))
         nThreads = vm["threads"].as<unsigned int>();
 
     if(vm.count("keys"))
         key_per_thread = vm["keys"].as<unsigned int>();
 
     if(Utils::create_folders() == -1){
-        cerr << "Unable to create temp folder" << std::endl;
+        std::cerr << "Unable to create temp folder" << std::endl;
         exit(-1);
     }
 
     std::cout << "Threads: " << nThreads << std::endl;
     std::cout << "Key per Thread: " << key_per_thread << std::endl;
 
-    shared_ptr<DBManager> dbm = make_shared<DBManager>();
+    std::shared_ptr<DBManager> dbm = std::make_shared<DBManager>();
 
     std::cout << Utils::getCurrentTime() << "Starting dump read" << std::endl;
 
-    vector<string> files;
+    std::vector<std::string> files;
     try {
         files = Utils::get_dump_files(path);
-    }catch (exception &e){
-        cerr << "Unable to read dump folder/files" << std::endl;
+    }catch (std::exception &e){
+        std::cerr << "Unable to read dump folder/files" << std::endl;
         exit(-1);
     }
 
-    shared_ptr<Thread_Pool> pool = make_shared<Thread_Pool>();
-    vector<thread> pool_vect(nThreads);
+    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
+    std::vector<std::thread> pool_vect(nThreads);
 
     for (unsigned int i = 0; i < nThreads; i++){
-        pool_vect[i] = thread([=] { pool->Infinite_loop_function(); });
+        pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
     }
 
     for (unsigned int i = 0; i < files.size();){
-        vector<string> dump_file_tmp;
+        std::vector<std::string> dump_file_tmp;
         for (unsigned int j = 0; i < files.size() && j < key_per_thread; j++, i++){
             dump_file_tmp.push_back(files[i]);
         }

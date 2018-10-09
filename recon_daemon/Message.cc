@@ -8,7 +8,7 @@ void ReconRequestPoly::marshal(Buffer &buf){
     buf.write_zz_array(samples);
 }
 
-void ReconRequestPoly::unmarshal(Buffer &buf const){
+void ReconRequestPoly::unmarshal(Buffer &buf){
      g_logger.log(Logger_level::DEBUG, "unpacking reconrequestpoly");
      prefix = buf.read_bitset();
      size = buf.read_int();
@@ -24,7 +24,7 @@ void ReconRequestFull::marshal(Buffer &buf){
     buf.write_zset(samples);
 }
 
-void ReconRequestFull::unmarshal(Buffer buf const){
+void ReconRequestFull::unmarshal(Buffer &buf){
     prefix = buf.read_bitset();
     samples = buf.read_zset();
 }
@@ -33,7 +33,7 @@ void Elements::marshal(Buffer &buf){
     buf.write_zset(samples);
 }
 
-void Elements::unmarshal(Buffer buf const){
+void Elements::unmarshal(Buffer &buf){
     samples = buf.read_zset();
 }
 
@@ -41,27 +41,27 @@ void FullElements::marshal(Buffer &buf){
     buf.write_zset(samples);
 }
 
-void FullElements::unmarshal(Buffer &buf const){
+void FullElements::unmarshal(Buffer &buf){
     samples = buf.read_zset();
 }
 
 void SyncFail::marshal(Buffer &buf){}
 
-void SyncFail::unmarshal(Buffer &buf const){}
+void SyncFail::unmarshal(Buffer &buf){}
 
 void Done::marshal(Buffer &buf){}
 
-void Done::unmarshal(Buffer &buf const){}
+void Done::unmarshal(Buffer &buf){}
 
 void Flush::marshal(Buffer &buf){}
 
-void Flush::unmarshal(Buffer &buf const){}
+void Flush::unmarshal(Buffer &buf){}
 
 void Error::marshal(Buffer &buf){
     buf.write_string(text);
 }
 
-void Error::unmarshal(Buffer &buf const){
+void Error::unmarshal(Buffer &buf){
     text = buf.read_string();
 }
 
@@ -69,7 +69,7 @@ void DBRequest::marshal(Buffer &buf){
     buf.write_string(text);
 }
 
-void DBRequest::unmarshal(Buffer &buf const){
+void DBRequest::unmarshal(Buffer &buf){
     text = buf.read_string();
 }
 
@@ -77,7 +77,7 @@ void DBReply::marshal(Buffer &buf){
     buf.write_string(text);
 }
 
-void DBReply::unmarshal(Buffer &buf const){
+void DBReply::unmarshal(Buffer &buf){
     text = buf.read_string();
 }
 
@@ -108,7 +108,7 @@ void Peer_config::marshal(Buffer &buf){
     }
 }
 
-void Peer_config::unmarshal(Buffer &buf const){
+void Peer_config::unmarshal(Buffer &buf){
      std::string key;
      std::uint32_t val = 0;
      std::string value;

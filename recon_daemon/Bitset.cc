@@ -42,15 +42,15 @@ Bitset::Bitset(const std::string &bitstring){
             set(i);
 }
 
-int Bitset::size(){
+int Bitset::size() const{
     return n_bits;
 }
 
-int Bitset::num_blocks(){
+int Bitset::num_blocks() const{
     return bytes.size();
 }
 
-bytestype Bitset::rep(){
+bytestype Bitset::rep() const{
     return bytes;
 }
 
@@ -72,7 +72,7 @@ void Bitset::resize(int new_bitsize){
     n_bits = new_bitsize;
 }
 
-bool Bitset::test(int bitpos){
+bool Bitset::test(int bitpos) const{
     if (bitpos > n_bits)
         throw std::exception();
     int byte_pos = bitpos/8;
@@ -96,7 +96,7 @@ void Bitset::clear(int bitpos){
     bytes[byte_pos] &= ~(1 << (8 - bit_pos - 1));
 }
 
-std::string Bitset::to_string(){
+std::string Bitset::to_string() const{
     std::ostringstream res;
     for (int i=0; i<n_bits; i++){
         if (test(i))

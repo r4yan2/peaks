@@ -16,21 +16,21 @@ class Bitset{
         int n_bits;
     public:
         Bitset();
-        Bitset(int &nbits);
+        Bitset(int nbits);
         Bitset(const NTL::ZZ_p&);
         Bitset(const bytestype &newbytes);
         Bitset(const std::string &bitstring);
 
-        int size();
-        int num_blocks();
-        bytestype rep();
+        int size() const;
+        int num_blocks() const;
+        bytestype rep() const;
 
         void resize(int newsize);
-        bool test(int idx);
+        bool test(int idx) const;
         void set(int bitpos);
         void clear(int bitpos);
 
-	std::string to_string();
+	    std::string to_string() const;
 };
 
 #endif

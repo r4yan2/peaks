@@ -29,7 +29,7 @@ protected:
   
 public:
   Ptree();
-  Ptree(std::shared_ptr<RECON_DBManager> dbp, std::vector<NTL::ZZ_p> point);
+  Ptree(std::shared_ptr<RECON_DBManager> dbp, const std::vector<NTL::ZZ_p>& point);
   ~Ptree();
  
   pnode_ptr get_root();
@@ -56,7 +56,7 @@ public:
   pnode_ptr new_child(pnode_ptr parent, int child_index);
 
   /** insert a new node */
-  pnode_ptr node(const bitset &key);
+  pnode_ptr node(bitset &key);
 
   /** remove a node from the ptree*/
   void remove(const NTL::ZZ_p &z);

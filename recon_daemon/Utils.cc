@@ -1,6 +1,6 @@
 #include "Utils.h"
 
-
+namespace Utils{
 //ASCII loockup table
 int ASCIIHexToInt[] =
 {
@@ -17,7 +17,7 @@ int ASCIIHexToInt[] =
 
 char int2hex[] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
 
-std::string Utils::marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements){
+std::string marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements){
     if (elements.empty()) return "";
     std::ostringstream os;
     std::copy(elements.begin(), elements.end(), std::ostream_iterator<NTL::ZZ_p>(os, " "));
@@ -25,7 +25,7 @@ std::string Utils::marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements){
     return res.substr(0,res.size() - 1);
 }
 
-NTL::ZZ_p Utils::hex_to_zz(const std::string &hash){
+NTL::ZZ_p hex_to_zz(const std::string &hash){
 
     std::vector<unsigned int> inthash;
     for (size_t i=0; i<hash.size(); i+=2)
@@ -45,7 +45,7 @@ NTL::ZZ_p Utils::hex_to_zz(const std::string &hash){
     return elem;
 }
 
-NTL::ZZ_p Utils::bytes_to_zz(const std::vector<unsigned char> &bytes){
+NTL::ZZ_p bytes_to_zz(const std::vector<unsigned char> &bytes){
     NTL::ZZ_p elem;
     //std::reverse(bytes.begin(), bytes.end());
 
@@ -63,7 +63,7 @@ NTL::ZZ_p Utils::bytes_to_zz(const std::vector<unsigned char> &bytes){
 
 }
 
-std::vector<NTL::ZZ_p> Utils::unmarshall_vec_zz_p(const std::string &blob){
+std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(const std::string &blob){
   
   std::vector<NTL::ZZ_p> elements;
   std::istringstream is(blob);
@@ -83,7 +83,7 @@ std::vector<NTL::ZZ_p> Utils::unmarshall_vec_zz_p(const std::string &blob){
     */
 }
 
-std::vector<NTL::ZZ_p> Utils::Zpoints(int num_samples){
+std::vector<NTL::ZZ_p> Zpoints(int num_samples){
   std::vector<NTL::ZZ_p> points(num_samples);
   for (int i=0; i<num_samples; i++){
     int val = ((i + 1) / 2) * ((i % 2 == 0) ? 1 : (-1));
@@ -93,13 +93,13 @@ std::vector<NTL::ZZ_p> Utils::Zpoints(int num_samples){
   return points;
 }
 
-std::string Utils::ZZp_to_bitstring(const NTL::ZZ_p &num){
+std::string ZZp_to_bitstring(const NTL::ZZ_p &num){
     std::ostringstream res;
     for (NTL::ZZ tmp(NTL::rep(num)); !(NTL::IsZero(tmp)); tmp/=2) res << (tmp%2);
     return res.str();
 }
 
-std::string Utils::zz_to_hex(const NTL::ZZ_p &num, int padding){
+std::string zz_to_hex(const NTL::ZZ_p &num, int padding){
     std::string res;
     NTL::ZZ n = NTL::rep(num);
     std::vector<unsigned char> p(NumBytes(n));
@@ -118,7 +118,7 @@ std::string Utils::zz_to_hex(const NTL::ZZ_p &num, int padding){
     return res;
 }
 
-int Utils::swap(int d){
+int swap(int d){
    int a;
    unsigned char *dst = (unsigned char *)&a;
    unsigned char *src = (unsigned char *)&d;
@@ -129,4 +129,6 @@ int Utils::swap(int d){
    dst[3] = src[0];
 
    return a;
+}
+
 }

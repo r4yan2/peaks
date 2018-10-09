@@ -73,7 +73,7 @@ void Peer::serve(){
     }
 }
 
-void Peer::fetch_elements(peertype &peer const, std::vector<NTL::ZZ_p> &elems const){
+void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &elems){
 
     g_logger.log(Logger_level::DEBUG, "Should recover " + std::to_string(elems.size()) + " elements, starting double elements check...");
     std::vector<NTL::ZZ_p> elements;
@@ -119,7 +119,20 @@ void Peer::fetch_elements(peertype &peer const, std::vector<NTL::ZZ_p> &elems co
     g_logger.log(Logger_level::DEBUG, "inserted " + std::to_string(hashes.size()) + " hashes into ptree");
 }
 
-std::vector<std::string> Peer::request_chunk(peertype &peer const, std::vector<NTL::ZZ_p> &chunk const){
+static size_t
+StreamWriteCallback(char * buffer, size_t size, size_t nitems, std::ostream * stream)
+{
+	g_logger.log(Logger_level::DEBUG, "Hello from curl callback");
+    size_t realwrote = size * nitems;
+    stream->write(buffer, static_cast<std::streamsize>(realwrote));
+    if(!(*stream))
+        realwrote = 0;
+
+    return realwrote;
+}
+
+
+std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::vector<NTL::ZZ_p> &chunk){
     Buffer buffer;
     buffer.write_int(chunk.size());
     for (auto zp: chunk){
@@ -128,27 +141,47 @@ std::vector<std::string> Peer::request_chunk(peertype &peer const, std::vector<N
         buffer.write_int(hashquery_len);
         buffer.write_zz_p(zp, hashquery_len);
     }
-    std::string url = std::string("http://") + peer.first + std::string(":") + std::to_string(peer.second) + std::string("/pks/hashquery");
+    g_logger.log(Logger_level::DEBUG, "Will output " + std::to_string(buffer.size()) + " bytes");
+    const std::string url = std::string("http://") + peer.first + std::string(":") + std::to_string(peer.second) + std::string("/pks/hashquery");
     g_logger.log(Logger_level::DEBUG, "Requesting url "+url);
-    curlpp::Cleanup cleaner;
-    curlpp::Easy request;
-    request.setOpt(new curlpp::options::Url(url));
-    std::list<std::string> header;
     std::ostringstream response;
-    //header.push_back("Content-Length: " + std::to_string(buffer.size()));
-    header.push_back("Content-Type: sks/hashquery");
-    request.setOpt(new curlpp::options::HttpHeader(header));
-    request.setOpt(new curlpp::options::PostFields(buffer.to_str()));
-    request.setOpt(new curlpp::options::PostFieldSize(buffer.size()));
-    request.setOpt(new curlpp::options::WriteStream(&response));
-    request.perform();
-    g_logger.log(Logger_level::DEBUG, "Curlpp request performed");
+
+    curl_global_init(CURL_GLOBAL_ALL);
+    CURL *curl = curl_easy_init();
+    if(curl) {
+
+	  struct curl_slist *headers=NULL;
+      headers = curl_slist_append(headers, "Content-Type: sks/hashquery");
+      
+      curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+      curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+      curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buffer.c_str());
+      curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, buffer.size());
+      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StreamWriteCallback);
+      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+ 
+      CURLcode res_code = curl_easy_perform(curl);
+      g_logger.log(Logger_level::DEBUG, "Curl request performed");
+      if(res_code != CURLE_OK)
+        g_logger.log(Logger_level::WARNING, "curl_easy_perform() failed:" +std::string(curl_easy_strerror(res_code)));
+       
+      long response_code;
+      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+      if (response_code >= 400)
+          throw std::runtime_error("Error in http response: " + response.str());
+      curl_slist_free_all(headers);
+      curl_easy_cleanup(curl);
+      curl_global_cleanup();
+    }
+
+    //END
     Buffer res(response.str());
     int num_keys = res.read_int();
     std::vector<std::string> keys;
     for (int i=0; i < num_keys; i++)
         keys.push_back(res.read_string());
     return keys;
+
 }
 
 void Peer::interact_with_client(peertype &remote_peer){
@@ -235,7 +268,7 @@ void Peer::gossip(){
     }
 }
 
-void Peer::client_recon(peertype &peer const){
+void Peer::client_recon(const peertype &peer){
     g_logger.log(Logger_level::DEBUG, "Starting recon as client with peer " + peer.first + ", http_port " + std::to_string(peer.second));
     zset response;
     std::vector<Message*> pending;
@@ -319,7 +352,7 @@ void Peer::client_recon(peertype &peer const){
     }
 }
 
-std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(std::vector<NTL::ZZ_p> &r_samples const, int r_size, std::vector<NTL::ZZ_p> &l_samples const, int l_size, std::vector<NTL::ZZ_p> &points const){
+std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::vector<NTL::ZZ_p> &r_samples, const int r_size, const std::vector<NTL::ZZ_p> &l_samples, const int l_size, const std::vector<NTL::ZZ_p> &points){
     std::vector<NTL::ZZ_p> values;
     for (size_t i=0; i < r_samples.size(); i++)
         values.push_back(r_samples[i]/l_samples[i]);

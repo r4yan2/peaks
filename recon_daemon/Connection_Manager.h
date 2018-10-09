@@ -42,21 +42,21 @@ class Connection_Manager{
 
         /** init connection as client 
          * with given peer peer */
-        int init_peer(peertype & peer const);
+        int init_peer(const peertype & peer);
 
         /** init server listener on the given port */
         void setup_listener(int portno);
 
-	/** Gracefully close the connection and free the used socket */
+        /** Gracefully close the connection and free the used socket */
         void close_connection();
 
-	/** helper to check if the socket is still valid */
+        /** helper to check if the socket is still valid */
         bool check_socket_status(int sock);
 
         /** acceptor (this is only the accept part, 
          * has to be called in a loop to be effective 
          */
-        std::pair<bool,peertype> acceptor(std::vector<std::string> & addresses const);
+        std::pair<bool,peertype> acceptor(std::vector<std::string> & addresses);
         /** helper method to activate keep-alive
          * on a given socket
          */
@@ -98,7 +98,7 @@ class Connection_Manager{
         void write_message(Buffer &buffer, Message* m, bool wrap=true);
 
 	/** fail accordingly to the error passed */
-        void early_fail(std::string&);
+        void early_fail(std::string);
 };
 
 #endif

@@ -25,7 +25,7 @@ void Connection_Manager::setup_listener(int portno){
     listen(listenfd, 10);
 }
 
-std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> & addresses const){
+std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> & addresses){
     peertype remote_peer;
     struct sockaddr_in client_addr;
     socklen_t clilen = sizeof(client_addr);
@@ -37,7 +37,7 @@ std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> &
     struct sockaddr_in* pV4Addr = (struct sockaddr_in*)&client_addr;
     struct in_addr ipAddr = pV4Addr->sin_addr;
     char ip_str[INET_ADDRSTRLEN];
-    inet_ntop( AF_INET, &ipAddr, ip_str, INET_ADDRSTRLEN );
+    inet_ntop( AF_INET, &ipAddr, ip_str, INET_ADDRSTRLEN);
     std::vector<std::string>::iterator it = find(addresses.begin(), addresses.end(), ip_str);
     size_t pos = it - addresses.begin();
     if (pos >= addresses.size()){
@@ -92,7 +92,7 @@ bool Connection_Manager::toggle_keep_alive(int toggle, int idle, int interval, i
     return true;
 }
 
-int Connection_Manager::init_peer(peertype & peer const){
+int Connection_Manager::init_peer(const peertype & peer){
     int portno;
     struct sockaddr_in serv_addr;
     struct hostent *server;
