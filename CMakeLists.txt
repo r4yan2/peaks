@@ -38,7 +38,7 @@ add_executable(peaks peaks.cc)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
 set(STRIP "peaks_stripped")
 add_custom_command(TARGET peaks POST_BUILD
-    COMMAND strip -s ${TARGET} ${STRIP}
+    COMMAND strip ${TARGET} ${STRIP}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
     COMMENT "Running strip on binary")
 endif ()
