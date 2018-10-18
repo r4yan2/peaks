@@ -107,13 +107,14 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
     }
     g_logger.log(Logger_level::DEBUG, "fetched " + std::to_string(keys.size()) + " keys from peer!");
     std::vector<std::string> hashes = dump_import(keys);
-    if (hashes.size() != elements.size()){
-        g_logger.log(Logger_level::DEBUG, "number of recovered keys does not match number of hashes recovered, aborting recon operation!");
-        throw std::runtime_error("number of recovered keys does not match recovered hashes!");
+    if (hashes.size() != elements.size() and not recon_settings.ignore_known_bug){
+        g_logger.log(Logger_level::WARNING, "number of recovered keys does not match number of hashes recovered! This is caused by a known bug in peaks, sorry...");
     }
+    /*
     for (auto hash: elements)
         if (std::find(hashes.begin(), hashes.end(), Utils::zz_to_hex(hash)) == hashes.end())
             g_logger.log(Logger_level::DEBUG, "requested " + Utils::zz_to_hex(hash) + " but got a different hash after sync! This is caused by a known bug in Peaks...");
+            */
     for (auto hash: hashes)
         tree.insert(hash);
     g_logger.log(Logger_level::DEBUG, "inserted " + std::to_string(hashes.size()) + " hashes into ptree");
@@ -301,7 +302,7 @@ void Peer::client_recon(const peertype &peer){
                 //elements
                 comm.samples = ((Elements *) msg)->samples;
                 delete ((Elements *) msg);
-                g_logger.log(Logger_level::DEBUG, std::to_string(comm.samples.size()));
+                g_logger.log(Logger_level::DEBUG, "Elements request #elements: " + std::to_string(comm.samples.size()));
                 break;
                    }
             case Msg_type::Done:{
@@ -390,7 +391,9 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
         negate(fi_ki_mb, sum);
         matrix.put(i, mbar, fi_ki_mb - ki_ma);
     }
-    //gauss for
+
+    /*
+    //gauss form
     gauss(matrix);
     g_logger.log(Logger_level::DEBUG, "Finished gauss form");
 
@@ -403,13 +406,57 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
         if (lead != 1){
             for (int j=i; j<matrix.NumCols(); j++){
                 NTL::ZZ_p v = matrix.get(i,j);
-                matrix.put(i,j,v/lead);
+                matrix.put(i,j,v * pow(lead, );
         }
         }
     }
+    */
+	int i_max;
+    int h = 1; /* Initialization of the pivot row */
+    int k = 1; /* Initialization of the pivot column */
+    int i=0;
+    NTL::ZZ_p f;  
+
+    while (h <= matrix.NumRows() and k <= matrix.NumCols()){
+      /* Find the k-th pivot: */
+        NTL::ZZ_p save = matrix(h,k);
+        for(int i = h; i < matrix.NumRows(); i++){
+            if(rep(save) - rep(matrix(i,k)) > 0){
+                save = matrix(i,k);
+                i_max = i;
+            }
+        }
+        if (matrix(i_max, k) == 0){
+          /* No pivot in this column, pass to next column */
+          k = k+1;
+        }
+        else{
+            NTL::Vec<NTL::ZZ_p> swa = matrix(h);
+            NTL::Vec<NTL::ZZ_p> swo = matrix(i_max);
+            for (int z=0; z<=matrix.NumCols()-1; z++){
+                matrix.put(h-1, z, swo[z]); 
+                matrix.put(i_max-1, z, swa[z]);
+            }
+           /* Do for all rows below pivot: */
+           for (i = h + 1; i < matrix.NumRows(); i++){
+              f = matrix(i, k) / matrix(h, k);
+              /* Fill with zeros the lower part of pivot column: */
+              matrix.put(i-1, k-1, NTL::ZZ_p(0));
+              /* Do for all remaining elements in current row: */
+              for (int j = k + 1; j < matrix.NumCols(); j++)
+                 matrix.put(i-1, j-1, matrix(i, j) - matrix(h, j) * f);
+           }
+           /* Increase pivot row and column */
+           h = h+1; 
+           k = k+1;
+        }
+}
+
     g_logger.log(Logger_level::DEBUG, "Finished gauss form and normalizing");
 
     //back substitute
+    int last;
+    NTL::ZZ_p scmult,sval,v;
     
     for (int j=matrix.NumRows()-1; j>0; j--){
         last = matrix.NumRows()-1;
@@ -470,7 +517,6 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
 
 Communication Peer::request_poly_handler(ReconRequestPoly* req){
     int r_size = req->size;
-    std::vector<NTL::ZZ_p> points = tree.get_points();
     std::vector<NTL::ZZ_p> r_samples = req->samples;
     bitset key = req->prefix;
     std::string prefix_str = key.to_string();
@@ -482,7 +528,7 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     std::vector<NTL::ZZ_p> local_samples, remote_samples;
 
     try{
-        std::tie(local_samples, remote_samples) = solve(r_samples, r_size, l_samples, l_size, points);
+        std::tie(local_samples, remote_samples) = solve(r_samples, r_size, l_samples, l_size, recon_settings.points);
         g_logger.log(Logger_level::DEBUG, "solved interpolation succesfully!");
     }
     //catch (solver_exception& e){
@@ -494,7 +540,7 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
                      (node->get_num_elements() < recon_settings.ptree_thresh_mult * recon_settings.mbar)
                      )
             ){
-                g_logger.log(Logger_level::DEBUG, "Preparing to send FullElements request");
+                g_logger.log(Logger_level::DEBUG, "Preparing to send FullElements request for " + node->get_node_key());
                 elements = node->elements();
                 Communication newcomm;
                 FullElements* full_elements = new FullElements;
@@ -535,6 +581,11 @@ Communication Peer::request_full_handler(ReconRequestFull* req){
     g_logger.log(Logger_level::DEBUG, "ReconRequestFull for node: " + prefix_str);
     std::vector<NTL::ZZ_p> local_needs, remote_needs;
     std::tie(local_needs, remote_needs) = remote_set.symmetric_difference(local_set); 
+    g_logger.log(Logger_level::DEBUG, "Local needs: ");
+    g_logger.log(Logger_level::DEBUG, local_needs);
+    g_logger.log(Logger_level::DEBUG, "remote needs: ");
+    g_logger.log(Logger_level::DEBUG, remote_needs);
+
     newcomm.samples = local_needs;
     Elements* m_elements = new Elements;
     m_elements->samples = remote_needs;

@@ -19,21 +19,19 @@ class Pnode;
 class Memnode;
 
 typedef std::shared_ptr<Pnode> pnode_ptr;
-typedef std::shared_ptr<Memnode> memnode_ptr;
+typedef Memnode* memnode_ptr;
 
 class Ptree{
 protected: 
   pnode_ptr root;
   std::shared_ptr<RECON_DBManager> dbm;
-  std::vector<NTL::ZZ_p> points;
   
 public:
   Ptree();
-  Ptree(std::shared_ptr<RECON_DBManager> dbp, const std::vector<NTL::ZZ_p>& point);
+  Ptree(std::shared_ptr<RECON_DBManager> dbp);
   ~Ptree();
  
   pnode_ptr get_root();
-  std::vector<NTL::ZZ_p> get_points();
   
   std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z);
   std::vector<NTL::ZZ_p> delete_element_array(const NTL::ZZ_p &z);
@@ -73,7 +71,7 @@ private:
 
 public:
   Pnode();
-  Pnode(std::shared_ptr<RECON_DBManager>, const std::vector<NTL::ZZ_p>&);
+  Pnode(std::shared_ptr<RECON_DBManager>);
   ~Pnode();
   
   void set_node_key(const std::string &key);
@@ -131,38 +129,33 @@ public:
   /** split a node when the threshold is reached */
   void split(int depth);
 
-  /** access the svalues */
-  std::vector<NTL::ZZ_p> svalues();
-  void update_svalues(const std::vector<NTL::ZZ_p> &marray, const NTL::ZZ_p &z);
+  /** update the svalues */
+  void update_svalues(const std::vector<NTL::ZZ_p> &marray);
 };
-
 
 /** MemTree is a special pTree kept in mem to speed up build process. */
 class MemTree: public Ptree{
     private:
         memnode_ptr root;
-        std::shared_ptr<RECON_DBManager> dbm;
-        std::vector<NTL::ZZ_p> points;
     public:
         MemTree();
-        MemTree(std::shared_ptr<RECON_DBManager>, const std::vector<NTL::ZZ_p>&);
+        MemTree(std::shared_ptr<RECON_DBManager>);
         ~MemTree();
-        std::vector<NTL::ZZ_p> get_points();
         memnode_ptr get_node(const std::string &key);
 
 	/** commit memtree to DB */
         void commit_memtree();
-        memnode_ptr new_child(memnode_ptr parent, int child_index);
         memnode_ptr get_root();
-        void insert(const NTL::ZZ_p &z);
+        memnode_ptr new_child(memnode_ptr parent, int child_index);
+
         void insert(const std::string &hash);
+        void insert(const NTL::ZZ_p &p);
 };
 
-/** Mmenode is a special node which keep a reference to its children */
+/** Memenode is a special node which keep a reference to its children */
 class Memnode: public MemTree, public Pnode{
     private:
         std::vector<memnode_ptr> child_vec;
-	memnode_ptr shared_from_this();
     public:
         Memnode();
         ~Memnode();

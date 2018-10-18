@@ -143,7 +143,7 @@ namespace Unpacker {
             }
 
         }catch(exception &e){
-            throw runtime_error("");
+            throw runtime_error(e.what());
         }
 
         Packet::Key::Ptr primaryKey = static_pointer_cast<Packet::Key>(pk.key);

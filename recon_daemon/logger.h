@@ -11,8 +11,10 @@
 #include <vector>
 #include <ostream>
 #include <iterator>
+#include <NTL/ZZ_p.h>
+#include <syslog.h>
 
-enum class Logger_level {DEBUG=0, WARNING=1, CRITICAL=2};
+enum class Logger_level {DEBUG=7, INFO=6, WARNING=4, CRITICAL=2};
 
 class Logger{
     private:
@@ -21,10 +23,11 @@ class Logger{
         std::mutex mu;
     public:
         Logger();
-        void init(bool verb);
+        void init(bool verb, std::string log_to_file);
         ~Logger();
-        void log(Logger_level level, std::string what, bool cont=false);
-        template <typename T> void log(std::vector<T> vec);
+        void log(Logger_level level, std::string what);
+        void log_to_file(Logger_level level, std::string what);
+        void log(Logger_level level, const std::vector<NTL::ZZ_p> &vec);
 
 };
 

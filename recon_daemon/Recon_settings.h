@@ -1,13 +1,16 @@
 #ifndef RECON_SETTINGS_H
 #define RECON_SETTINGS_H
 #include <string>
+#include <vector>
+#include <NTL/ZZ_p.h>
 
 struct Configtype{
     int mbar;
     int bq;
     int max_ptree_nodes;
     int ptree_thresh_mult;
-    int num_samples;
+    size_t num_samples;
+    std::vector<NTL::ZZ_p> points;
     unsigned int split_threshold;
     int join_threshold;
     std::string P_SKS_STRING;
@@ -33,6 +36,8 @@ struct Configtype{
     int sks_bitstring;
     int async_timeout_sec;
     int async_timeout_usec;
+    bool ignore_known_bug;
+    bool debug; 
 };
 
 extern Configtype recon_settings;

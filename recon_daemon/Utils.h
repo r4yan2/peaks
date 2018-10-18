@@ -39,7 +39,7 @@ template<typename I> static I get_random(I max_val){
 NTL::ZZ_p hex_to_zz(const std::string &hash);
 
 /** generate hex string from ZZ number*/
-std::string zz_to_hex(const NTL::ZZ_p &num, int padding=32);
+std::string zz_to_hex(const NTL::ZZ_p &num, size_t padding=32);
 
 /** swap endianess of an int */
 int swap(int d);

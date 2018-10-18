@@ -99,23 +99,21 @@ std::string ZZp_to_bitstring(const NTL::ZZ_p &num){
     return res.str();
 }
 
-std::string zz_to_hex(const NTL::ZZ_p &num, int padding){
-    std::string res;
+std::string zz_to_hex(const NTL::ZZ_p &num, size_t padding){
+    std::ostringstream os;
     NTL::ZZ n = NTL::rep(num);
     std::vector<unsigned char> p(NumBytes(n));
     BytesFromZZ(p.data(), n, NumBytes(n));
-    std::reverse(p.begin(), p.end());
-    ZZFromBytes(n, p.data(), NumBytes(n));
-    while (n > 0){
-        res.insert(res.begin(), int2hex[n%16]);
-        n /= 16;
-        }
-    int pad_len = padding - res.size();
-    while (pad_len > 0){
-        res.insert(res.begin(), '0');
-        pad_len -= 1;
-        }
-    return res;
+    for (auto elem: p){
+        std::ostringstream tmp;
+        tmp << std::hex << (int) elem;
+        if (tmp.str().size() == 1)
+            os << "0";
+        os << tmp.str();
+    }
+    while (os.str().size() < padding)
+        os << "0";
+    return os.str();
 }
 
 int swap(int d){

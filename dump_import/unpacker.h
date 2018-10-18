@@ -17,6 +17,7 @@
 #include <cmath>
 #include <regex.h>
 #include "Key_Tools.h"
+#include "../recon_daemon/Recon_settings.h"
 
 using namespace OpenPGP;
 

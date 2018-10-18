@@ -11,8 +11,6 @@
 
 
 namespace Utils{
-    const unsigned int KEY_PER_THREAD_DEFAULT = 100000;
-
     const unsigned int CERTIFICATE      = 1;
     const unsigned int PUBKEY           = 2;
     const unsigned int SIGNATURE        = 3;

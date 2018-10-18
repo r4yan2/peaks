@@ -23,7 +23,7 @@ Configtype recon_settings;
 namespace po = boost::program_options;
 
 void help();
-void parse_config(std::string filename);
+void parse_config(std::string filename, po::variables_map vm);
 void serve(int argc, char* argv[]);
 void import(po::variables_map vm);
 void build(po::variables_map vm);
@@ -37,11 +37,12 @@ int main(int argc, char* argv[]){
 	    po::options_description global("Global options");
 	    global.add_options()
         ("debug,d", "Turn on debug output")
+        ("log-to-file,f", po::value<std::string>()->default_value(""), "Redirect debug on specific file")
         ("command", po::value<std::string>()->required(), "command to execute")
         ("subargs", po::value<std::vector<std::string> >(), "Arguments for command");
 
 	    po::positional_options_description pos;
-	    pos.add("command", 1).add("subargs", -1);
+	    pos.add("command", 2).add("subargs", -1);
 
 	    po::variables_map vm;
 
@@ -52,8 +53,8 @@ int main(int argc, char* argv[]){
 	    std::string cmd = vm["command"].as<std::string>();
 
         std::string filename = "peaks_config";
-        parse_config(filename);
-        g_logger.init(vm.count("debug"));
+        parse_config(filename, vm);
+        g_logger.init(vm.count("debug"), vm["log-to-file"].as<std::string>());
         
         if (cmd == "serve"){
             po::options_description serve_desc("serve options");
@@ -70,7 +71,7 @@ int main(int argc, char* argv[]){
             po::options_description import_desc("import options");
             import_desc.add_options()
                 ("threads, t", po::value<unsigned int>(), "set number of threads")
-                ("key, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
+                ("keys, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
                 ("path, p", po::value<std::string>(), "path to the dump")
                 ("help, h", "peaks import help");
 
@@ -124,7 +125,7 @@ void help(){
     exit(0);
 }
 
-void parse_config(std::string filename){
+void parse_config(std::string filename, po::variables_map vm){
     std::ifstream cFile (filename);
     if (cFile.is_open())
     {
@@ -189,13 +190,17 @@ void parse_config(std::string filename){
                 recon_settings.async_timeout_sec = std::stoi(value);
             else if (name == "async_timeout_usec")
                 recon_settings.async_timeout_usec = std::stoi(value);
+            else if (name == "ignore_known_bug")
+                recon_settings.ignore_known_bug = std::stoi(value) >= 1;
         }
         recon_settings.num_samples = recon_settings.mbar + 1;
         recon_settings.split_threshold = recon_settings.ptree_thresh_mult * recon_settings.mbar;
         recon_settings.join_threshold = recon_settings.split_threshold / 2;
         recon_settings.max_read_len = 1 << recon_settings.max_read_len_shift;
         NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(recon_settings.P_SKS_STRING.c_str()));
-        g_logger.log(Logger_level::DEBUG, "Config sks_compliant = " + std::to_string(recon_settings.sks_compliant));
+        recon_settings.points = Utils::Zpoints(recon_settings.num_samples);
+        recon_settings.debug = vm.count("debug") >= 1;
+
     }
     else {
         std::cerr << "Couldn't open config file for reading.\n";
@@ -216,9 +221,8 @@ std::vector<NTL::ZZ_p> parse_custom_hash_file(){
 void build(po::variables_map vm){
     
     std::cout << "Starting ptree builder" << std::endl;
-    const std::vector<NTL::ZZ_p> points = Utils::Zpoints(recon_settings.num_samples);
     std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>();
-    MemTree tree(dbm, points);
+    MemTree tree(dbm);
     g_logger.log(Logger_level::DEBUG, "created empty ptree");
     int entries;
     if (recon_settings.custom_hash_file_on == 1){
@@ -252,7 +256,7 @@ void recon(po::variables_map vm){
     std::cout << "Starting recon_daemon" << std::endl;
     const std::vector<NTL::ZZ_p> points = Utils::Zpoints(recon_settings.num_samples);
     std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(); 
-    Ptree tree(dbm, points);
+    Ptree tree(dbm);
     tree.create();
     Peer peer = Peer(tree);
     if (vm.count("server-only"))
@@ -292,7 +296,7 @@ void import(po::variables_map vm) {
     setlogmask (LOG_UPTO (LOG_NOTICE));
     syslog(LOG_NOTICE, "Dump_import is starting up!");
     unsigned int nThreads = std::thread::hardware_concurrency() - 1;
-    unsigned int key_per_thread = Utils::KEY_PER_THREAD_DEFAULT;
+    unsigned int key_per_thread;
     boost::filesystem::path path = DEFAULT_DUMP_PATH;
 
     if(vm.count("help")){
@@ -303,31 +307,12 @@ void import(po::variables_map vm) {
         std::cout << "-p: set the path of the dump" << std::endl;
         std::cout << "The default value for this computer are:" << std::endl;
         std::cout << "t = " << std::thread::hardware_concurrency() / 2 << std::endl;
-        std::cout << "k = " << Utils::KEY_PER_THREAD_DEFAULT << std::endl;
         std::cout << "p = " << DEFAULT_DUMP_PATH << std::endl;
         exit(0);
     }
 
     if(vm.count("path"))
         path = vm["path"].as<boost::filesystem::path>();
-
-    if(vm.count("threads"))
-        nThreads = vm["threads"].as<unsigned int>();
-
-    if(vm.count("keys"))
-        key_per_thread = vm["keys"].as<unsigned int>();
-
-    if(Utils::create_folders() == -1){
-        std::cerr << "Unable to create temp folder" << std::endl;
-        exit(-1);
-    }
-
-    std::cout << "Threads: " << nThreads << std::endl;
-    std::cout << "Key per Thread: " << key_per_thread << std::endl;
-
-    std::shared_ptr<DBManager> dbm = std::make_shared<DBManager>();
-
-    std::cout << Utils::getCurrentTime() << "Starting dump read" << std::endl;
 
     std::vector<std::string> files;
     try {
@@ -336,6 +321,30 @@ void import(po::variables_map vm) {
         std::cerr << "Unable to read dump folder/files" << std::endl;
         exit(-1);
     }
+    std::cout << "# Keys to import: " << files.size() << std::endl;
+
+    if(vm.count("threads"))
+        nThreads = vm["threads"].as<unsigned int>();
+    
+    std::cout << "Threads: " << nThreads << std::endl;
+
+    if(vm.count("keys"))
+        key_per_thread = vm["keys"].as<unsigned int>();
+    else
+        key_per_thread = 1 + ((files.size() - 1)/nThreads); 
+    
+    std::cout << "Key per Thread: " << key_per_thread << std::endl;
+
+
+    if(Utils::create_folders() == -1){
+        std::cerr << "Unable to create temp folder" << std::endl;
+        exit(-1);
+    }
+
+    std::shared_ptr<DBManager> dbm = std::make_shared<DBManager>();
+
+    std::cout << Utils::getCurrentTime() << "Starting dump read" << std::endl;
+
 
     std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
     std::vector<std::thread> pool_vect(nThreads);
