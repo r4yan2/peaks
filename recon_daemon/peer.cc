@@ -411,7 +411,7 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
         }
     }
     */
-	int i_max;
+	int i_max = 0;
     int h = 1; /* Initialization of the pivot row */
     int k = 1; /* Initialization of the pivot column */
     int i=0;
