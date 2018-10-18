@@ -38,10 +38,15 @@ add_executable(peaks peaks.cc)
 if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
 set(STRIP "peaks_stripped")
 add_custom_command(TARGET peaks POST_BUILD
-    COMMAND strip ${TARGET} ${STRIP}
+    COMMAND strip -o peaks_stripped peaks
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
     COMMENT "Running strip on binary")
 endif ()
+
+add_custom_command(TARGET peaks POST_BUILD
+    COMMAND sha1sum peaks
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
+    COMMENT "Running checksum on binary")
 
 link_directories(${CGI_HANDLER_DIRECTORY})
 target_link_libraries(peaks ${Boost_LIBRARIES})
