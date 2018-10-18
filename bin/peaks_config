@@ -26,3 +26,4 @@ custom_hash_file = tmp
 sks_bitstring = 0
 async_timeout_sec = 1
 async_timeout_usec = 0
+ignore_known_bug = 1
