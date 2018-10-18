@@ -2,4 +2,4 @@
 	path = OpenPGP
 	url = git@github.com:r4yan2/OpenPGP.git
 [submodule "Submod"]
-	branch = pks-branch
+	branch = pks_branch
