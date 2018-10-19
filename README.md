@@ -2,14 +2,21 @@
 ## Compile
 ### Dependencies
 
+* build-essential (and cmake)
 * Boost Libraries
 	* System
 	* Filesystem
 	* Program Options
 * cppcms
+    * pcre development files
+    * zlib development files
 * mysqlcppconnector
 * OpenPGP: switch to branch *pks_branch* and compile with ```make gpg-compatible```
 * NTL and GMP: exec ```./compile_libraries.sh release```
+
+On Debian/Ubuntu you can install all dependencies with
+```apt install build-essential cmake zlib1g-dev python libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libmysqlcppconn-dev &&\
+./compile_libraries.sh release full```
 
 ### Database
 

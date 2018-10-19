@@ -131,3 +131,54 @@ then
 
     rm -rf ntl*
 fi
+
+if [ ! -d lib/cppcms ]
+then
+
+    echo 'Compiling CPPCMS'
+
+    if [ ! -d cppcms-1.2.1 ];
+    then
+
+        if [ ! -f cppcms-1.2.1.tar.gz ]
+        then
+            $get https://kent.dl.sourceforge.net/project/cppcms/cppcms/1.2.1/cppcms-1.2.1.tar.bz2
+        fi
+
+        tar -xjf cppcms-1.2.1.tar.gz
+    fi
+
+    cd cppcms-1.2.1
+    mkdir build
+    cd build
+    if [ "$1" == "debug" ]
+    then
+        cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$starting_path/lib/cppcms/ ..
+    elif [ "$1" == "release" ]
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$starting_path/lib/cppcms/ ..
+    else
+        echo "ERROR! Option not recognized, use debug or release to specify the purpose."
+        exit;
+    fi
+    make -j4
+    make test -j4
+    make install
+
+    cd $starting_path
+
+    echo 'Removing CPPCMS sources'
+
+    rm -rf cppcms*
+
+fi
+
+if [ -d OpenPGP ]
+then
+
+    echo 'Compiling OpenPGP'
+
+    cd OpenPGP
+    make -j4 gpg-compatible
+    
+    cd $starting_path
+fi
