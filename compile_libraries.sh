@@ -140,12 +140,12 @@ then
     if [ ! -d cppcms-1.2.1 ];
     then
 
-        if [ ! -f cppcms-1.2.1.tar.gz ]
+        if [ ! -f cppcms-1.2.1.tar.bz2 ]
         then
             $get https://kent.dl.sourceforge.net/project/cppcms/cppcms/1.2.1/cppcms-1.2.1.tar.bz2
         fi
 
-        tar -xjf cppcms-1.2.1.tar.gz
+        tar -xjf cppcms-1.2.1.tar.bz2
     fi
 
     cd cppcms-1.2.1
@@ -156,6 +156,7 @@ then
         cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$starting_path/lib/cppcms/ ..
     elif [ "$1" == "release" ]
         cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$starting_path/lib/cppcms/ ..
+    then
     else
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
