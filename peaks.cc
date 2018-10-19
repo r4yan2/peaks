@@ -249,9 +249,10 @@ void build(po::variables_map vm){
         for (auto hash : hashes){
             tree.insert(hash);
             progress += 1;
-            if (progress%1000 == 0)
+            if (progress%1000 == 0){
                 printf ("\rProgress: %3d%%", (progress*100)/entries);
                 fflush(stdout);
+            }
 
         }
     }
