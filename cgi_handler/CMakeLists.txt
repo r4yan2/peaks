@@ -25,11 +25,11 @@ set(Cppcms_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/cppcms)
 
 find_library(cppcms_lib
     NAMES libcppcms.so
-    HINTS ${CMAKE_SOURCE_DIR}/lib/cppcms
+    HINTS ${CMAKE_SOURCE_DIR}/lib/cppcms/lib/
     )
 find_library(booster_lib
     NAMES libbooster.so
-    HINTS ${CMAKE_SOURCE_DIR}/lib/cppcms/booster
+    HINTS ${CMAKE_SOURCE_DIR}/lib/cppcms/lib/
     )
 
 message("test: ${cppcms_lib} ${booster_lib}")
