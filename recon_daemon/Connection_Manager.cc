@@ -220,7 +220,7 @@ bool Connection_Manager::read_n_bytes(void *buf, std::size_t n, bool tmp_socket,
             ret = recv(sockfd, cbuf + offset, n - offset, signal);
         if (ret < 0 && (errno != EINTR || errno != EWOULDBLOCK || errno != EAGAIN)) {
             // IOException
-            g_logger.log(Logger_level::CRITICAL, "IOException on recv");
+            g_logger.log(Logger_level::DEBUG, "IOException on recv, sorry but it is normal during recon as server");
             throw std::invalid_argument(strerror(errno));
         } else if (ret == 0) {
             // No data available

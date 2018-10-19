@@ -245,17 +245,24 @@ void build(po::variables_map vm){
         std::vector<std::string> hashes;
         hashes = dbm->get_all_hash();
         entries = hashes.size();
+        int progress = 0;
         for (auto hash : hashes){
             tree.insert(hash);
+            progress += 1;
+            if (progress%1000 == 0)
+                printf ("\rProgress: %3d%%", (progress*100)/entries);
+                fflush(stdout);
+
         }
     }
     g_logger.log(Logger_level::DEBUG, "fetched hashes from DB");
 
+    std::cout << std::endl;
+    std::cout << "Writing resulting ptree to DB!" << std::endl;
     dbm->lockTables();
     tree.commit_memtree();
     dbm->unlockTables();
     std::cout << "Inserted " << entries << " entry!" << std::endl; 
-    std::cout << "Finished! Now start reconing with 'peaks recon'!" << std::endl; 
     exit(0);
 }
 
