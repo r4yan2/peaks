@@ -155,8 +155,8 @@ then
     then
         cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$starting_path/lib/cppcms/ ..
     elif [ "$1" == "release" ]
-        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$starting_path/lib/cppcms/ ..
     then
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$starting_path/lib/cppcms/ ..
     else
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
