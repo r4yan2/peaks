@@ -411,11 +411,11 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
         }
     }
     */
-	int i_max = 0;
+	int i_max = 1;
     int h = 1; /* Initialization of the pivot row */
     int k = 1; /* Initialization of the pivot column */
-    int i=0;
-    NTL::ZZ_p f;  
+    int i=1;
+    NTL::ZZ_p f(0);  
 
     while (h <= matrix.NumRows() and k <= matrix.NumCols()){
       /* Find the k-th pivot: */
