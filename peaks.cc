@@ -28,7 +28,6 @@ void serve(int argc, char* argv[]);
 void import(po::variables_map vm);
 void build(po::variables_map vm);
 void recon(po::variables_map vm);
-char* convert(const std::string & s);
 std::vector<NTL::ZZ_p> parse_custom_hash_file();
 
 int main(int argc, char* argv[]){
@@ -36,19 +35,24 @@ int main(int argc, char* argv[]){
     try{
 	    po::options_description global("Global options");
 	    global.add_options()
+        ("help,h", "Print this help message")
         ("debug,d", "Turn on debug output")
-        ("log-to-file,f", po::value<std::string>()->default_value(""), "Redirect debug on specific file")
+        ("log-to-file,f", po::value<std::string>()->default_value(""), "Redirect log to the specified file")
         ("command", po::value<std::string>()->required(), "command to execute")
         ("subargs", po::value<std::vector<std::string> >(), "Arguments for command");
 
 	    po::positional_options_description pos;
-	    pos.add("command", 2).add("subargs", -1);
+	    pos.add("command", 1).add("subargs", -1);
 
 	    po::variables_map vm;
 
 	    po::parsed_options parsed = po::command_line_parser(argc, argv).options(global).positional(pos).allow_unregistered().run();
 
+
 	    po::store(parsed, vm);
+
+        if (vm.count("help"))
+            help();
 
 	    std::string cmd = vm["command"].as<std::string>();
 
@@ -60,7 +64,12 @@ int main(int argc, char* argv[]){
             po::options_description serve_desc("serve options");
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             std::vector<char *> new_argv;
-            std::transform(opts.begin(), opts.end(), std::back_inserter(new_argv), convert);
+            std::transform(opts.begin(), opts.end(), std::back_inserter(new_argv), [](const std::string s) -> char* {
+                    char *pc = new char[s.size() + 1];
+                    std::strcpy(pc, s.c_str());
+                    return pc;
+                    }
+                    );
             serve(opts.size(), &new_argv[0]);
 	    }
         else if (cmd == "build"){
@@ -72,8 +81,7 @@ int main(int argc, char* argv[]){
             import_desc.add_options()
                 ("threads, t", po::value<unsigned int>(), "set number of threads")
                 ("keys, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-                ("path, p", po::value<std::string>(), "path to the dump")
-                ("help, h", "peaks import help");
+                ("path, p", po::value<std::string>(), "path to the dump");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
@@ -99,11 +107,13 @@ int main(int argc, char* argv[]){
     } 
     catch(boost::program_options::required_option& e) 
     { 
-        std::cout << "Missing required option:" << std::endl;
+        std::cout << "Missing required option " << e.what() << std::endl;
+        help();
     } 
     catch(boost::program_options::error& e) 
     { 
-        std::cout << "Wrong option parameter:" << std::endl;
+        std::cout << "Wrong option parameter " << e.what() << std::endl;
+        help();
     } 
     catch(boost::exception& e){
         help();
@@ -112,16 +122,38 @@ int main(int argc, char* argv[]){
 
 void help(){
 
-    std::cout << "Usage:" << std::endl;
-    std::cout << "peaks [-d|--debug] command [command-options]" << std::endl;
+    std::cout << "Usage: peaks [OPTIONS] COMMAND [ARGS]" << std::endl;
+
     std::cout << std::endl;
-    std::cout << "-d enable more verbose log" << std::endl;
-    std::cout << "Commands:" << std::endl;
-    std::cout << "import - Import certificated into Mysql" << std::endl;
-    std::cout << "build - build the prefix-tree" << std::endl;
-    std::cout << "recon - start the recon process" << std::endl;
-    std::cout << "serve - start the server process" << std::endl;
+
+    std::cout << "Options:" << std::endl;
+    std::cout << "  -h, --help \t\tPrint this help message" << std::endl;
+    std::cout << "  -d, --debug \t\tTurn on debug output" << std::endl;
+    std::cout << "  -f, --log-to-file \tRedirect log to the specified file" << std::endl;
+
     std::cout << std::endl;
+
+    std::cout << "Commands and args:" << std::endl;
+    std::cout << "  import \t\tImport certificates into Mysql" << std::endl;
+    std::cout << "    -t, --threads \tSet number of threads to use" << std::endl;
+    std::cout << "    -k, --keys \t\tSet how many keys a thread has to analyze" << std::endl;
+    std::cout << "    -p, --path \t\tSet the path of the dump" << std::endl;
+
+    std::cout << std::endl; 
+
+    std::cout << "  build \t\tBuild the prefix-tree" << std::endl;
+
+    std::cout << std::endl;
+
+    std::cout << "  recon \t\tStart the recon process" << std::endl;
+    std::cout << "    --client-only \tStart only as client" << std::endl;
+    std::cout << "    --server-only \tStart only as server" << std::endl;
+
+    std::cout << std::endl;
+
+    std::cout << "  serve \t\tStart the webserver process" << std::endl;
+    std::cout << "    -c, --config \tREQUIRED, specify config file for cppcms" << std::endl;
+
     exit(0);
 }
 
@@ -316,20 +348,12 @@ void import(po::variables_map vm) {
     unsigned int key_per_thread;
     boost::filesystem::path path = DEFAULT_DUMP_PATH;
 
-    if(vm.count("help")){
-        std::cout << "Peaks import help:" << std::endl;
-        std::cout << "Parameters:" << std::endl;
-        std::cout << "-t: set number of threads" << std::endl;
-        std::cout << "-k: set how many keys a thread has to analyze" << std::endl;
-        std::cout << "-p: set the path of the dump" << std::endl;
-        std::cout << "The default value for this computer are:" << std::endl;
-        std::cout << "t = " << std::thread::hardware_concurrency() / 2 << std::endl;
-        std::cout << "p = " << DEFAULT_DUMP_PATH << std::endl;
-        exit(0);
-    }
-
     if(vm.count("path"))
         path = vm["path"].as<boost::filesystem::path>();
+    else
+        std::cout << "No custom path selected" << std::endl;
+    
+    std::cout << "Searching for certificates in: " << DEFAULT_DUMP_PATH << std::endl;
 
     std::vector<std::string> files;
     try {
@@ -338,7 +362,7 @@ void import(po::variables_map vm) {
         std::cerr << "Unable to read dump folder/files" << std::endl;
         exit(-1);
     }
-    std::cout << "# Keys to import: " << files.size() << std::endl;
+    std::cout << "Found " << files.size() << " keys to import" << std::endl;
 
     if(vm.count("threads"))
         nThreads = vm["threads"].as<unsigned int>();
@@ -426,13 +450,7 @@ void import(po::variables_map vm) {
 
     syslog(LOG_NOTICE, "Dump_import is stopping!");
 
-    std::cout << Utils::getCurrentTime() << "Dump_import terminated. Remember to create the ptree with the SKS executable "
-            "before starting the recon." << std::endl;
+    std::cout << Utils::getCurrentTime() << "Dump_import terminated. Remember to create the ptree before starting the recon." << std::endl;
 
 }
 
-char* convert(const std::string & s){
-    char *pc = new char[s.size()+1];
-    std::strcpy(pc, s.c_str());
-    return pc; 
-}
