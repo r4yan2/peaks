@@ -7,9 +7,9 @@
 #include <common/includes.h>
 
 // Local files includes
-#include "DB_info.h"
 #include "db.h"
 #include "utils.h"
+#include "../recon_daemon/Recon_settings.h"
 
 // Include MySQL connector
 #include <cppconn/driver.h>
@@ -29,9 +29,9 @@ using namespace std;
 // Database connector initialization
 DBManager::DBManager() {
     DBManager::driver = get_driver_instance();
-    DBManager::con = shared_ptr<Connection>(driver->connect(DB_info::host, DB_info::user, DB_info::password));
+    DBManager::con = shared_ptr<Connection>(driver->connect(recon_settings.db_host, recon_settings.db_user, recon_settings.db_password));
     // Connect to the MySQL keys database
-    con->setSchema(DB_info::database);
+    con->setSchema(recon_settings.db_database);
     // Create prepared Statements
     /*shortid_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT certificate FROM ("
                                        "SELECT certificate, ID FROM gpg_keyserver "

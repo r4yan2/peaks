@@ -38,6 +38,11 @@ struct Configtype{
     int async_timeout_usec;
     bool ignore_known_bug;
     bool debug; 
+
+    std::string db_host;
+    std::string db_database;
+    std::string db_user;
+    std::string db_password;
 };
 
 extern Configtype recon_settings;

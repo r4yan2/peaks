@@ -5,17 +5,16 @@
 #include <thread>
 
 #include "RECON_DBManager.h"
-#include "DB_info.h"
+#include "Recon_settings.h"
 
 using namespace sql;
 using namespace std;
-using namespace DB_info;
 // Database connector initialization
 RECON_DBManager::RECON_DBManager() {
     RECON_DBManager::driver = get_driver_instance();
-    RECON_DBManager::con = shared_ptr<Connection>(driver->connect(host, user, password));
+    RECON_DBManager::con = shared_ptr<Connection>(driver->connect(recon_settings.db_host, recon_settings.db_user, recon_settings.db_password));
     // Connect to the MySQL keys database
-    con->setSchema(database);
+    con->setSchema(recon_settings.db_database);
 
     // Create prepared Statements
     
@@ -121,7 +120,9 @@ bool RECON_DBManager::check_key(const std::string k){
         check_key_stmt->setString(1,k);
         result = shared_ptr<ResultSet>(check_key_stmt->executeQuery());
         result->next();
+        //std::cout << k << "-> OK - " << result->getString("hash") << std::endl;
     } catch (exception &e){
+        //std::cout << k << "-> KO" << std::endl;
         return false;
     }
     return true;

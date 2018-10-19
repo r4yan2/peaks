@@ -27,3 +27,6 @@ sks_bitstring = 0
 async_timeout_sec = 1
 async_timeout_usec = 0
 ignore_known_bug = 1
+db_host = localhost
+db_user = root
+db_database = gpg_keyserver

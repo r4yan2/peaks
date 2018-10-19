@@ -23,7 +23,6 @@ include_directories(${DUMP_IMPORT_DIRECTORY})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/boost_1_63_0)
 include_directories(${GMP_DIRECTORY}/include)
 include_directories(${NTL_DIRECTORY}/include)
-include_directories(${CURLPP_DIRECTORY}/include)
 include_directories(${CGI_HANDLER_DIRECTORY})
 
 

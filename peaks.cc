@@ -192,6 +192,15 @@ void parse_config(std::string filename, po::variables_map vm){
                 recon_settings.async_timeout_usec = std::stoi(value);
             else if (name == "ignore_known_bug")
                 recon_settings.ignore_known_bug = std::stoi(value) >= 1;
+
+            else if (name == "db_host")
+                recon_settings.db_host = value;
+            else if (name == "db_database")
+                recon_settings.db_database = value;
+            else if (name == "db_user")
+                recon_settings.db_user = value;
+            else if (name == "db_password")
+                recon_settings.db_password = value;
         }
         recon_settings.num_samples = recon_settings.mbar + 1;
         recon_settings.split_threshold = recon_settings.ptree_thresh_mult * recon_settings.mbar;

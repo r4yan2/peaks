@@ -5,7 +5,7 @@
 #include <thread>
 
 #include "DBManager.h"
-#include "DB_info.h"
+#include "../recon_daemon/Recon_settings.h"
 
 
 using namespace sql;
@@ -15,9 +15,9 @@ using namespace std;
 // Database connector initialization
 DBManager::DBManager() {
     DBManager::driver = get_driver_instance();
-    DBManager::con = shared_ptr<Connection>(driver->connect(DB_info::host, DB_info::user, DB_info::password));
+    DBManager::con = shared_ptr<Connection>(driver->connect(recon_settings.db_host, recon_settings.db_user, recon_settings.db_password));
     // Connect to the MySQL keys database
-    con->setSchema(DB_info::database);
+    con->setSchema(recon_settings.db_database);
 
     con->createStatement()->execute("set sql_log_bin = 0;");
     con->createStatement()->execute("set foreign_key_checks = 0;");
