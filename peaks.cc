@@ -54,7 +54,7 @@ int main(int argc, char* argv[]){
         if (vm.count("help"))
             help();
 
-	    std::string cmd = vm["command"].as<std::string>();
+        std::string cmd = vm["command"].as<std::string>();
 
         std::string filename = "peaks_config";
         parse_config(filename, vm);
