@@ -12,19 +12,9 @@ set(SOURCE_FILES peer.cc recon_manager.cc Connection_Manager.cc Message.cc Buffe
 
 add_library(recon_daemon ${SOURCE_FILES})
 
-set(OpenPGP_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../OpenPGP)
-set(NTL_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../lib/ntl)
-set(GMP_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../lib/gmp)
-set(DUMP_IMPORT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../dump_import)
-
 target_link_libraries(recon_daemon mysqlcppconn)
 target_link_libraries(recon_daemon gmp)
 target_link_libraries(recon_daemon curl)
 target_link_libraries(recon_daemon ${NTL_DIRECTORY}/lib/libntl.a)
 target_link_libraries(recon_daemon ${GMP_DIRECTORY}/lib/libgmp.so)
 target_link_libraries(recon_daemon dump_import)
-
-include_directories(${OpenPGP_DIRECTORY})
-include_directories(${DUMP_IMPORT_DIRECTORY})
-include_directories(${GMP_DIRECTORY}/include)
-include_directories(${NTL_DIRECTORY}/include)

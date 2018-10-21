@@ -19,22 +19,7 @@ add_custom_command(
 add_library(pks ${SOURCE_FILES})
 
 set(OpenPGP_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../OpenPGP)
-include_directories(${OpenPGP_DIRECTORY})
 link_directories(${OpenPGP_DIRECTORY})
-set(Cppcms_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/cppcms)
-
-find_library(cppcms_lib
-    NAMES libcppcms.so
-    HINTS ${CMAKE_SOURCE_DIR}/lib/cppcms/lib/
-    )
-find_library(booster_lib
-    NAMES libbooster.so
-    HINTS ${CMAKE_SOURCE_DIR}/lib/cppcms/lib/
-    )
-
-message("test: ${cppcms_lib} ${booster_lib}")
-
-target_link_libraries(pks ${OpenPGP_DIRECTORY}/libOpenPGP.a)
 
 find_package(Boost REQUIRED COMPONENTS system filesystem)
 
@@ -43,6 +28,7 @@ target_link_libraries(pks mysqlcppconn)
 target_link_libraries(pks gmp)
 target_link_libraries(pks bz2)
 target_link_libraries(pks z)
-target_link_libraries(pks ${cppcms_lib})
-target_link_libraries(pks ${booster_lib})
+target_link_libraries(pks cppcms)
+target_link_libraries(pks booster)
 target_link_libraries(pks ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(pks ${OpenPGP_DIRECTORY}/libOpenPGP.a)

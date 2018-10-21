@@ -162,7 +162,7 @@ then
         exit;
     fi
     make -j4
-    make test -j4
+    #make test -j4
     make install
 
     cd $starting_path

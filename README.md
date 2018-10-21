@@ -15,7 +15,7 @@
 * NTL and GMP: exec ```./compile_libraries.sh release```
 
 On Debian/Ubuntu you can install all dependencies with
-```apt install build-essential cmake zlib1g-dev python libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libmysqlcppconn-dev &&\
+```apt install build-essential m4 curl libpcre3-dev libicu-dev libgcrypt11-dev zlib1g-dev cmake libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libmysqlcppconn-dev &&\
 ./compile_libraries.sh release full```
 
 ### Database
