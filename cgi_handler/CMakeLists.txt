@@ -35,6 +35,7 @@ find_library(booster_lib
 find_package(Boost REQUIRED COMPONENTS system filesystem)
 
 link_directories(${OpenPGP_DIRECTORY})
+target_link_libraries(pks ${OpenPGP_DIRECTORY}/libOpenPGP.a)
 target_link_libraries(pks ${Boost_LIBRARIES})
 target_link_libraries(pks mysqlcppconn)
 target_link_libraries(pks gmp)
@@ -43,4 +44,3 @@ target_link_libraries(pks z)
 target_link_libraries(pks ${cppcms_lib})
 target_link_libraries(pks ${booster_lib})
 target_link_libraries(pks ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(pks ${OpenPGP_DIRECTORY}/libOpenPGP.a)
