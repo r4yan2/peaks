@@ -36,7 +36,7 @@ public:
   std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z);
   std::vector<NTL::ZZ_p> delete_element_array(const NTL::ZZ_p &z);
   
-  void create();
+  bool create();
 
   //search for a specific node in the DB
   pnode_ptr get_node(const std::string &key);

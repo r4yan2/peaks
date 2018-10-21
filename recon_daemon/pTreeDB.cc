@@ -34,15 +34,17 @@ std::vector<NTL::ZZ_p> Ptree::delete_element_array(const NTL::ZZ_p &z){
   return marray;
 }
 
-void Ptree::create(){
+bool Ptree::create(){
   if (get_root()==NULL){
       bitset bs(0);
       root = node(bs);
       if (root == NULL){
         root = new_child(NULL, 0);
         root->commit_node(true);
+        return true;
       }
   }
+  return false;
 }
 
 pnode_ptr Ptree::get_node(const std::string &key){

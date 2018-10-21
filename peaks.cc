@@ -28,7 +28,6 @@ void serve(int argc, char* argv[]);
 void import(po::variables_map vm);
 void build(po::variables_map vm);
 void recon(po::variables_map vm);
-std::vector<NTL::ZZ_p> parse_custom_hash_file();
 
 int main(int argc, char* argv[]){
 
@@ -38,6 +37,7 @@ int main(int argc, char* argv[]){
         ("help,h", "Print this help message")
         ("debug,d", "Turn on debug output")
         ("log-to-file,f", po::value<std::string>()->default_value(""), "Redirect log to the specified file")
+        ("config, c", po::value<std::string>()->default_value("./peaks_config"), "Specify path of the config file (Default is in the same directory of peaks executable)")
         ("command", po::value<std::string>()->required(), "command to execute")
         ("subargs", po::value<std::vector<std::string> >(), "Arguments for command");
 
@@ -63,6 +63,10 @@ int main(int argc, char* argv[]){
         if (cmd == "serve"){
             po::options_description serve_desc("serve options");
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
+            if (std::find(opts.begin(), opts.end(), "-c") == opts.end()){
+                opts.push_back("-c");
+                opts.push_back(recon_settings.cppcms_config);
+            }
             std::vector<char *> new_argv;
             std::transform(opts.begin(), opts.end(), std::back_inserter(new_argv), [](const std::string s) -> char* {
                     char *pc = new char[s.size() + 1];
@@ -130,6 +134,7 @@ void help(){
     std::cout << "  -h, --help \t\tPrint this help message" << std::endl;
     std::cout << "  -d, --debug \t\tTurn on debug output" << std::endl;
     std::cout << "  -f, --log-to-file \tRedirect log to the specified file" << std::endl;
+    std::cout << "  -c, --config \t\tPath to the config file (If not provided it searches in the folder from which the executable is run)" << std::endl;
 
     std::cout << std::endl;
 
@@ -152,7 +157,7 @@ void help(){
     std::cout << std::endl;
 
     std::cout << "  serve \t\tStart the webserver process" << std::endl;
-    std::cout << "    -c, --config \tREQUIRED, specify config file for cppcms" << std::endl;
+    std::cout << "    -c, --config \tspecify config file for cppcms" << std::endl;
 
     exit(0);
 }
@@ -212,10 +217,6 @@ void parse_config(std::string filename, po::variables_map vm){
                 recon_settings.max_outstanding_recon_req = std::stoi(value);
             else if (name == "sks_compliant")
                 recon_settings.sks_compliant = std::stoi(value);
-            else if (name == "custom_hash_file_on")
-                recon_settings.custom_hash_file_on = std::stoi(value);
-            else if (name == "custom_hash_file")
-                recon_settings.custom_hash_file = value;
             else if (name == "sks_bitstring")
                 recon_settings.sks_bitstring = std::stoi(value);
             else if (name == "async_timeout_sec")
@@ -233,6 +234,11 @@ void parse_config(std::string filename, po::variables_map vm){
                 recon_settings.db_user = value;
             else if (name == "db_password")
                 recon_settings.db_password = value;
+
+            else if (name == "membership_config")
+                recon_settings.membership_config = value;
+            else if (name == "cppcms_config")
+                recon_settings.cppcms_config = value;
         }
         recon_settings.num_samples = recon_settings.mbar + 1;
         recon_settings.split_threshold = recon_settings.ptree_thresh_mult * recon_settings.mbar;
@@ -249,43 +255,28 @@ void parse_config(std::string filename, po::variables_map vm){
     }
 }
 
-std::vector<NTL::ZZ_p> parse_custom_hash_file(){
-    std::ifstream infile(recon_settings.custom_hash_file);
-    NTL::ZZ_p hash;
-    std::vector<NTL::ZZ_p> res;
-    while (infile >> hash)
-        res.push_back(hash);
-    return res;
-}
-
 //PEAKS_PTREE_BUILDER
 void build(po::variables_map vm){
     
     std::cout << "Starting ptree builder" << std::endl;
     std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>();
-    MemTree tree(dbm);
     g_logger.log(Logger_level::DEBUG, "created empty ptree");
     int entries;
-    if (recon_settings.custom_hash_file_on == 1){
-        std::vector<NTL::ZZ_p> hashes = parse_custom_hash_file();
-        entries = hashes.size();
-        for (auto hash : hashes){
-            tree.insert(hash);
-        }
+    std::vector<std::string> hashes;
+    hashes = dbm->get_all_hash();
+    entries = hashes.size();
+    if (entries == 0){
+        std::cout << "DB is empty! Aborting..." << std::endl;
+        exit(0);
     }
-    else{
-        std::vector<std::string> hashes;
-        hashes = dbm->get_all_hash();
-        entries = hashes.size();
-        int progress = 0;
-        for (auto hash : hashes){
-            tree.insert(hash);
-            progress += 1;
-            if (progress%1000 == 0){
-                printf ("\rProgress: %3d%%", (progress*100)/entries);
-                fflush(stdout);
-            }
-
+    MemTree tree(dbm);
+    int progress = 0;
+    for (auto hash : hashes){
+        tree.insert(hash);
+        progress += 1;
+        if (progress%1000 == 0){
+            printf ("\rProgress: %3d%%", (progress*100)/entries);
+            fflush(stdout);
         }
     }
     g_logger.log(Logger_level::DEBUG, "fetched hashes from DB");
@@ -306,7 +297,10 @@ void recon(po::variables_map vm){
     const std::vector<NTL::ZZ_p> points = Utils::Zpoints(recon_settings.num_samples);
     std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(); 
     Ptree tree(dbm);
-    tree.create();
+    if (tree.create()){
+        std::cout << "pTree appears to be empty...Exiting for your server satefy.\nIf you know what you're doing restart peaks to continue, this is a one-time check" << std::endl;
+        exit(0);
+    }
     Peer peer = Peer(tree);
     if (vm.count("server-only"))
         peer.start_server();
@@ -362,7 +356,12 @@ void import(po::variables_map vm) {
         std::cerr << "Unable to read dump folder/files" << std::endl;
         exit(-1);
     }
+    if (files.size() == 0){
+        std::cout << "Found no key to import! Aborting..." << std::endl;
+        exit(0);
+    }else{
     std::cout << "Found " << files.size() << " keys to import" << std::endl;
+    }
 
     if(vm.count("threads"))
         nThreads = vm["threads"].as<unsigned int>();

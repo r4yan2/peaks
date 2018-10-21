@@ -3,7 +3,7 @@
 Peer::Peer(Ptree &new_tree){
     tree = new_tree;
     cn = Connection_Manager();
-    std::ifstream f("membership");
+    std::ifstream f(recon_settings.membership_config);
     std::string addr;
     int port;
     while(f >> addr >> port){

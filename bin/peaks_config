@@ -1,5 +1,6 @@
 # PEAKS config file
 
+# ptree/recon settings
 mbar = 5
 bq = 2 #bitquantum
 max_ptree_nodes = 1000
@@ -21,12 +22,16 @@ max_request_queue_len = 60000
 request_chunk_size = 100
 max_outstanding_recon_requests = 100
 sks_compliant = 1
-custom_hash_file_on = 0
-custom_hash_file = tmp
 sks_bitstring = 0
 async_timeout_sec = 1
 async_timeout_usec = 0
 ignore_known_bug = 1
+
+# DB settings
 db_host = localhost
 db_user = root
 db_database = gpg_keyserver
+
+# File settings
+membership_config = ./membership
+cppcms_config = ./config.js

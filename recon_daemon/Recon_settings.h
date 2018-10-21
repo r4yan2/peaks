@@ -43,6 +43,9 @@ struct Configtype{
     std::string db_database;
     std::string db_user;
     std::string db_password;
+
+    std::string membership_config;
+    std::string cppcms_config;
 };
 
 extern Configtype recon_settings;
