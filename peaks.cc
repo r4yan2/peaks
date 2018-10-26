@@ -114,7 +114,8 @@ int main(int argc, char* argv[]){
             import_desc.add_options()
                 ("threads, t", po::value<unsigned int>(), "set number of threads")
                 ("keys, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-                ("path, p", po::value<boost::filesystem::path>(), "path to the dump");
+                ("path, p", po::value<boost::filesystem::path>(), "path to the dump")
+                ("break, b", "break certificate import into steps");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
@@ -172,6 +173,7 @@ void help(){
     std::cout << "    -t, --threads \tSet number of threads to use" << std::endl;
     std::cout << "    -k, --keys \t\tSet how many keys a thread has to analyze" << std::endl;
     std::cout << "    -p, --path \t\tSet the path of the dump" << std::endl;
+    std::cout << "    -b, --break \tbreak certificate import into steps" << std::endl;
 
     std::cout << std::endl; 
 
@@ -436,6 +438,12 @@ void import(po::variables_map vm) {
         while (!th.joinable()){}
         th.join();
     }
+
+    if (vm.count("break")){
+        std::cout << "Breaking into two steps upon user request, press any key to insert parsed keys into db" << std::endl;
+        getchar();
+    }
+        
 
     std::cout << Utils::getCurrentTime() << "Writing dumped packet in DB:" << std::endl;
 
