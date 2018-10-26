@@ -114,7 +114,7 @@ int main(int argc, char* argv[]){
             import_desc.add_options()
                 ("threads, t", po::value<unsigned int>(), "set number of threads")
                 ("keys, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-                ("path, p", po::value<std::string>(), "path to the dump");
+                ("path, p", po::value<boost::filesystem::path>(), "path to the dump");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
