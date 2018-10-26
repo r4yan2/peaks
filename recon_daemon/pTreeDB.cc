@@ -64,7 +64,7 @@ bool Ptree::has_key(const std::string &key){
   return dbm->check_key(key);
 }
 
-void Ptree::insert(const std::string &hash, bool build){
+void Ptree::insert(const std::string &hash){
     NTL::ZZ_p elem = Utils::hex_to_zz(hash);
     insert(elem);
 }
@@ -131,7 +131,7 @@ pnode_ptr Ptree::node(bitset &key){
             n = get_node(str_key);
             break;
         }   catch (std::exception &e){
-            g_logger.log(Logger_level::WARNING, "Errore nel recupero del nodo!");
+            g_logger.log(Logger_level::WARNING, "Error during node fetching");
             std::cout << e.what();
         }
         if (key.size() == 0) break;
@@ -336,7 +336,7 @@ void Pnode::join(){
   try{
     children_vec = children();
   }catch (...){
-    syslog(LOG_NOTICE, "Nodo figlio inesistente");
+    throw std::runtime_error("No child nodes available!");
   }
   for (auto child : children_vec){
     std::vector<NTL::ZZ_p> elems = child->node_elements;
@@ -366,7 +366,7 @@ int Pnode::next(const bitset &bs, int depth){
 
 int Pnode::next_hockeypuck(const bitset &bs, int depth){
   if (is_leaf()){
-    throw std::invalid_argument("il nodo è una foglia e tu vorresti i successori?");
+    throw std::runtime_error("Requested child of a leaf node");
   }
   int childIndex = 0;
   for (int i=0; i<recon_settings.bq; i++){
@@ -447,8 +447,8 @@ void Pnode::remove(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, con
       if (cur_node->get_num_elements() <= recon_settings.join_threshold){
         try{
           cur_node->join();
-        } catch (...){
-          syslog(LOG_NOTICE, "Impossibile effettuare il join dei nodi");
+        } catch (std::exception &e){
+          g_logger.log(Logger_level::WARNING, "Caught exception while joining node");
         }
         break;
       }
@@ -456,15 +456,15 @@ void Pnode::remove(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, con
           try{
             cur_node->commit_node();
           }
-          catch (...){
-            g_logger.log(Logger_level::CRITICAL, "Impossibile committare il nodo");
+          catch (std::exception &e){
+            g_logger.log(Logger_level::CRITICAL, "Node commit failed because of " + std::string(e.what()));
           }
           int child_index = cur_node->next(bs, depth);
           std::vector<pnode_ptr> child_vec;
           try{
               child_vec = cur_node->children();
-          } catch (...){
-            g_logger.log(Logger_level::CRITICAL, "Impossibile creare nodo figlio");
+          } catch (std::exception &e){
+            g_logger.log(Logger_level::CRITICAL, "Error during child node recover, error: " + std::string(e.what()));
           }
           cur_node = child_vec[child_index];
           depth++;
@@ -473,8 +473,8 @@ void Pnode::remove(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, con
     }
     try{
       cur_node->delete_element(z);
-    } catch (...){
-      syslog(LOG_NOTICE, "errore nella rimozione del node_svalueso");
+    } catch (std::exception &e){
+        g_logger.log(Logger_level::WARNING, "Error during elements delete, error: " + std::string(e.what()));
     }
   cur_node->commit_node();
 }
