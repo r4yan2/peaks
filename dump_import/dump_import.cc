@@ -25,11 +25,6 @@ vector<string> get_hashes(const vector<string> &files){
 
 vector<string> dump_import(vector<string> keys){
 
-    openlog("pgp_dump_import", LOG_PID, LOG_USER);
-    setlogmask (LOG_UPTO (LOG_NOTICE));
-    syslog(LOG_NOTICE, "Dump_import is starting up!");
-    boost::filesystem::path path = DEFAULT_DUMP_PATH;
-
     if(Utils::create_folders() == -1){
         exit(-1);
     }

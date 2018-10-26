@@ -376,7 +376,7 @@ void import(po::variables_map vm) {
     else
         std::cout << "No custom path selected" << std::endl;
     
-    std::cout << "Searching for certificates in: " << DEFAULT_DUMP_PATH << std::endl;
+    std::cout << "Searching for certificates in: " << path << std::endl;
 
     std::vector<std::string> files;
     try {
