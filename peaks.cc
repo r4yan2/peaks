@@ -19,15 +19,44 @@
 #include "utils.h"
 #include "unpacker.h"
 
+/** declaring global recon_settings, which will hold the settings for peaks */
 Configtype recon_settings;
 namespace po = boost::program_options;
 
+/** help function shows up the help message when command line is incorrect */
 void help();
+
+/** function to parse config file
+ * @param filename string which hold the name of the config file
+ * @param vm variables_map of boost::program_options, because command line by default overrides config file
+ */
 void parse_config(std::string filename, po::variables_map vm);
+
+/** peaks serve starter */
 void serve(int argc, char* argv[]);
+
+/** peaks import starter */
 void import(po::variables_map vm);
+
+/** peaks build starter */
 void build(po::variables_map vm);
+
+/** peaks recon starter */
 void recon(po::variables_map vm);
+
+/** \mainpage Peaks Keyserver Documentation
+ *
+ * \section intro_sec Introduction
+ *
+ * Peaks Keyserver is a new generation keyserver which aims
+ * to be fully functional, compatible with other keyservers,
+ * easy to deploy and mantain and with a low resource footprint.
+ *
+ * \section install_sec Installation
+ *
+ * \subsection step1 Step 1: Read the installation guide on Github
+ *
+ */
 
 int main(int argc, char* argv[]){
 

@@ -30,6 +30,12 @@
 typedef std::pair<std::string, int> peertype;
 typedef Myset<NTL::ZZ_p> zset;
 
+
+/** singleton class used to manage the connection with the other peer.
+ * Upon establishing a connection a tmpfd socket is used, and only when
+ * all check are passed this became a permanent socket for the rest of the syncronization.
+ * When the algorithm ends the socket is released
+ */
 class Connection_Manager{
     private:
         int sockfd = -1;
@@ -82,13 +88,13 @@ class Connection_Manager{
         /** perform the actual send */
         void send_peer(Buffer& buf, bool tmp_socket=false);
 
-	/** send a message to the other peer */
+    	/** send a message to the other peer */
         void send_message(Message*, bool tmp_socket=false);
 
-	/** send a series of messages to the other peer */
+    	/** send a series of messages to the other peer */
         void send_bulk_messages(std::vector<Message*> &);
 
-	/** send a message without header */
+	    /** send a message without header */
         void send_message_direct(Message*);
 
         /** direct read a string from the network */
@@ -97,7 +103,7 @@ class Connection_Manager{
         /** send a sks-type message */
         void write_message(Buffer &buffer, Message* m, bool wrap=true);
 
-	/** fail accordingly to the error passed */
+	    /** fail accordingly to the error passed */
         void early_fail(std::string);
 };
 

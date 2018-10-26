@@ -1,4 +1,4 @@
-# Peaks
+# Peaks Compilation and Usage
 ## Compile
 ### Dependencies
 
@@ -14,9 +14,13 @@
 * OpenPGP: switch to branch *pks_branch* and compile with ```make gpg-compatible```
 * NTL and GMP: exec ```./compile_libraries.sh release```
 
-On Debian/Ubuntu you can install all dependencies with
-```apt install build-essential m4 curl python cmake libpcre3-dev libicu-dev libgcrypt11-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libmysqlcppconn-dev &&\
-./compile_libraries.sh release full```
+**On Debian/Ubuntu you can install all dependencies with**
+
+```
+apt install build-essential m4 curl python cmake libpcre3-dev libicu-dev libgcrypt11-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libmysqlcppconn-dev
+
+./compile_libraries.sh release full
+```
 
 ### Database
 
@@ -43,18 +47,26 @@ The main **peaks** executable accept the following commands:
 
 For the basic (and only) keyserver setup use the following commands:
 
-```./peaks import -p path-to-keydump```
+```
+./peaks import -p path-to-keydump
+```
 
 Will init the database with the keydump
 
-```./peaks build```
+```
+./peaks build
+```
 
 Will init the ptree with the content of the database
 
-```./peaks serve -c config.js```
+```
+./peaks serve -c config.js
+```
 
 Will start the web interface
 
-```./peaks recon```
+```
+./peaks recon
+```
 
 Will start reconing with the peers defined in your membership file

@@ -23,6 +23,11 @@
 #include <chrono>
 
 
+/**
+ * Communication_status is a flag checked at each iteration
+ * of the sync protocol to ensure the process is going
+ * on without errors, or it's finished
+ */
 enum class Communication_status {NONE, ERROR, DONE};
 
 /** 
@@ -113,16 +118,33 @@ class Peer{
          */
         void fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &elems);
 
-        /** handler of recon request poly messages */
+        /** handler of recon request poly messages
+         * @param req request to handle
+         * @return step from the handling
+         */
         Communication request_poly_handler(ReconRequestPoly* req);
 
-        /** handler of recon request full messages */
+        /** handler of recon request full messages 
+         * @param req request to handle
+         * @return step from the handling
+         */
         Communication request_full_handler(ReconRequestFull* req);
 
-        /** implementation of linear interpolation */
+        /** implementation of linear interpolation
+         * @param r_samples remote samples
+         * @param r_size size of remote samples vector
+         * @param l_samples local samples
+         * @param l_size size of local samples vector
+         * @param points default interpolation points
+         * @return a pair of elements vectors which holds the respectively missing elements
+         */
         std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> solve(const std::vector<NTL::ZZ_p> &r_samples, const int r_size, const std::vector<NTL::ZZ_p> &l_samples, const int l_size, const std::vector<NTL::ZZ_p> &points);
 
-        /** method used to request a chunk of data from the other peer */
+        /** method used to request a chunk of data from the other peer
+         * @param peer peer to send requests to
+         * @param elemnts elements to request
+         * @return vector which contains the requested elements
+         */
         std::vector<std::string> request_chunk(const peertype &peer, const std::vector<NTL::ZZ_p> &elements);
 
 };
@@ -132,27 +154,71 @@ class Peer{
  */
 class Recon_manager{
     private:
+
+        /** queue used to keep track of message */
         std::deque<request_entry> request_queue;
+        
+        /** queue used to keep track of message */
         std::deque<bottom_entry> bottom_queue;
+
+        /** track the remote peer key set */
         zset remote_set;
+
+        /** used to know when to flush pending messages */
         bool flushing=false;
+
+        /** vector keeps current pending messages */
         std::vector<Message*> messages;
+
+        /** reference to connection manager */
         Connection_Manager cn;
-        int clientfd;
+
     public:
+        /** recon manager is initialized with a reference to the current connection manager 
+         * @param conn_manager reference to initialized connection manage
+         */
         Recon_manager(Connection_Manager &conn_manager);
         ~Recon_manager();
+
+        /** push value to the bottom queue
+         * @param bottom value to push
+         */
         void push_bottom(bottom_entry &bottom);
-        void prepend_request(request_entry &requests);
+
+        /** prepend request in the request_queue
+         * @param request request entry to prepend
+         */
+        void prepend_request(request_entry &request);
+
+        /** push reqeust in the request_queue
+         * @param request request entry to push
+         */
         void push_request(request_entry &request);
+
+        /** get the front of the bottom queue
+         * @return bottom entry
+         */
         bottom_entry top_bottom();
+
+        /** get the front of the bottom queue and pop
+         * @return bottom entry
+         */
         bottom_entry pop_bottom();
         request_entry pop_request();
         bool done();
         bool bottom_queue_empty();
         void send_request(request_entry &request);
+
+        /** handler to manage a generic Message
+         * @param msg Message
+         * @param request corresponding reqeust entry
+         */
         void handle_reply(Message* msg,request_entry &request);
         void flush_queue();
+
+        /** toggle flush on off
+         * @param new_state new flushing state
+         */
         void toggle_flush(bool new_state);
         int bottom_queue_size();
         int request_queue_size();

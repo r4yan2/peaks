@@ -14,6 +14,7 @@
 typedef Bitset bitset;
 typedef Myset<NTL::ZZ_p> zset;
 
+/** Possible message types send/received during recon */
 namespace Msg_type{
 enum Msg_type : int {
     ReconRequestPoly=0,
@@ -51,30 +52,30 @@ class Buffer{
         /** iterator used to read from the buf vector */
         std::vector<unsigned char>::iterator it;
     public:
-	/** default constructor */
+	    /** default constructor */
         Buffer();
         /** 
-	 * buffer constructor with size specifier
+	     * buffer constructor with size specifier
          * @param size of the buffer
-        */
+         */
         Buffer(int);
 
-	/**
-	 * buffer constructor with given content
+	    /**
+	     * buffer constructor with given content
          * @param string which init buffer
          */
         Buffer(const std::string&);
 
-	/** access to the underliyng std::vector data */
+	    /** access to the underliyng std::vector data */
         unsigned char* data();
 
         /** return size of the buffer */
         int size() const;
 
-	/** set the buffer to read only, so initialize the iterator
+	    /** set the buffer to read only, so initialize the iterator
          * from this moment the buffer should be accessed only to read
-	 * @WARNING the read-only logic is only conventional and not implemented yet!
-	 */ 
+	     * @WARNING the read-only logic is only conventional and not implemented yet!
+	    */ 
         void set_read_only();
 
         std::vector<unsigned char> vector() const;
