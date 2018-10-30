@@ -198,7 +198,7 @@ void Pks::index(const string& id) {
 
     if(id.size() == 0) {
         response().status(cppcms::http::response::not_found);
-        response().out() << "No results found";
+        response().out() << "Empty input!";
         return;
     }
 
@@ -223,7 +223,7 @@ void Pks::vindex(const string& id) {
 
     if(id.empty()) {
         response().status(cppcms::http::response::not_found);
-        response().out() << "No results found";
+        response().out() << "Empty input!";
         return;
     }
 
