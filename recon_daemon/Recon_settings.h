@@ -112,6 +112,12 @@ struct Configtype{
 
     /** path to the cppcms config file, used to start the server */
     std::string cppcms_config;
+
+    /** path to the default path in which search certificates to import */
+    std::string default_dump_path;
+
+    /** path to the folder in which peaks can write temporary files for import */
+    std::string tmp_folder_csv;
 };
 
 extern Configtype recon_settings;

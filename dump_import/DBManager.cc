@@ -364,14 +364,6 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
             throw runtime_error("Table not recognized");
     }
 
-    // Delete inserted file
-    for (const auto &f: files){
-        try{
-            remove(f.c_str());
-        }catch (exception &e){
-            syslog(LOG_CRIT, "File deleting FAILED, the following file MUST be deleted manually: %s .Error: %s", f.c_str(), e.what());
-        }
-    }
 }
 
 void DBManager::UpdateSignatureIssuingFingerprint() {

@@ -5,7 +5,7 @@
 #include <syslog.h>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
-
+#include "../recon_daemon/Recon_settings.h"
 
 #include "utils.h"
 
@@ -16,13 +16,13 @@ namespace Utils{
     string get_file_name(const unsigned int &i, const thread::id &ID){
         stringstream t_id;
         t_id << ID;
-        return TMP_FOLDER_CSV + t_id.str() + FILENAME.at(i);
+        return recon_settings.tmp_folder_csv + t_id.str() + FILENAME.at(i);
     }
 
     int create_folders(){
         boost::system::error_code returnedError;
 
-        create_directories( TMP_FOLDER_CSV, returnedError );
+        create_directories( recon_settings.tmp_folder_csv, returnedError );
 
         if ( returnedError ){
             return -1;  // did not successfully create directories
@@ -65,7 +65,7 @@ namespace Utils{
         directory_iterator end_itr;
         vector<string> file_list;
 
-        for (directory_iterator itr(TMP_FOLDER_CSV); itr != end_itr; ++itr){
+        for (directory_iterator itr(recon_settings.tmp_folder_csv); itr != end_itr; ++itr){
             if (hasEnding(itr->path().string(), FILENAME.at(i))) {
                 string current_file = itr->path().string();
                 file_list.push_back(itr->path().string());

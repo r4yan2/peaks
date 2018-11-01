@@ -5,9 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-march=native -Wall -static-libgcc -lstdc++ -pipe")
 
 add_definitions(-DGPG_COMPATIBLE)
-add_definitions(-DTMP_FOLDER_CSV="/tmp/dump_import/")
 add_definitions(-DERROR_FOLDER="/tmp/gpg_keyserver_ERRORS/dump_import_errors/")
-add_definitions(-DDEFAULT_DUMP_PATH="/tmp/pgp_dump/")
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g3 -O0 -pg")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -Werror")

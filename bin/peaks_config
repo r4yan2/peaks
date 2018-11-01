@@ -35,3 +35,5 @@ db_database = gpg_keyserver
 # File settings
 membership_config = ./membership
 cppcms_config = ./config.js
+tmp_folder_csv = /tmp/dump_import/
+default_dump_path = /tmp/pgp_dump/
