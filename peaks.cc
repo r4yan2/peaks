@@ -51,6 +51,8 @@ void build(po::variables_map &vm);
 /** peaks recon starter */
 void recon(po::variables_map vm);
 
+void generate_csv(std::shared_ptr<DBManager> dbm, std::vector<std::string> files, boost::filesystem::path &path, unsigned int nThreads, unsigned int key_per_thread, int fastimport);
+void import_csv(std::shared_ptr<DBManager> dbm, int fastimport);
 /** \mainpage Peaks Keyserver Documentation
  *
  * \section intro_sec Introduction
@@ -121,7 +123,8 @@ int main(int argc, char* argv[]){
                 ("threads, t", po::value<unsigned int>(), "set number of threads")
                 ("keys, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
                 ("path, p", po::value<boost::filesystem::path>(), "path to the dump")
-                ("break, b", "break certificate import into steps")
+                ("csv-only", "stop certificate import after creating csv")
+                ("import-only", "start certificate import directly inserting csv into db")
                 ("fastimport, f", "fastimport")
                 ("noclean, n", "do not clean temporary folder");
 
@@ -182,7 +185,9 @@ void help(){
     std::cout << "    -t, --threads \tSet number of threads to use" << std::endl;
     std::cout << "    -k, --keys \t\tSet how many keys a thread has to analyze" << std::endl;
     std::cout << "    -p, --path \t\tSet the path of the dump" << std::endl;
-    std::cout << "    -b, --break \tbreak certificate import into steps" << std::endl;
+    std::cout << "    --csv-only \tonly create temporary csv file, do not import into DB" << std::endl;
+    std::cout << "    --import-only \tonly import temporary csv, do not create anything" << std::endl;
+    std::cout << "    --noclean \tdo not clean temporary folder" << std::endl;
     std::cout << "    -f, --fastimport \tDo not unpack certificates" << std::endl;
 
     std::cout << std::endl; 
@@ -431,8 +436,23 @@ void import(po::variables_map &vm) {
 
     std::shared_ptr<DBManager> dbm = std::make_shared<DBManager>();
 
-    std::cout << Utils::getCurrentTime() << "Starting dump read" << std::endl;
+    if (!(vm.count("import-only")))
+        generate_csv(dbm, files, path, nThreads, key_per_thread, vm.count("fastimport"));
+    if (!(vm.count("csv-only")))
+        import_csv(dbm, vm.count("fastimport"));
+    if (vm.count("noclean") == 0){
+        std::cout << Utils::getCurrentTime() << "Cleaning temporary folder." << std::endl;
+        remove_directory_content(recon_settings.tmp_folder_csv);
+    }else{
+        std::cout << Utils::getCurrentTime() << "Not removing temporary csv fileiles as user request." << std::endl;
+    }
 
+    syslog(LOG_NOTICE, "Dump_import is stopping!");
+
+}
+
+void generate_csv(std::shared_ptr<DBManager> dbm, std::vector<std::string> files, boost::filesystem::path &path, unsigned int nThreads, unsigned int key_per_thread, int fastimport){
+    std::cout << Utils::getCurrentTime() << "Starting dump read" << std::endl;
 
     std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
     std::vector<std::thread> pool_vect(nThreads);
@@ -446,7 +466,7 @@ void import(po::variables_map &vm) {
         for (unsigned int j = 0; i < files.size() && j < key_per_thread; j++, i++){
             dump_file_tmp.push_back(files[i]);
         }
-        pool->Add_Job([=] { return Unpacker::unpack_dump_th(dump_file_tmp, vm.count("fastimport")); });
+        pool->Add_Job([=] { return Unpacker::unpack_dump_th(dump_file_tmp, fastimport); });
     }
 
     pool->Stop_Filling_UP();
@@ -455,19 +475,16 @@ void import(po::variables_map &vm) {
         while (!th.joinable()){}
         th.join();
     }
+}
 
-    if (vm.count("break")){
-        std::cout << "Breaking into two steps upon user request, press any key to insert parsed keys into db" << std::endl;
-        getchar();
-    }
-        
+void import_csv(std::shared_ptr<DBManager> dbm, int fastimport){
 
     std::cout << Utils::getCurrentTime() << "Writing dumped packet in DB:" << std::endl;
 
     dbm->lockTables();
     std::cout << Utils::getCurrentTime() << "\tInserting Certificates" << std::endl;
     dbm->insertCSV(Utils::get_files(Utils::CERTIFICATE), Utils::CERTIFICATE);
-    if (vm.count("fastimport") == 0){
+    if (fastimport == 0){
         std::cout << Utils::getCurrentTime() << "\tInserting Pubkeys" << std::endl;
         dbm->insertCSV(Utils::get_files(Utils::PUBKEY), Utils::PUBKEY);
         std::cout << Utils::getCurrentTime() << "\tInserting UserID" << std::endl;
@@ -502,17 +519,6 @@ void import(po::variables_map &vm) {
     }
 
     dbm->unlockTables();
-
-    if (vm.count("noclean") == 0){
-        std::cout << Utils::getCurrentTime() << "Cleaning temporary folder." << std::endl;
-        remove_directory_content(recon_settings.tmp_folder_csv);
-    }else{
-        std::cout << Utils::getCurrentTime() << "Not removing temporary csv folder as user request." << std::endl;
-    }
-
-    syslog(LOG_NOTICE, "Dump_import is stopping!");
-
-    std::cout << Utils::getCurrentTime() << "Dump_import terminated. Remember to create the ptree before starting the recon." << std::endl;
 
 }
 
