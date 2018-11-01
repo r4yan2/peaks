@@ -51,7 +51,7 @@ void build(po::variables_map &vm);
 /** peaks recon starter */
 void recon(po::variables_map vm);
 
-void generate_csv(std::shared_ptr<DBManager> dbm, std::vector<std::string> files, boost::filesystem::path &path, unsigned int nThreads, unsigned int key_per_thread, int fastimport);
+void generate_csv(std::vector<std::string> files, boost::filesystem::path &path, unsigned int nThreads, unsigned int key_per_thread, int fastimport);
 void import_csv(std::shared_ptr<DBManager> dbm, int fastimport);
 /** \mainpage Peaks Keyserver Documentation
  *
@@ -437,7 +437,7 @@ void import(po::variables_map &vm) {
     std::shared_ptr<DBManager> dbm = std::make_shared<DBManager>();
 
     if (!(vm.count("import-only")))
-        generate_csv(dbm, files, path, nThreads, key_per_thread, vm.count("fastimport"));
+        generate_csv(files, path, nThreads, key_per_thread, vm.count("fastimport"));
     if (!(vm.count("csv-only")))
         import_csv(dbm, vm.count("fastimport"));
     if (vm.count("noclean") == 0){
@@ -451,7 +451,7 @@ void import(po::variables_map &vm) {
 
 }
 
-void generate_csv(std::shared_ptr<DBManager> dbm, std::vector<std::string> files, boost::filesystem::path &path, unsigned int nThreads, unsigned int key_per_thread, int fastimport){
+void generate_csv(std::vector<std::string> files, boost::filesystem::path &path, unsigned int nThreads, unsigned int key_per_thread, int fastimport){
     std::cout << Utils::getCurrentTime() << "Starting dump read" << std::endl;
 
     std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
