@@ -24,9 +24,10 @@ using namespace OpenPGP;
 namespace Unpacker {
 
     void unpack_string_th(const std::vector<std::string> keys);
-    void unpack_dump_th(const std::vector<std::string> &files);
+    void unpack_dump_th(const std::vector<std::string> &files, const bool &fast);
     void unpack_dump(std::ifstream &key_file, const std::shared_ptr<DBManager> &dbm);
     void unpack_string(std::string key, const std::shared_ptr<DBManager> &dbm);
+    void fast_unpack(Key::Ptr &key, const std::shared_ptr<DBManager> &dbm);
     void unpack(Key::Ptr &key, const std::shared_ptr<DBManager> &dbm);
     DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey, const std::string &uatt_id = "");
     DBStruct::pubkey get_publicKey_data(const OpenPGP::Packet::Tag::Ptr &p, const OpenPGP::Packet::Key::Ptr &priKey);

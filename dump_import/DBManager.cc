@@ -115,7 +115,7 @@ bool DBManager::existSignature(const DBStruct::signatures &s){
     }
 }
 
-void DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_data, const DBStruct::Unpacker_errors &mod){
+void DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_data, const int is_unpacked){
     try{
         ostream &f = file_list.at(Utils::CERTIFICATE);
         f << '.' << '"' << to_string(gpg_data.version) << "\",";
@@ -123,11 +123,7 @@ void DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_
         f << '"' << hexlify(gpg_data.fingerprint) << "\",";
         f << '"' << hexlify(gpg_data.certificate) << "\",";
         f << '"' << gpg_data.hash << "\",";
-        if (mod.modified){
-            f << '"' << "2" << "\",";
-        }else{
-            f << '"' << "1" << "\",";
-        }
+        f << '"' << is_unpacked << "\",";
         f << '"' << to_string(gpg_data.error_code) << "\",";
         f << "\n";
     }catch (exception &e){

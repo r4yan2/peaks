@@ -19,6 +19,8 @@
 #include "utils.h"
 #include "unpacker.h"
 
+#include <stdio.h>
+#include <dirent.h>
 /** declaring global recon_settings, which will hold the settings for peaks */
 Configtype recon_settings;
 namespace po = boost::program_options;
@@ -30,16 +32,21 @@ void help();
  * @param filename string which hold the name of the config file
  * @param vm variables_map of boost::program_options, because command line by default overrides config file
  */
-void parse_config(std::string filename, po::variables_map vm);
+void parse_config(std::string filename, po::variables_map &vm);
+
+/** helper to remove content of given directory
+ * @param foldername folder to clean
+ */
+void remove_directory_content(const std::string &foldername);
 
 /** peaks serve starter */
 void serve(int argc, char* argv[]);
 
 /** peaks import starter */
-void import(po::variables_map vm);
+void import(po::variables_map &vm);
 
 /** peaks build starter */
-void build(po::variables_map vm);
+void build(po::variables_map &vm);
 
 /** peaks recon starter */
 void recon(po::variables_map vm);
@@ -76,7 +83,6 @@ int main(int argc, char* argv[]){
 	    po::variables_map vm;
 
 	    po::parsed_options parsed = po::command_line_parser(argc, argv).options(global).positional(pos).allow_unregistered().run();
-
 
 	    po::store(parsed, vm);
 
@@ -115,7 +121,9 @@ int main(int argc, char* argv[]){
                 ("threads, t", po::value<unsigned int>(), "set number of threads")
                 ("keys, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
                 ("path, p", po::value<boost::filesystem::path>(), "path to the dump")
-                ("break, b", "break certificate import into steps");
+                ("break, b", "break certificate import into steps")
+                ("fastimport, f", "fastimport")
+                ("noclean, n", "do not clean temporary folder");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
@@ -174,6 +182,7 @@ void help(){
     std::cout << "    -k, --keys \t\tSet how many keys a thread has to analyze" << std::endl;
     std::cout << "    -p, --path \t\tSet the path of the dump" << std::endl;
     std::cout << "    -b, --break \tbreak certificate import into steps" << std::endl;
+    std::cout << "    -f, --fastimport \tDo not unpack certificates" << std::endl;
 
     std::cout << std::endl; 
 
@@ -193,7 +202,7 @@ void help(){
     exit(0);
 }
 
-void parse_config(std::string filename, po::variables_map vm){
+void parse_config(std::string filename, po::variables_map &vm){
     std::ifstream cFile (filename);
     if (cFile.is_open())
     {
@@ -270,6 +279,11 @@ void parse_config(std::string filename, po::variables_map vm){
                 recon_settings.membership_config = value;
             else if (name == "cppcms_config")
                 recon_settings.cppcms_config = value;
+
+            else if (name == "default_dump_path")
+                recon_settings.default_dump_path = value;
+            else if (name == "tmp_folder_csv")
+                recon_settings.tmp_folder_csv = value;
         }
         recon_settings.num_samples = recon_settings.mbar + 1;
         recon_settings.split_threshold = recon_settings.ptree_thresh_mult * recon_settings.mbar;
@@ -287,7 +301,7 @@ void parse_config(std::string filename, po::variables_map vm){
 }
 
 //PEAKS_PTREE_BUILDER
-void build(po::variables_map vm){
+void build(po::variables_map &vm){
     
     std::cout << "Starting ptree builder" << std::endl;
     std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>();
@@ -362,7 +376,7 @@ void serve(int argc, char* argv[]){
 }
 
 // PEAKS_DB_MAIN
-void import(po::variables_map vm) {
+void import(po::variables_map &vm) {
 
     std::cout << Utils::getCurrentTime() << "Starting unpacker" << std::endl;
 
@@ -371,7 +385,8 @@ void import(po::variables_map vm) {
     syslog(LOG_NOTICE, "Dump_import is starting up!");
     unsigned int nThreads = std::thread::hardware_concurrency() - 1;
     unsigned int key_per_thread;
-    boost::filesystem::path path = DEFAULT_DUMP_PATH;
+    boost::filesystem::path path = recon_settings.default_dump_path;
+    boost::filesystem::path csv_path = recon_settings.tmp_folder_csv;
 
     if(vm.count("path"))
         path = vm["path"].as<boost::filesystem::path>();
@@ -429,7 +444,7 @@ void import(po::variables_map vm) {
         for (unsigned int j = 0; i < files.size() && j < key_per_thread; j++, i++){
             dump_file_tmp.push_back(files[i]);
         }
-        pool->Add_Job([=] { return Unpacker::unpack_dump_th(dump_file_tmp); });
+        pool->Add_Job([=] { return Unpacker::unpack_dump_th(dump_file_tmp, vm.count("fastimport")); });
     }
 
     pool->Stop_Filling_UP();
@@ -450,39 +465,48 @@ void import(po::variables_map vm) {
     dbm->lockTables();
     std::cout << Utils::getCurrentTime() << "\tInserting Certificates" << std::endl;
     dbm->insertCSV(Utils::get_files(Utils::CERTIFICATE), Utils::CERTIFICATE);
-    std::cout << Utils::getCurrentTime() << "\tInserting Pubkeys" << std::endl;
-    dbm->insertCSV(Utils::get_files(Utils::PUBKEY), Utils::PUBKEY);
-    std::cout << Utils::getCurrentTime() << "\tInserting UserID" << std::endl;
-    dbm->insertCSV(Utils::get_files(Utils::USERID), Utils::USERID);
-    std::cout << Utils::getCurrentTime() << "\tInserting User Attributes" << std::endl;
-    dbm->insertCSV(Utils::get_files(Utils::USER_ATTRIBUTES), Utils::USER_ATTRIBUTES);
-    std::cout << Utils::getCurrentTime() << "\tInserting Signatures" << std::endl;
-    dbm->insertCSV(Utils::get_files(Utils::SIGNATURE), Utils::SIGNATURE);
-    std::cout << Utils::getCurrentTime() << "\tInserting SelfSignatures" << std::endl;
-    dbm->insertCSV(Utils::get_files(Utils::SELF_SIGNATURE), Utils::SELF_SIGNATURE);
-    std::cout << Utils::getCurrentTime() << "\tInserting Unpacker Errors" << std::endl;
-    dbm->insertCSV(Utils::get_files(Utils::UNPACKER_ERRORS), Utils::UNPACKER_ERRORS);
-    std::cout << Utils::getCurrentTime() << "\tInserting Broken Keys" << std::endl;
-    dbm->insertCSV(Utils::get_files(Utils::BROKEN_KEY), Utils::BROKEN_KEY);
+    if (vm.count("fastimport") == 0){
+        std::cout << Utils::getCurrentTime() << "\tInserting Pubkeys" << std::endl;
+        dbm->insertCSV(Utils::get_files(Utils::PUBKEY), Utils::PUBKEY);
+        std::cout << Utils::getCurrentTime() << "\tInserting UserID" << std::endl;
+        dbm->insertCSV(Utils::get_files(Utils::USERID), Utils::USERID);
+        std::cout << Utils::getCurrentTime() << "\tInserting User Attributes" << std::endl;
+        dbm->insertCSV(Utils::get_files(Utils::USER_ATTRIBUTES), Utils::USER_ATTRIBUTES);
+        std::cout << Utils::getCurrentTime() << "\tInserting Signatures" << std::endl;
+        dbm->insertCSV(Utils::get_files(Utils::SIGNATURE), Utils::SIGNATURE);
+        std::cout << Utils::getCurrentTime() << "\tInserting SelfSignatures" << std::endl;
+        dbm->insertCSV(Utils::get_files(Utils::SELF_SIGNATURE), Utils::SELF_SIGNATURE);
+        std::cout << Utils::getCurrentTime() << "\tInserting Unpacker Errors" << std::endl;
+        dbm->insertCSV(Utils::get_files(Utils::UNPACKER_ERRORS), Utils::UNPACKER_ERRORS);
+        std::cout << Utils::getCurrentTime() << "\tInserting Broken Keys" << std::endl;
+        dbm->insertCSV(Utils::get_files(Utils::BROKEN_KEY), Utils::BROKEN_KEY);
 
-    std::cout << Utils::getCurrentTime() << "Updating DB fields:" << std::endl;
+        std::cout << Utils::getCurrentTime() << "Updating DB fields:" << std::endl;
 
-    std::cout << Utils::getCurrentTime() << "\tUpdating issuing fingerprint in Signatures" << std::endl;
-    dbm->UpdateSignatureIssuingFingerprint();
+        std::cout << Utils::getCurrentTime() << "\tUpdating issuing fingerprint in Signatures" << std::endl;
+        dbm->UpdateSignatureIssuingFingerprint();
 
-    std::cout << Utils::getCurrentTime() << "\tUpdating issuing username in Signatures" << std::endl;
-    dbm->UpdateSignatureIssuingUsername();
+        std::cout << Utils::getCurrentTime() << "\tUpdating issuing username in Signatures" << std::endl;
+        dbm->UpdateSignatureIssuingUsername();
 
-    std::cout << Utils::getCurrentTime() << "\tSetting expired flag" << std::endl;
-    dbm->UpdateIsExpired();
+        std::cout << Utils::getCurrentTime() << "\tSetting expired flag" << std::endl;
+        dbm->UpdateIsExpired();
 
-    std::cout << Utils::getCurrentTime() << "\tSetting revoked flag" << std::endl;
-    dbm->UpdateIsRevoked();
+        std::cout << Utils::getCurrentTime() << "\tSetting revoked flag" << std::endl;
+        dbm->UpdateIsRevoked();
 
-    std::cout << Utils::getCurrentTime() << "\tSetting valid flag" << std::endl;
-    dbm->UpdateIsValid();
+        std::cout << Utils::getCurrentTime() << "\tSetting valid flag" << std::endl;
+        dbm->UpdateIsValid();
+    }
 
     dbm->unlockTables();
+
+    if (vm.count("noclean") == 0){
+        std::cout << Utils::getCurrentTime() << "Cleaning temporary folder." << std::endl;
+        remove_directory_content(recon_settings.tmp_folder_csv);
+    }else{
+        std::cout << Utils::getCurrentTime() << "Not removing temporary csv folder as user request." << std::endl;
+    }
 
     syslog(LOG_NOTICE, "Dump_import is stopping!");
 
@@ -490,3 +514,19 @@ void import(po::variables_map vm) {
 
 }
 
+
+void remove_directory_content(const std::string &foldername)
+{
+    // These are data types defined in the "dirent" header
+    DIR *theFolder = opendir(foldername.c_str());
+    struct dirent *next_file;
+    char filepath[256];
+
+    while ( (next_file = readdir(theFolder)) != NULL )
+    {
+        // build the path for each file in the folder
+        sprintf(filepath, "%s/%s", foldername.c_str(), next_file->d_name);
+        remove(filepath);
+    }
+    closedir(theFolder);
+}
