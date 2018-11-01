@@ -118,6 +118,9 @@ struct Configtype{
 
     /** path to the folder in which peaks can write temporary files for import */
     std::string tmp_folder_csv;
+
+    /** if dry run is set recon daemon will only fetch certificates without importing them */
+    bool dry_run;
 };
 
 extern Configtype recon_settings;

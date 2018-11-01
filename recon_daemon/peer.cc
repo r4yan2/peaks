@@ -106,6 +106,10 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
         }
     }
     g_logger.log(Logger_level::DEBUG, "fetched " + std::to_string(keys.size()) + " keys from peer!");
+    if (recon_settings.dry_run){
+        g_logger.log(Logger_level::WARNING, "DRY RUN, exiting without inserting certificates");
+        return;
+    }
     std::vector<std::string> hashes = dump_import(keys);
     if (hashes.size() != elements.size() and not recon_settings.ignore_known_bug){
         g_logger.log(Logger_level::WARNING, "number of recovered keys does not match number of hashes recovered! This is caused by a known bug in peaks, sorry...");

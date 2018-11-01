@@ -134,7 +134,8 @@ int main(int argc, char* argv[]){
             po::options_description recon_desc("recon options");
             recon_desc.add_options()
                 ("server-only", "start only sever part of recon")
-                ("client-only", "start only client part of recon");
+                ("client-only", "start only client part of recon")
+                ("dryrun", "dryrun");
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(recon_desc).run(), vm);	
@@ -292,6 +293,7 @@ void parse_config(std::string filename, po::variables_map &vm){
         NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(recon_settings.P_SKS_STRING.c_str()));
         recon_settings.points = Utils::Zpoints(recon_settings.num_samples);
         recon_settings.debug = vm.count("debug") >= 1;
+        recon_settings.dry_run = vm.count("dryrun") >= 1;
 
     }
     else {
