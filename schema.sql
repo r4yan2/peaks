@@ -273,7 +273,8 @@ CREATE TABLE `gpg_keyserver` (
   `is_synchronized` tinyint(4) NOT NULL DEFAULT '0',
   `error_code` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`version`,`fingerprint`),
-  KEY `ID` (`ID`,`fingerprint`) USING BTREE
+  KEY `ID` (`ID`,`fingerprint`) USING BTREE,
+  KEY `HASH` (`hash` ASC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
@@ -285,7 +286,7 @@ CREATE TABLE `gpg_keyserver` (
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`gpg_keyserver`@`%`*/ /*!50003 TRIGGER `save_hash` AFTER UPDATE ON `gpg_keyserver` FOR EACH ROW IF (OLD.is_synchronized = 1 and OLD.hash != NEW.hash) THEN
+/*!50003 CREATE TRIGGER `save_hash` AFTER UPDATE ON `gpg_keyserver` FOR EACH ROW IF (OLD.is_synchronized = 1 and OLD.hash != NEW.hash) THEN
             INSERT IGNORE INTO removed_hash VALUES(OLD.hash);
       END IF */;;
 DELIMITER ;
@@ -371,6 +372,19 @@ CREATE TABLE `selfSignaturesMetadata` (
 ) ENGINE=InnoDB AUTO_INCREMENT=10701766 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+DROP TABLE IF EXISTS `ptree`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ptree` (
+  `node_key` VARCHAR(200) NOT NULL,
+  `node_svalues` BLOB NOT NULL,
+  `num_elements` INT NOT NULL,
+  `leaf` TINYINT(1) NOT NULL,
+  `node_elements` BLOB NOT NULL,
+  PRIMARY KEY (`node_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 --
 -- Dumping routines for database 'gpg_keyserver'
 --
@@ -392,9 +406,7 @@ USE `gpg_keyserver`;
 /*!50001 SET character_set_client      = utf8 */;
 /*!50001 SET character_set_results     = utf8 */;
 /*!50001 SET collation_connection      = utf8_general_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `Signature_no_issuing_fp` AS (select `Signatures`.`id` AS `id`,`Pubkey`.`fingerprint` AS `fp` from (`Signatures` join `Pubkey` on((`Signatures`.`issuingKeyId` = `Pubkey`.`keyId`))) where isnull(`Signatures`.`issuingFingerprint`)) */;
+/*!50001 CREATE VIEW `Signature_no_issuing_fp` AS (select `Signatures`.`id` AS `id`,`Pubkey`.`fingerprint` AS `fp` from (`Signatures` join `Pubkey` on((`Signatures`.`issuingKeyId` = `Pubkey`.`keyId`))) where isnull(`Signatures`.`issuingFingerprint`)) */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -410,9 +422,7 @@ USE `gpg_keyserver`;
 /*!50001 SET character_set_client      = utf8 */;
 /*!50001 SET character_set_results     = utf8 */;
 /*!50001 SET collation_connection      = utf8_general_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`gpg_keyserver`@`%` SQL SECURITY DEFINER */
-/*!50001 VIEW `emailDomain` AS select substr(from_base64(`UserID`.`email`),(locate('@',from_base64(`UserID`.`email`)) + 1),((char_length(from_base64(`UserID`.`email`)) - locate('>',reverse(from_base64(`UserID`.`email`)))) - locate('>',from_base64(`UserID`.`email`)))) AS `domain`,`UserID`.`fingerprint` AS `fingerprint` from `UserID` where (`UserID`.`email` <> '') */;
+/*!50001 CREATE VIEW `emailDomain` AS select substr(from_base64(`UserID`.`email`),(locate('@',from_base64(`UserID`.`email`)) + 1),((char_length(from_base64(`UserID`.`email`)) - locate('>',reverse(from_base64(`UserID`.`email`)))) - locate('>',from_base64(`UserID`.`email`)))) AS `domain`,`UserID`.`fingerprint` AS `fingerprint` from `UserID` where (`UserID`.`email` <> '') */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -428,9 +438,7 @@ USE `gpg_keyserver`;
 /*!50001 SET character_set_client      = utf8mb4 */;
 /*!50001 SET character_set_results     = utf8mb4 */;
 /*!50001 SET collation_connection      = utf8mb4_general_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `key_primary_userID` AS (select `selfSignaturesMetadata`.`version` AS `version`,`selfSignaturesMetadata`.`issuingFingerprint` AS `fingerprint`,`selfSignaturesMetadata`.`signedUserId` AS `name`,`selfSignaturesMetadata`.`isPrimaryUserId` AS `isPrimaryUserId`,`selfSignaturesMetadata`.`trustLevel` AS `trustLevel` from `selfSignaturesMetadata` group by `selfSignaturesMetadata`.`version`,`selfSignaturesMetadata`.`issuingFingerprint` order by `selfSignaturesMetadata`.`isPrimaryUserId` desc,`selfSignaturesMetadata`.`trustLevel` desc) */;
+/*!50001 CREATE ALGORITHM=UNDEFINED VIEW `key_primary_userID` AS (select `selfSignaturesMetadata`.`version` AS `version`,`selfSignaturesMetadata`.`issuingFingerprint` AS `fingerprint`,`selfSignaturesMetadata`.`signedUserId` AS `name`,`selfSignaturesMetadata`.`isPrimaryUserId` AS `isPrimaryUserId`,`selfSignaturesMetadata`.`trustLevel` AS `trustLevel` from `selfSignaturesMetadata` group by `selfSignaturesMetadata`.`version`,`selfSignaturesMetadata`.`issuingFingerprint` order by `selfSignaturesMetadata`.`isPrimaryUserId` desc,`selfSignaturesMetadata`.`trustLevel` desc) */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
