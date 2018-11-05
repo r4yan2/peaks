@@ -1,5 +1,5 @@
-#ifndef UNPACKER_KEY_TOOLS_H
-#define UNPACKER_KEY_TOOLS_H
+#ifndef DUMPIMPORT_KEY_TOOLS_H
+#define DUMPIMPORT_KEY_TOOLS_H
 
 #include <Key.h>
 #include "DBStruct.h"
@@ -7,8 +7,8 @@
 
 namespace Key_Tools {
 
-    OpenPGP::Key::pkey readPkey(const OpenPGP::Key::Ptr &k, DBStruct::Unpacker_errors &modified);
-    void makePKMeaningful(OpenPGP::Key::pkey &pk, DBStruct::Unpacker_errors &modified);
+    OpenPGP::Key::pkey readPkey(const OpenPGP::Key::Ptr &k, DUMP_DBStruct::Unpacker_errors &modified);
+    void makePKMeaningful(OpenPGP::Key::pkey &pk,DUMP_DBStruct::Unpacker_errors &modified);
 
 };
 

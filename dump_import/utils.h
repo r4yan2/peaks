@@ -1,7 +1,5 @@
-#ifndef UNPACKER_Utils_H
-#define UNPACKER_Utils_H
-
-
+#ifndef DUMPIMPORT_Utils_H
+#define DUMPIMPORT_Utils_H
 
 #include <vector>
 #include <cstring>
@@ -10,7 +8,7 @@
 #include <map>
 
 
-namespace Utils{
+namespace DUMP_Utils{
     const unsigned int CERTIFICATE      = 1;
     const unsigned int PUBKEY           = 2;
     const unsigned int SIGNATURE        = 3;
@@ -44,4 +42,4 @@ namespace Utils{
 */
 }
 
-#endif //UNPACKER_Utils_H
+#endif //DUMP_IMPORT_Utils_H

@@ -5,22 +5,22 @@
 
 #include "DBManager.h"
 #include "utils.h"
-#include "DB_info.h"
+#include "../recon_daemon/Recon_settings.h"
 
 
 using namespace sql;
 using namespace std;
-using namespace DBStruct;
+using namespace ANALYZER_DBStruct;
 using namespace OpenPGP;
 using namespace NTL;
 
 
 // Database connector initialization
-DBManager::DBManager() {
-    DBManager::driver = get_driver_instance();
-    DBManager::con = shared_ptr<Connection>(driver->connect(DB_info::host, DB_info::user, DB_info::password));
+ANALYZER_DBManager::ANALYZER_DBManager() {
+    ANALYZER_DBManager::driver = get_driver_instance();
+    ANALYZER_DBManager::con = shared_ptr<Connection>(driver->connect(recon_settings.db_host, recon_settings.db_user, recon_settings.db_password));
     // Connect to the MySQL keys database
-    con->setSchema(DB_info::database);
+    con->setSchema(recon_settings.db_database);
 
     con->createStatement()->execute("set sql_log_bin = 0;");
     con->createStatement()->execute("set foreign_key_checks = 0;");
@@ -68,7 +68,7 @@ DBManager::DBManager() {
             "TERMINATED BY '\\n';");
 }
 
-vector<pubkey> DBManager::get_pubkey(const unsigned long &l) {
+vector<pubkey> ANALYZER_DBManager::get_pubkey(const unsigned long &l) {
     shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
     vector<pubkey> pk;
     get_analyzable_pubkey_stmt->setString(1, to_string(l));
@@ -162,7 +162,7 @@ vector<pubkey> DBManager::get_pubkey(const unsigned long &l) {
     return pk;
 }
 
-std::vector<DBStruct::signatures> DBManager::get_signatures(const unsigned long &l) {
+std::vector<ANALYZER_DBStruct::signatures> ANALYZER_DBManager::get_signatures(const unsigned long &l) {
     shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
     vector<signatures> ss;
     get_analyzable_signature_stmt->setString(1, to_string(l));
@@ -278,7 +278,7 @@ std::vector<DBStruct::signatures> DBManager::get_signatures(const unsigned long 
     return ss;
 }
 
-vector<ZZ> DBManager::get_RSA_modulus(){
+vector<ZZ> ANALYZER_DBManager::get_RSA_modulus(){
     vector<ZZ> n_list;
     result = shared_ptr<ResultSet>(get_RSA_modulo_list_stmt->executeQuery());
     while(result->next()){
@@ -287,9 +287,9 @@ vector<ZZ> DBManager::get_RSA_modulus(){
     return n_list;
 }
 
-void DBManager::write_analyzed_pk_csv(const DBStruct::pubkey &pk){
+void ANALYZER_DBManager::write_analyzed_pk_csv(const ANALYZER_DBStruct::pubkey &pk){
     try{
-        ostream &f = file_list.at(Utils::ANALYZED_PUBKEY);
+        ostream &f = file_list.at(ANALYZER_Utils::ANALYZED_PUBKEY);
         f << '.' << '"' << to_string(pk.version) << "\",";
         f << '"' << hexlify(pk.fingerprint) << "\",";
         f << "\n";
@@ -299,9 +299,9 @@ void DBManager::write_analyzed_pk_csv(const DBStruct::pubkey &pk){
     }
 }
 
-void DBManager::write_analyzed_sign_csv(const DBStruct::signatures &s){
+void ANALYZER_DBManager::write_analyzed_sign_csv(const ANALYZER_DBStruct::signatures &s){
     try{
-        ostream &f = file_list.at(Utils::ANALYZED_SIGNATURE);
+        ostream &f = file_list.at(ANALYZER_Utils::ANALYZED_SIGNATURE);
         f << '.' << '"' << to_string(s.id) << "\"";
         f << "\n";
     }catch (exception &e){
@@ -310,9 +310,9 @@ void DBManager::write_analyzed_sign_csv(const DBStruct::signatures &s){
     }
 }
 
-void DBManager::write_broken_modulus_csv(const std::vector<std::string> &broken_modulus) {
+void ANALYZER_DBManager::write_broken_modulus_csv(const std::vector<std::string> &broken_modulus) {
     try{
-        ofstream f = ofstream(Utils::get_file_name(Utils::BROKEN_MODULUS, this_thread::get_id()), ios_base::app);
+        ofstream f = ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::BROKEN_MODULUS, this_thread::get_id()), ios_base::app);
         for (const auto &n: broken_modulus){
             f << '.' << '"' << n << '"' << "\n";
         }
@@ -323,9 +323,9 @@ void DBManager::write_broken_modulus_csv(const std::vector<std::string> &broken_
     }
 }
 
-void DBManager::write_broken_key_csv(const DBStruct::KeyStatus &ks) {
+void ANALYZER_DBManager::write_broken_key_csv(const ANALYZER_DBStruct::KeyStatus &ks) {
     try{
-        ofstream &f = file_list.at(Utils::BROKEN_PUBKEY);
+        ofstream &f = file_list.at(ANALYZER_Utils::BROKEN_PUBKEY);
         f << '.' << '"' << ks.version << "\",";
         f << '"' << hexlify(ks.fingerprint) << "\",";
         f << '"' << ks.vulnerabilityCode << "\",";
@@ -337,9 +337,9 @@ void DBManager::write_broken_key_csv(const DBStruct::KeyStatus &ks) {
     }
 }
 
-void DBManager::write_broken_signature_csv(const DBStruct::SignatureStatus &ss) {
+void ANALYZER_DBManager::write_broken_signature_csv(const ANALYZER_DBStruct::SignatureStatus &ss) {
     try{
-        ofstream &f = file_list.at(Utils::BROKEN_SIGNATURE);
+        ofstream &f = file_list.at(ANALYZER_Utils::BROKEN_SIGNATURE);
         f << '.' << '"' << ss.signature_id << "\",";
         f << '"' << ss.vulnerabilityCode << "\",";
         f << '"' << ss.vulnerabilityDescription << "\"";
@@ -351,13 +351,13 @@ void DBManager::write_broken_signature_csv(const DBStruct::SignatureStatus &ss) 
     }
 }
 
-void DBManager::write_repeated_r_csv() {
+void ANALYZER_DBManager::write_repeated_r_csv() {
     try{
         result = shared_ptr<ResultSet>(shared_ptr<Statement>(con->createStatement())->executeQuery("SELECT id from "
                       "Signatures where (pubAlgorithm = 16 or pubAlgorithm = 17 or pubAlgorithm = 18) and id not in "
                       "(SELECT signature_id from SignatureStatus WHERE vulnerabilityCode = 24) and is_analyzed = 1 GROUP by "
                       "issuingKeyId, r having count(r) > 1"));
-        ofstream f = ofstream(Utils::get_file_name(Utils::REPEATED_R, this_thread::get_id()), ios_base::app);
+        ofstream f = ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::REPEATED_R, this_thread::get_id()), ios_base::app);
         while (result->next()) {
             f << '.' << '"' << result->getInt("id") << '"' << "\n";
         }
@@ -368,9 +368,9 @@ void DBManager::write_repeated_r_csv() {
     }
 }
 
-void DBManager::insertCSV(const vector<string> &files, const unsigned int &table){
+void ANALYZER_DBManager::insertCSV(const vector<string> &files, const unsigned int &table){
     switch (table){
-        case Utils::ANALYZED_PUBKEY:
+        case ANALYZER_Utils::ANALYZED_PUBKEY:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_pk (version tinyint, "
@@ -383,11 +383,11 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 }catch (exception &e){
                     syslog(LOG_CRIT, "set_pubkey_analyzed_stmt FAILED, the key will result ANALYZABLE in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::ANALYZED_PUBKEY);
+                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::ANALYZED_PUBKEY);
                 }
             }
             break;
-        case Utils::ANALYZED_SIGNATURE:
+        case ANALYZER_Utils::ANALYZED_SIGNATURE:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_s (signature_id int(10), "
@@ -399,22 +399,22 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 }catch (exception &e){
                     syslog(LOG_CRIT, "set_analyzed_signature_stmt FAILED, the signature will result ANALYZABLE in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::ANALYZED_SIGNATURE);
+                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::ANALYZED_SIGNATURE);
                 }
             }
             break;
-        case Utils::BROKEN_PUBKEY:
+        case ANALYZER_Utils::BROKEN_PUBKEY:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_broken_key_stmt.first + f + insert_broken_key_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_broken_key_stmt FAILED, the key will result not broken in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::BROKEN_PUBKEY);
+                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::BROKEN_PUBKEY);
                 }
             }
             break;
-        case Utils::BROKEN_MODULUS:
+        case ANALYZER_Utils::BROKEN_MODULUS:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_mod (RSA_modulus blob, "
@@ -422,29 +422,29 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                     auto insert_keystatus_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT IGNORE INTO "
                                "KeyStatus SELECT version, fingerprint, ?, ? FROM Pubkey WHERE n in (SELECT * FROM tmp_analyzer_mod)"));
                     shared_ptr<Statement>(con->createStatement())->execute(insert_broken_modulus_stmt.first + f + insert_broken_modulus_stmt.second);
-                    insert_keystatus_stmt -> setInt(1, Utils::VULN_CODE::RSA_COMMON_FACTOR);
-                    insert_keystatus_stmt -> setString(2, Utils::VULN_NAME.at(Utils::VULN_CODE::RSA_COMMON_FACTOR));
+                    insert_keystatus_stmt -> setInt(1, ANALYZER_Utils::VULN_CODE::RSA_COMMON_FACTOR);
+                    insert_keystatus_stmt -> setString(2, ANALYZER_Utils::VULN_NAME.at(ANALYZER_Utils::VULN_CODE::RSA_COMMON_FACTOR));
                     insert_keystatus_stmt -> execute();
                     shared_ptr<Statement>(con->createStatement())->execute("DROP TABLE tmp_analyzer_mod;");
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_broken_modulus_stmt FAILED, the key will result not broken in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::BROKEN_MODULUS);
+                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::BROKEN_MODULUS);
                 }
             }
             break;
-        case Utils::BROKEN_SIGNATURE:
+        case ANALYZER_Utils::BROKEN_SIGNATURE:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_broken_signature_stmt.first + f + insert_broken_signature_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_broken_signature_stmt FAILED, the signature will result not broken in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::BROKEN_SIGNATURE);
+                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::BROKEN_SIGNATURE);
                 }
             }
             break;
-        case Utils::REPEATED_R:
+        case ANALYZER_Utils::REPEATED_R:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute("CREATE TABLE tmp_analyzer_repR (id int(10), "
@@ -452,14 +452,14 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                     auto insert_signatureStatus_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT IGNORE "
                                "INTO SignatureStatus SELECT id, ?, ? FROM tmp_analyzer_repR;"));
                     shared_ptr<Statement>(con->createStatement())->execute(insert_repeated_r_stmt.first + f + insert_repeated_r_stmt.second);
-                    insert_signatureStatus_stmt -> setInt(1, Utils::VULN_CODE::SIGNATURE_REPEATED_R);
-                    insert_signatureStatus_stmt -> setString(2, Utils::VULN_NAME.at(Utils::VULN_CODE::SIGNATURE_REPEATED_R));
+                    insert_signatureStatus_stmt -> setInt(1, ANALYZER_Utils::VULN_CODE::SIGNATURE_REPEATED_R);
+                    insert_signatureStatus_stmt -> setString(2, ANALYZER_Utils::VULN_NAME.at(ANALYZER_Utils::VULN_CODE::SIGNATURE_REPEATED_R));
                     insert_signatureStatus_stmt -> execute();
                     shared_ptr<Statement>(con->createStatement())->execute("DROP TABLE tmp_analyzer_repR;");
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_repeated_r_stmt FAILED, the signature will result not broken in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::REPEATED_R);
+                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::REPEATED_R);
                 }
             }
             break;
@@ -478,21 +478,21 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
     }
 }
 
-void DBManager::open_pubkey_files() {
-    DBManager::file_list.insert(std::pair<unsigned int, ofstream>(Utils::ANALYZED_PUBKEY,
-                         ofstream(Utils::get_file_name(Utils::ANALYZED_PUBKEY, this_thread::get_id()), ios_base::app)));
-    DBManager::file_list.insert(std::pair<unsigned int, ofstream>(Utils::BROKEN_PUBKEY,
-                         ofstream(Utils::get_file_name(Utils::BROKEN_PUBKEY, this_thread::get_id()), ios_base::app)));
+void ANALYZER_DBManager::open_pubkey_files() {
+    ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(ANALYZER_Utils::ANALYZED_PUBKEY,
+                         ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::ANALYZED_PUBKEY, this_thread::get_id()), ios_base::app)));
+    ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(ANALYZER_Utils::BROKEN_PUBKEY,
+                         ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::BROKEN_PUBKEY, this_thread::get_id()), ios_base::app)));
 }
 
-void DBManager::open_signatures_files() {
-    DBManager::file_list.insert(std::pair<unsigned int, ofstream>(Utils::ANALYZED_SIGNATURE,
-                                                                  ofstream(Utils::get_file_name(Utils::ANALYZED_SIGNATURE, this_thread::get_id()), ios_base::app)));
-    DBManager::file_list.insert(std::pair<unsigned int, ofstream>(Utils::BROKEN_SIGNATURE,
-                                                                  ofstream(Utils::get_file_name(Utils::BROKEN_SIGNATURE, this_thread::get_id()), ios_base::app)));
+void ANALYZER_DBManager::open_signatures_files() {
+    ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(ANALYZER_Utils::ANALYZED_SIGNATURE,
+                                                                  ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::ANALYZED_SIGNATURE, this_thread::get_id()), ios_base::app)));
+    ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(ANALYZER_Utils::BROKEN_SIGNATURE,
+                                                                  ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::BROKEN_SIGNATURE, this_thread::get_id()), ios_base::app)));
 }
 
-DBManager::~DBManager(){
+ANALYZER_DBManager::~ANALYZER_DBManager(){
     for (auto &it: file_list){
         if (it.second.is_open()){
             it.second.close();

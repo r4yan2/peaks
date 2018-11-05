@@ -3,10 +3,10 @@
 using namespace std;
 using namespace OpenPGP;
 
-namespace Unpacker {
+namespace Dumpimport {
 
     void unpack_string_th(const vector<string> keys){
-        shared_ptr<DBManager> dbm(new DBManager());
+        shared_ptr<DUMPIMPORT_DBManager> dbm(new DUMPIMPORT_DBManager());
         dbm->openCSVFiles();
         int i=0;
         for (auto key_str : keys){
@@ -29,7 +29,7 @@ namespace Unpacker {
 
 
     void unpack_dump_th(const vector<std::string> &files, const bool &fast){
-        shared_ptr<DBManager> dbm(new DBManager());
+        shared_ptr<DUMPIMPORT_DBManager> dbm(new DUMPIMPORT_DBManager());
         dbm->openCSVFiles();
 
         for (const auto &f : files) {
@@ -67,7 +67,7 @@ namespace Unpacker {
         }
     }
 
-    void fast_unpack(Key::Ptr &key, const shared_ptr<DBManager> &dbm){
+    void fast_unpack(Key::Ptr &key, const shared_ptr<DUMPIMPORT_DBManager> &dbm){
         Key::pkey pk;
         DBStruct::gpg_keyserver_data gpg_keyserver_table;
         DBStruct::Unpacker_errors modified;
@@ -154,7 +154,7 @@ namespace Unpacker {
     }
 
 
-    void unpack(Key::Ptr &key, const shared_ptr<DBManager> &dbm){
+    void unpack(Key::Ptr &key, const shared_ptr<DUMPIMPORT_DBManager> &dbm){
         Key::pkey pk;
         DBStruct::gpg_keyserver_data gpg_keyserver_table;
         DBStruct::Unpacker_errors modified;

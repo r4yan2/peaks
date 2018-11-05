@@ -44,7 +44,7 @@ void fastGCD::free_vec(vec_t *v) {
 
 // initializes vec_t *v and fills it with contents of named binary format file
 void fastGCD::input_bin_array(vec_t *v, const char *filename) {
-    FILE *in = fopen((TMP_FOLDER_GCD + std::string(filename)).c_str(), "rb");
+    FILE *in = fopen((recon_settings.analyzer_tmp_folder + std::string(filename)).c_str(), "rb");
     assert(in);
     int count;
     int ret = fread(&count, sizeof(count), 1, in);
@@ -70,7 +70,7 @@ void fastGCD::input_bin_array(vec_t *v, const std::vector<NTL::ZZ> &values) {
 
 // writes vec_t *v to the named file in binary format
 void fastGCD::output_bin_array(vec_t *v, const char *filename) {
-    FILE *out = fopen((TMP_FOLDER_GCD + std::string(filename)).c_str(), "wb");
+    FILE *out = fopen((recon_settings.analyzer_tmp_folder + std::string(filename)).c_str(), "wb");
     assert(out);
     fwrite(&v->count, sizeof(v->count), 1, out);
     size_t bytes = 0;

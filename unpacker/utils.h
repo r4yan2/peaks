@@ -10,13 +10,9 @@
 #include <map>
 
 
-namespace Utils{
+namespace UNPACKER_Utils{
     const unsigned int MAX_LIMIT = 100;
     const unsigned int KEY_PER_THREAD_DEFAULT = 2500;
-
-    // const boost::filesystem::path TMP_FOLDER = "/tmp/OpenPGP/unpacker/";
-    const boost::filesystem::path TMP_FOLDER = "/var/lib/mysql-files/gpg_keyserver/unpacker/";
-    const boost::filesystem::path ERROR_FOLDER = "/home/doc/temp/gpg_keyserver_ERRORS/unpacker_errors/";
 
     const unsigned int UNPACKED         = 1;
     const unsigned int PUBKEY           = 2;

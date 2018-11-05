@@ -1,10 +1,8 @@
 #include <ctime>
 #include <Packets/packets.h>
 #include <Misc/mpi.h>
-#include <sys/syslog.h>
 #include <Misc/sigcalc.h>
 #include <common/errors.h>
-#include <thread>
 #include <cmath>
 #include <regex>
 #include <Misc/PKCS1.h>
@@ -17,8 +15,91 @@ using namespace OpenPGP;
 
 namespace Unpacker {
 
+    int unpacker(po::variables_map &vm){
+        openlog("pgp_analyzer", LOG_PID, LOG_USER);
+        setlogmask (LOG_UPTO (LOG_NOTICE));
+        syslog(LOG_NOTICE, "Unpacker daemon is starting up!");
+    
+        unsigned int nThreads = std::thread::hardware_concurrency() / 2 + 1;
+        unsigned int key_per_thread;
+        unsigned int limit = recon_settings.max_unpacker_limit;
+    
+        if(vm.count("threads"))
+            nThreads = vm["threads"].as<unsigned int>();
+        
+        syslog(LOG_NOTICE, "Using %d Threads", nThreads);
+    
+        if(vm.count("limit"))
+            limit = vm["limit"].as<unsigned int>();
+    
+        if(vm.count("keys"))
+            key_per_thread = vm["keys"].as<unsigned int>();
+        else
+            key_per_thread = 1 + ((limit - 1)/nThreads); 
+     
+    
+        if(UNPACKER_Utils::create_folders() == -1){
+            syslog(LOG_WARNING,  "Unable to create temp folder");
+            exit(-1);
+        }
+    
+        std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>();
+    
+        std::vector<UNPACKER_DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
+    
+        std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
+        std::vector<std::thread> pool_vect(nThreads);
+    
+        for (unsigned int i = 0; i < nThreads; i++){
+            pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
+        }
+    
+        for (unsigned int i = 0; i < gpg_data.size();){
+            std::vector<PublicKey::Ptr> pks;
+            for (unsigned int j = 0; i < gpg_data.size() && j < key_per_thread; j++, i++){
+                try{
+                    std::stringstream s(gpg_data[i].certificate);
+                    PGP::Ptr pkt(new PGP(s, true));
+                    pkt -> set_type(PGP::PUBLIC_KEY_BLOCK);
+                    pks.push_back(std::make_shared<PublicKey>(PublicKey(*pkt)));
+                }catch (std::exception &e){
+                    dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
+                    syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", e.what());
+                    continue;
+                }catch (std::error_code &e){
+                    dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
+                    syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", e.message().c_str());
+                    continue;
+                }
+            }
+            pool->Add_Job([=] { return Unpacker::unpack_key_th(pks); });
+        }
+    
+        pool->Stop_Filling_UP();
+    
+        for (auto &th: pool_vect){
+            while (!th.joinable()){}
+            th.join();
+        }
+    
+        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::PUBKEY), UNPACKER_Utils::PUBKEY);
+        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::USER_ATTRIBUTES), UNPACKER_Utils::USER_ATTRIBUTES);
+        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::SIGNATURE), UNPACKER_Utils::SIGNATURE);
+        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::SELF_SIGNATURE), UNPACKER_Utils::SELF_SIGNATURE);
+        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::UNPACKED), UNPACKER_Utils::UNPACKED);
+        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::UNPACKER_ERRORS), UNPACKER_Utils::UNPACKER_ERRORS);
+        dbm->UpdateSignatureIssuingFingerprint(limit);
+        dbm->UpdateSignatureIssuingUsername();
+        dbm->UpdateIsExpired();
+        dbm->UpdateIsRevoked();
+        dbm->UpdateIsValid();
+    
+        syslog(LOG_NOTICE, "Unpacker daemon is stopping!");
+        return 0;
+    }
+
     void unpack_key_th(const vector<PublicKey::Ptr> &pks){
-        shared_ptr<DBManager> dbm(new DBManager());
+        shared_ptr<UNPACKER_DBManager> dbm(new UNPACKER_DBManager());
         dbm->openCSVFiles();
 
         for (const auto &pk : pks) {
@@ -33,13 +114,13 @@ namespace Unpacker {
         }
     }
 
-    void unpack_key( const PublicKey::Ptr &key, const shared_ptr<DBManager> &dbm){
+    void unpack_key( const PublicKey::Ptr &key, const shared_ptr<UNPACKER_DBManager> &dbm){
 
         Key::pkey pk;
         if (key->get_packets().empty()){
             throw logic_error("Key not created correctly");
         }
-        DBStruct::Unpacker_errors modified = DBStruct::Unpacker_errors(mpitodec(rawtompi(key->keyid())));
+        UNPACKER_DBStruct::Unpacker_errors modified = UNPACKER_DBStruct::Unpacker_errors(mpitodec(rawtompi(key->keyid())));
 
         try{
             key->meaningful();
@@ -75,9 +156,9 @@ namespace Unpacker {
         }
 
         Packet::Key::Ptr primaryKey = static_pointer_cast<Packet::Key>(pk.key);
-        vector<DBStruct::pubkey> unpackedPubkeys;
-        vector<DBStruct::userAtt> unpackedUserAttributes;
-        vector<DBStruct::signatures> unpackedSignatures; // contains also self-signatures
+        vector<UNPACKER_DBStruct::pubkey> unpackedPubkeys;
+        vector<UNPACKER_DBStruct::userAtt> unpackedUserAttributes;
+        vector<UNPACKER_DBStruct::signatures> unpackedSignatures; // contains also self-signatures
 
         try{
             unpackedPubkeys.push_back(get_publicKey_data(primaryKey, primaryKey));
@@ -110,7 +191,7 @@ namespace Unpacker {
 
         for (auto it = pk.uid_userAtt.begin(); it != pk.uid_userAtt.end(); it++) {
             try {
-                DBStruct::userAtt ua_struct{
+                UNPACKER_DBStruct::userAtt ua_struct{
                         .id = std::distance(pk.uid_userAtt.begin(), it) + 1,
                         .fingerprint = primaryKey->get_fingerprint(),
                         .name = ascii2radix64(dynamic_pointer_cast<Packet::Tag13>(it->first)->get_contents())
@@ -172,8 +253,8 @@ namespace Unpacker {
         dbm->write_unpacked_csv(key, modified);
     }
 
-    DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const Packet::Key::Ptr &priKey) {
-        DBStruct::signatures ss;
+    UNPACKER_DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const Packet::Key::Ptr &priKey) {
+        UNPACKER_DBStruct::signatures ss;
         Packet::Tag2::Ptr sig = dynamic_pointer_cast<Packet::Tag2>(sp->second);
 
         ss.type = sig->get_type();
@@ -294,7 +375,7 @@ namespace Unpacker {
         return ss;
     }
 
-    void handle_wrong_sig(DBStruct::signatures &ss, const Packet::Key::Ptr &key, const Packet::Key::Ptr &subkey,
+    void handle_wrong_sig(UNPACKER_DBStruct::signatures &ss, const Packet::Key::Ptr &key, const Packet::Key::Ptr &subkey,
                           const Packet::Tag2::Ptr &sig){
         vector<string> prob_hash;
         prob_hash.push_back(to_sign_18(key, subkey, sig));
@@ -322,7 +403,7 @@ namespace Unpacker {
         }
     }
 
-    void handle_wrong_sig(DBStruct::signatures &ss, const Packet::Key::Ptr &key, const Packet::User::Ptr &user,
+    void handle_wrong_sig(UNPACKER_DBStruct::signatures &ss, const Packet::Key::Ptr &key, const Packet::User::Ptr &user,
                           const Packet::Tag2::Ptr &sig) {
         if (user->get_tag() == Packet::USER_ID){
             return;
@@ -357,9 +438,9 @@ namespace Unpacker {
         }
     }
 
-    DBStruct::pubkey get_publicKey_data(const Packet::Tag::Ptr &p, const Packet::Key::Ptr &priKey) {
+    UNPACKER_DBStruct::pubkey get_publicKey_data(const Packet::Tag::Ptr &p, const Packet::Key::Ptr &priKey) {
         Packet::Key::Ptr k = dynamic_pointer_cast<Packet::Key>(p);
-        DBStruct::pubkey pk;
+        UNPACKER_DBStruct::pubkey pk;
 
         pk.keyId = mpitodec(rawtompi(k->get_keyid()));
 
@@ -423,7 +504,7 @@ namespace Unpacker {
         return pk;
     }
 
-    void get_userAttributes_data(const Packet::Tag::Ptr &p, DBStruct::userAtt &ua_struct) {
+    void get_userAttributes_data(const Packet::Tag::Ptr &p, UNPACKER_DBStruct::userAtt &ua_struct) {
         Packet::Tag17::Ptr t17 = dynamic_pointer_cast<Packet::Tag17>(p);
 
         for (auto &a: t17->get_attributes()){
@@ -441,7 +522,7 @@ namespace Unpacker {
         }
     }
 
-    void get_tag2_subpackets_data(const std::vector<Subpacket::Tag2::Sub::Ptr> &subps, DBStruct::signatures *ss) {
+    void get_tag2_subpackets_data(const std::vector<Subpacket::Tag2::Sub::Ptr> &subps, UNPACKER_DBStruct::signatures *ss) {
         for (auto &p : subps) {
             switch (p->get_type()) {
                 case Subpacket::Tag2::SIGNATURE_CREATION_TIME:
@@ -543,7 +624,7 @@ namespace Unpacker {
     }
 }
 /*
-bool operator==(const DBStruct::signatures &s1, const DBStruct::signatures &s2){
+bool operator==(const UNPACKER_DBStruct::signatures &s1, const UNPACKER_DBStruct::signatures &s2){
     return s1.s == s2.s && s1.r == s2.r;
 }
  */

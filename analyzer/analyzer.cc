@@ -12,18 +12,134 @@
 #include <Misc/PKCS1.h>
 #include <sys/syslog.h>
 #include <gcrypt.h>
+#include "Thread_Pool.h"
 
 using namespace std;
 using namespace OpenPGP;
 using namespace NTL;
-using namespace DBStruct;
+using namespace ANALYZER_DBStruct;
 using namespace Math_Support;
-using namespace Utils;
+using namespace ANALYZER_Utils;
 
 Analyzer::Analyzer() = default;
 
-void Analyzer::analyze_pubkeys(const vector<DBStruct::pubkey> &pks) const {
-    shared_ptr<DBManager> dbm(new DBManager());
+int analyzer(po::variables_map &vm){
+
+    openlog("pgp_analyzer", LOG_PID, LOG_USER);
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    syslog(LOG_NOTICE, "Analyzer daemon is starting up!");
+    unsigned int nThreads = thread::hardware_concurrency() / 2 + 1;
+    unsigned int limit = recon_settings.max_unpacker_limit;
+    unsigned int key_per_thread;
+    if(ANALYZER_Utils::create_folders() == -1){
+        syslog(LOG_WARNING, "Unable to create temp folder");
+        exit(-1);
+    }
+
+    shared_ptr<ANALYZER_DBManager> dbm = make_shared<ANALYZER_DBManager>();
+
+    Analyzer a = Analyzer();
+
+    syslog(LOG_INFO, "Starting pubkey analysis");
+    if(vm.count("threads"))
+        nThreads = vm["threads"].as<unsigned int>();
+    
+    syslog(LOG_NOTICE, "Using %d Threads", nThreads);
+ 
+    if(vm.count("limit"))
+        limit = vm["limit"].as<unsigned int>();
+
+	syslog(LOG_NOTICE, "Limiting analysis to %u certificates", limit);
+ 
+    if(vm.count("keys"))
+        key_per_thread = vm["keys"].as<unsigned int>();
+    else
+        key_per_thread = 1 + ((limit - 1)/nThreads); 
+     
+ 
+    vector<ANALYZER_DBStruct::pubkey> pk = dbm->get_pubkey(limit);
+    bool exist_rsa = false;
+
+    shared_ptr<Thread_Pool> pool = make_shared<Thread_Pool>();
+    vector<thread> pool_vect(nThreads);
+
+    for (unsigned int i = 0; i < nThreads; i++){
+        pool_vect[i] = thread([=] { pool->Infinite_loop_function(); });
+    }
+
+    for (unsigned int i = 0; i < pk.size();){
+        vector<ANALYZER_DBStruct::pubkey> pks;
+        exist_rsa = PKA::is_RSA(pk[i].pubAlgorithm);
+        for (unsigned int j = 0; i < pk.size() && j < key_per_thread; j++, i++){
+            pks.push_back(pk[i]);
+        }
+        pool->Add_Job([=] { return a.analyze_pubkeys(pks); });
+    }
+
+    pool->Stop_Filling_UP();
+
+    for (auto &th: pool_vect){
+        while (!th.joinable()){}
+        th.join();
+    }
+
+
+    syslog(LOG_INFO, "Writing analyzed pubkeys in DB");
+
+    dbm->insertCSV(ANALYZER_Utils::get_files(ANALYZER_Utils::BROKEN_PUBKEY), ANALYZER_Utils::BROKEN_PUBKEY);
+    dbm->insertCSV(ANALYZER_Utils::get_files(ANALYZER_Utils::ANALYZED_PUBKEY), ANALYZER_Utils::ANALYZED_PUBKEY);
+
+    syslog(LOG_INFO, "Starting RSA modulus analysis");
+
+    if (!pk.empty() && exist_rsa){
+        a.analyze_RSA_modulus_common_factor(dbm, nThreads);
+    }
+
+    syslog(LOG_INFO, "Writing analyzed pubkeys in DB");
+
+    dbm->insertCSV(ANALYZER_Utils::get_files(ANALYZER_Utils::BROKEN_MODULUS), ANALYZER_Utils::BROKEN_MODULUS);
+
+    syslog(LOG_INFO, "Starting signature analysis");
+
+    vector<ANALYZER_DBStruct::signatures> ss = dbm->get_signatures(limit);
+
+    pool->Start_Filling_UP();
+
+    for (unsigned int i = 0; i < nThreads; i++){
+        pool_vect[i] = thread([=] { pool->Infinite_loop_function(); });
+    }
+
+    for (unsigned int i = 0; i < ss.size();){
+        vector<ANALYZER_DBStruct::signatures> sss;
+        for (unsigned int j = 0; i < ss.size() && j < key_per_thread; i++, j++){
+            sss.push_back(ss[i]);
+        }
+        pool->Add_Job([=] { return a.analyze_signatures(sss); });
+    }
+
+    pool->Add_Job([=] { return dbm->write_repeated_r_csv(); });
+
+    pool->Stop_Filling_UP();
+
+    for (auto &th: pool_vect){
+        while (!th.joinable()){}
+        th.join();
+    }
+
+
+    dbm->insertCSV(ANALYZER_Utils::get_files(ANALYZER_Utils::BROKEN_SIGNATURE), ANALYZER_Utils::BROKEN_SIGNATURE);
+    dbm->insertCSV(ANALYZER_Utils::get_files(ANALYZER_Utils::REPEATED_R), ANALYZER_Utils::REPEATED_R);
+    dbm->insertCSV(ANALYZER_Utils::get_files(ANALYZER_Utils::ANALYZED_SIGNATURE), ANALYZER_Utils::ANALYZED_SIGNATURE);
+
+    syslog(LOG_NOTICE, "Analyzer daemon is stopping!");
+
+    return 0;
+}
+
+
+
+void Analyzer::analyze_pubkeys(const vector<ANALYZER_DBStruct::pubkey> &pks) const {
+    shared_ptr<ANALYZER_DBManager> dbm(new ANALYZER_DBManager());
     dbm->open_pubkey_files();
 
     for (const auto &pk: pks){
@@ -35,8 +151,8 @@ void Analyzer::analyze_pubkeys(const vector<DBStruct::pubkey> &pks) const {
     }
 }
 
-void Analyzer::analyze_signatures(const std::vector<DBStruct::signatures> &ss) const{
-    shared_ptr<DBManager> dbm(new DBManager());
+void Analyzer::analyze_signatures(const std::vector<ANALYZER_DBStruct::signatures> &ss) const{
+    shared_ptr<ANALYZER_DBManager> dbm(new ANALYZER_DBManager());
     dbm->open_signatures_files();
 
     for (const auto &s: ss){
@@ -48,7 +164,7 @@ void Analyzer::analyze_signatures(const std::vector<DBStruct::signatures> &ss) c
     }
 }
 
-void Analyzer::analyze_pubkey(DBStruct::pubkey pk, const shared_ptr<DBManager> &dbm) const{
+void Analyzer::analyze_pubkey(ANALYZER_DBStruct::pubkey pk, const shared_ptr<ANALYZER_DBManager> &dbm) const{
     switch (pk.pubAlgorithm){
         case PKA::ID::RSA_ENCRYPT_ONLY:
         case PKA::ID::RSA_SIGN_ONLY:
@@ -72,7 +188,7 @@ void Analyzer::analyze_pubkey(DBStruct::pubkey pk, const shared_ptr<DBManager> &
     dbm->write_analyzed_pk_csv(pk);
 }
 
-void Analyzer::analyze_signature(const DBStruct::signatures &sign, const shared_ptr<DBManager> &dbm) const{
+void Analyzer::analyze_signature(const ANALYZER_DBStruct::signatures &sign, const shared_ptr<ANALYZER_DBManager> &dbm) const{
     SignatureStatus ss = {
             signature_id : sign.id
     };
@@ -106,7 +222,7 @@ void Analyzer::analyze_signature(const DBStruct::signatures &sign, const shared_
     if (PKA::can_sign(sign.pubAlgorithm) || sign.pubAlgorithm == PKA::ID::ELGAMAL){
         try{
             //if (sign.hashHeader == sign.signedHash.substr(0, 2) && (sign.pk_status < 7 || sign.pk_status == 9)){
-            if ((sign.pk_status < Utils::VULN_CODE::DSA_ELGAMAL_P_PRIME || sign.pk_status == Utils::VULN_CODE::DSA_ELGAMAL_G_SUBGROUP)){
+            if ((sign.pk_status < ANALYZER_Utils::VULN_CODE::DSA_ELGAMAL_P_PRIME || sign.pk_status == ANALYZER_Utils::VULN_CODE::DSA_ELGAMAL_G_SUBGROUP)){
                 if (!check_signature(sign, dbm)){
                     ss.vulnerabilityCode = VULN_CODE::SIGNATURE_WRONG_CHECK;
                     ss.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::SIGNATURE_WRONG_CHECK);
@@ -139,7 +255,7 @@ void Analyzer::analyze_signature(const DBStruct::signatures &sign, const shared_
     dbm->write_analyzed_sign_csv(sign);
 }
 
-void Analyzer::check_RSA(const DBStruct::pubkey &pk, const shared_ptr<DBManager> &dbm) const{
+void Analyzer::check_RSA(const ANALYZER_DBStruct::pubkey &pk, const shared_ptr<ANALYZER_DBManager> &dbm) const{
     KeyStatus ks = {
             .version = pk.version,
             .fingerprint = pk.fingerprint
@@ -227,15 +343,15 @@ void Analyzer::check_RSA(const DBStruct::pubkey &pk, const shared_ptr<DBManager>
         dbm->write_broken_key_csv(ks);
     }
 }
-void Analyzer::check_Curve(const DBStruct::pubkey &pk, const shared_ptr<DBManager> &dbm) const{
+void Analyzer::check_Curve(const ANALYZER_DBStruct::pubkey &pk, const shared_ptr<ANALYZER_DBManager> &dbm) const{
     KeyStatus ks = {
             .version = pk.version,
             .fingerprint = pk.fingerprint
     };
 
     if (!PKA::right_curve(pk.pubAlgorithm, pk.curve)){
-        ks.vulnerabilityCode = Utils::VULN_CODE::CURVE_WRONG;
-        ks.vulnerabilityDescription = Utils::VULN_NAME.at(Utils::VULN_CODE::CURVE_WRONG);
+        ks.vulnerabilityCode = ANALYZER_Utils::VULN_CODE::CURVE_WRONG;
+        ks.vulnerabilityDescription = ANALYZER_Utils::VULN_NAME.at(ANALYZER_Utils::VULN_CODE::CURVE_WRONG);
         dbm->write_broken_key_csv(ks);
     }
     string complete_point = mpitoraw(zz_to_mpi(pk.p));
@@ -250,8 +366,8 @@ void Analyzer::check_Curve(const DBStruct::pubkey &pk, const shared_ptr<DBManage
         shared_ptr<Elliptic_Curve> curve = make_shared<Elliptic_Curve>(Elliptic_Curve(curve_OID));
         EC_point P = EC_point(x, y, curve);
         if (!P.onItsCurve()){
-            ks.vulnerabilityCode = Utils::VULN_CODE::CURVE_POINT_NotOnCurve;
-            ks.vulnerabilityDescription = VULN_NAME.at(Utils::VULN_CODE::CURVE_POINT_NotOnCurve);
+            ks.vulnerabilityCode = ANALYZER_Utils::VULN_CODE::CURVE_POINT_NotOnCurve;
+            ks.vulnerabilityDescription = VULN_NAME.at(ANALYZER_Utils::VULN_CODE::CURVE_POINT_NotOnCurve);
             dbm->write_broken_key_csv(ks);
         }
         return;
@@ -262,13 +378,13 @@ void Analyzer::check_Curve(const DBStruct::pubkey &pk, const shared_ptr<DBManage
                 ED_point P = ED_point(point, curve);
                 return;
             }catch (runtime_error &e){
-                ks.vulnerabilityCode = Utils::VULN_CODE::CURVE_POINT_NotOnCurve;
-                ks.vulnerabilityDescription = VULN_NAME.at(Utils::VULN_CODE::CURVE_POINT_NotOnCurve);
+                ks.vulnerabilityCode = ANALYZER_Utils::VULN_CODE::CURVE_POINT_NotOnCurve;
+                ks.vulnerabilityDescription = VULN_NAME.at(ANALYZER_Utils::VULN_CODE::CURVE_POINT_NotOnCurve);
                 dbm->write_broken_key_csv(ks);
                 return;
             }catch (exception &e){
-                ks.vulnerabilityCode = Utils::VULN_CODE::ERROR + Utils::VULN_CODE::CURVE_POINT_NotOnCurve;
-                ks.vulnerabilityDescription = VULN_NAME.at(Utils::VULN_CODE::ERROR) + "decode 0x40 point";
+                ks.vulnerabilityCode = ANALYZER_Utils::VULN_CODE::ERROR + ANALYZER_Utils::VULN_CODE::CURVE_POINT_NotOnCurve;
+                ks.vulnerabilityDescription = VULN_NAME.at(ANALYZER_Utils::VULN_CODE::ERROR) + "decode 0x40 point";
                 dbm->write_broken_key_csv(ks);
                 return;
             }
@@ -281,42 +397,42 @@ void Analyzer::check_Curve(const DBStruct::pubkey &pk, const shared_ptr<DBManage
                 EC_point P = EC_point(point, curve);
                 return;
             }catch (std::runtime_error &e){
-                ks.vulnerabilityCode = Utils::VULN_CODE::CURVE_POINT_NotOnCurve;
-                ks.vulnerabilityDescription = VULN_NAME.at(Utils::VULN_CODE::CURVE_POINT_NotOnCurve);
+                ks.vulnerabilityCode = ANALYZER_Utils::VULN_CODE::CURVE_POINT_NotOnCurve;
+                ks.vulnerabilityDescription = VULN_NAME.at(ANALYZER_Utils::VULN_CODE::CURVE_POINT_NotOnCurve);
                 dbm->write_broken_key_csv(ks);
                 return;
             }catch (exception &e){
-                ks.vulnerabilityCode = Utils::VULN_CODE::ERROR + Utils::VULN_CODE::CURVE_POINT_NotOnCurve;
-                ks.vulnerabilityDescription = VULN_NAME.at(Utils::VULN_CODE::ERROR) + "decode 0x40 point";
+                ks.vulnerabilityCode = ANALYZER_Utils::VULN_CODE::ERROR + ANALYZER_Utils::VULN_CODE::CURVE_POINT_NotOnCurve;
+                ks.vulnerabilityDescription = VULN_NAME.at(ANALYZER_Utils::VULN_CODE::ERROR) + "decode 0x40 point";
                 dbm->write_broken_key_csv(ks);
                 return;
             }
         }
         else{
-            ks.vulnerabilityCode = Utils::VULN_CODE::ERROR + Utils::VULN_CODE::CURVE_WRONG;
-            ks.vulnerabilityDescription = VULN_NAME.at(Utils::VULN_CODE::ERROR) + "CURVE NOT FOUND!!";
+            ks.vulnerabilityCode = ANALYZER_Utils::VULN_CODE::ERROR + ANALYZER_Utils::VULN_CODE::CURVE_WRONG;
+            ks.vulnerabilityDescription = VULN_NAME.at(ANALYZER_Utils::VULN_CODE::ERROR) + "CURVE NOT FOUND!!";
             dbm->write_broken_key_csv(ks);
             return;
         }
     } else if (flag == "41" && pk.pubAlgorithm != PKA::ID::EdDSA){ // Only X coordinate follows
-        ks.vulnerabilityCode = Utils::VULN_CODE::ERROR;
-        ks.vulnerabilityDescription = VULN_NAME.at(Utils::VULN_CODE::ERROR) + "Flag 0x41 not implemented!!";
+        ks.vulnerabilityCode = ANALYZER_Utils::VULN_CODE::ERROR;
+        ks.vulnerabilityDescription = VULN_NAME.at(ANALYZER_Utils::VULN_CODE::ERROR) + "Flag 0x41 not implemented!!";
         dbm->write_broken_key_csv(ks);
         return;
     } else if (flag == "42" && pk.pubAlgorithm != PKA::ID::EdDSA){ // Only Y coordinate follows
-        ks.vulnerabilityCode = Utils::VULN_CODE::ERROR;
-        ks.vulnerabilityDescription = VULN_NAME.at(Utils::VULN_CODE::ERROR) + "Flag 0x42 not implemented!!";
+        ks.vulnerabilityCode = ANALYZER_Utils::VULN_CODE::ERROR;
+        ks.vulnerabilityDescription = VULN_NAME.at(ANALYZER_Utils::VULN_CODE::ERROR) + "Flag 0x42 not implemented!!";
         dbm->write_broken_key_csv(ks);
         return;
     } else{
-        ks.vulnerabilityCode = Utils::VULN_CODE::ERROR + Utils::VULN_CODE::CURVE_WRONG;
-        ks.vulnerabilityDescription = VULN_NAME.at(Utils::VULN_CODE::ERROR) + "CANNOT DECODE POINT";
+        ks.vulnerabilityCode = ANALYZER_Utils::VULN_CODE::ERROR + ANALYZER_Utils::VULN_CODE::CURVE_WRONG;
+        ks.vulnerabilityDescription = VULN_NAME.at(ANALYZER_Utils::VULN_CODE::ERROR) + "CANNOT DECODE POINT";
         dbm->write_broken_key_csv(ks);
         return;
     }
 }
 
-void Analyzer::check_Elgamal_DSA(const DBStruct::pubkey &pk, const shared_ptr<DBManager> &dbm) const{
+void Analyzer::check_Elgamal_DSA(const ANALYZER_DBStruct::pubkey &pk, const shared_ptr<ANALYZER_DBManager> &dbm) const{
     KeyStatus ks = {
             .version = pk.version,
             .fingerprint = pk.fingerprint
@@ -486,7 +602,7 @@ void Analyzer::check_Elgamal_DSA(const DBStruct::pubkey &pk, const shared_ptr<DB
     }
 }
 
-bool Analyzer::check_signature(const signatures &sign, const shared_ptr<DBManager> &dbm) const{
+bool Analyzer::check_signature(const signatures &sign, const shared_ptr<ANALYZER_DBManager> &dbm) const{
     ZZ signedHash = conv<ZZ>(mpitodec(rawtompi(sign.signedHash)).c_str());
     switch (sign.pubAlgorithm){
         case PKA::ID::RSA_ENCRYPT_ONLY:
@@ -623,7 +739,7 @@ bool Analyzer::check_signature(const signatures &sign, const shared_ptr<DBManage
     return false;
 }
 
-void Analyzer::analyze_RSA_modulus_common_factor(const shared_ptr<DBManager> &dbm, const unsigned int &nThreads) {
+void Analyzer::analyze_RSA_modulus_common_factor(const shared_ptr<ANALYZER_DBManager> &dbm, const unsigned int &nThreads) {
     fastGCD fgcd = fastGCD(dbm->get_RSA_modulus(), nThreads);
     vector<std::string> broken_modulus = fgcd.compute();
     dbm->write_broken_modulus_csv(broken_modulus);

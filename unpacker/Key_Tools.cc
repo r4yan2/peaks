@@ -5,7 +5,7 @@ using namespace OpenPGP;
 using namespace std;
 
 namespace Key_Tools {
-    Key::pkey readPkey(const Key::Ptr &k, DBStruct::Unpacker_errors &modified){
+    Key::pkey readPkey(const Key::Ptr &k, UNPACKER_DBStruct::Unpacker_errors &modified){
         set<int> possibleSigTypes {0x10, 0x11, 0x12, 0x13, 0x30, 0x18, 0x19, 0x1F, 0x20, 0x28};
         Key::pkey pk;
         pk.key = nullptr;
@@ -83,7 +83,7 @@ namespace Key_Tools {
         return pk;
     }
 
-    void makePKMeaningful(Key::pkey &pk, DBStruct::Unpacker_errors &modified){
+    void makePKMeaningful(Key::pkey &pk, UNPACKER_DBStruct::Unpacker_errors &modified){
         Key::pkey new_pk;
         set<int> uid_sigTypes {0x10, 0x11, 0x12, 0x13, 0x30};
         set<int> key_sigTypes {0x18, 0x19, 0x1F, 0x20, 0x28};

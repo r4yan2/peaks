@@ -1,7 +1,7 @@
-#ifndef UNPACKER_DBSTRUCT_H
-#define UNPACKER_DBSTRUCT_H
+#ifndef DUMPIMPORT_DBSTRUCT_H
+#define DUMPIMPORT_DBSTRUCT_H
 
-namespace DBStruct{
+namespace DUMP_DBStruct{
 
     struct gpg_keyserver_data{
         int version = 0;
@@ -64,7 +64,7 @@ namespace DBStruct{
         std::string preferedCompression = "";
         std::string preferedSymmetric = "";
 
-        bool operator==(const DBStruct::signatures &s2) const{
+        bool operator==(const DUMP_DBStruct::signatures &s2) const{
             return s == s2.s && r == s2.r;
         }
     };

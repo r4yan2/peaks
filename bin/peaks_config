@@ -26,6 +26,7 @@ sks_bitstring = 0
 async_timeout_sec = 1
 async_timeout_usec = 0
 ignore_known_bug = 1
+max_unpacker_limit = 10000
 
 # DB settings
 db_host = localhost
@@ -37,3 +38,9 @@ membership_config = ./membership
 cppcms_config = ./config.js
 tmp_folder_csv = /tmp/dump_import/
 default_dump_path = /tmp/pgp_dump/
+analyzer_tmp_folder = /tmp/analyzer/
+unpacker_tmp_folder = /tmp/unpacker/
+analyzer_error_folder = /tmp/analyzer_errors/
+dump_error_folder = /tmp/dumpimport_errors/
+unpacker_error_folder = /tmp/unpacker_errors/
+tmp_folder_gcd = /tmp/gcd_tmp_folder/

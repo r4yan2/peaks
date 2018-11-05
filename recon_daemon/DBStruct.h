@@ -1,7 +1,7 @@
 #ifndef RECON_DBSTRUCT_H
 #define RECON_DBSTRUCT_H
 
-namespace DBStruct{
+namespace RECON_DBStruct{
 
     struct node{
         std::string key;

@@ -48,7 +48,7 @@ bool Ptree::create(){
 }
 
 pnode_ptr Ptree::get_node(const std::string &key){
-  DBStruct::node n = dbm->get_node(key);
+  RECON_DBStruct::node n = dbm->get_node(key);
   std::vector<NTL::ZZ_p> node_elements = Utils::unmarshall_vec_zz_p(n.elements);
   std::vector<NTL::ZZ_p> node_svalues = Utils::unmarshall_vec_zz_p(n.svalues);
   pnode_ptr nd(new Pnode(dbm));
@@ -285,7 +285,7 @@ void Pnode::clear_node_elements(){
 }
 
 void Pnode::commit_node(bool newnode){
-  DBStruct::node n;
+  RECON_DBStruct::node n;
   n.key = node_key;
   n.svalues = Utils::marshall_vec_zz_p(get_node_svalues());
   n.num_elements = num_elements;
@@ -664,15 +664,16 @@ memnode_ptr MemTree::new_child(memnode_ptr parent, int child_index){
 void MemTree::commit_memtree(){
     std::queue<memnode_ptr> node_list;
     memnode_ptr cur_node = get_root();
+    dbm->openCSVFiles();
     while(true){
 
-        DBStruct::node n;
+        RECON_DBStruct::node n;
         n.key = cur_node->get_node_key();
         n.svalues = Utils::marshall_vec_zz_p(cur_node->get_node_svalues());
         n.num_elements = cur_node->get_num_elements();
         n.leaf = cur_node->is_leaf();
         n.elements = Utils::marshall_vec_zz_p(cur_node->get_node_elements());
-        dbm->insert_node(n);
+        dbm->write_ptree_csv(n);
 
         if (cur_node->is_leaf()){
             if (node_list.empty())
@@ -684,6 +685,7 @@ void MemTree::commit_memtree(){
         cur_node = node_list.front();
         node_list.pop();
     }
+    dbm->insertCSV();
 }
 
 memnode_ptr MemTree::get_root(){

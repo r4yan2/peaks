@@ -4,7 +4,7 @@
 #include <cstring>
 #include <NTL/ZZ.h>
 
-namespace DBStruct{
+namespace ANALYZER_DBStruct{
 
     struct pubkey{
         unsigned int version = 0;

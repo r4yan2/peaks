@@ -4,7 +4,7 @@
 #include <Misc/mpi.h>
 #include <thread>
 
-#include "RECON_DBManager.h"
+#include "DBManager.h"
 #include "Recon_settings.h"
 
 using namespace sql;
@@ -30,7 +30,13 @@ RECON_DBManager::RECON_DBManager() {
 
     check_key_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT * FROM gpg_keyserver where hash = (?)"));
 
+	insert_ptree_stmt = make_pair<string, string>(
+            "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE ptree FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
+            "LINES STARTING BY '.' TERMINATED BY '\\n' (node_key, node_svalues, num_elements, leaf, node_elements) "
+            );
+
 }
+
 RECON_DBManager::~RECON_DBManager(){
     driver->threadEnd();
 };
@@ -51,7 +57,7 @@ void RECON_DBManager::unlockTables(){
     }
 }
 
-void RECON_DBManager::insert_node(const DBStruct::node &n){
+void RECON_DBManager::insert_node(const RECON_DBStruct::node &n){
   try{
     insert_pnode_stmt->setString(1, n.key);
     insert_pnode_stmt->setString(2, n.svalues);
@@ -69,7 +75,7 @@ void RECON_DBManager::insert_node(const DBStruct::node &n){
     }
   }
   
-void RECON_DBManager::update_node(const DBStruct::node &n){
+void RECON_DBManager::update_node(const RECON_DBStruct::node &n){
   try{
     update_pnode_stmt->setString(1, n.svalues);
     update_pnode_stmt->setInt(2, n.num_elements);
@@ -87,8 +93,8 @@ void RECON_DBManager::update_node(const DBStruct::node &n){
     }
 }
 
-DBStruct::node RECON_DBManager::get_node(const std::string k){
-  DBStruct::node n;
+RECON_DBStruct::node RECON_DBManager::get_node(const std::string k){
+  RECON_DBStruct::node n;
   get_pnode_stmt->setString(1, k);
   result = shared_ptr<ResultSet>(get_pnode_stmt->executeQuery());
   result->next();
@@ -128,3 +134,29 @@ bool RECON_DBManager::check_key(const std::string k){
     return true;
 }
 
+void RECON_DBManager::write_ptree_csv(const RECON_DBStruct::node &pnode) {
+    try{
+        csv_file << '.';
+		csv_file << '"' << pnode.key << "\",";
+        csv_file << '"' << pnode.svalues << "\",";
+        csv_file << '"' << pnode.num_elements << "\",";
+        csv_file << '"' << pnode.leaf << "\",";
+        csv_file << '"' << pnode.elements << "\",";
+        csv_file << "\n";
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_ptree_csv FAILED, the node will not be in the database! - %s", e.what());
+    }
+}
+
+void RECON_DBManager::openCSVFiles(){
+    // Open file
+    csv_file = ofstream("/tmp/ptree.csv");
+}
+
+void RECON_DBManager::insertCSV(){
+	try{
+    	shared_ptr<Statement>(con->createStatement())->execute(insert_ptree_stmt.first + "/tmp/ptree.csv" + insert_ptree_stmt.second);
+    }catch (exception &e){
+        syslog(LOG_CRIT, "insert_ptree_stmt FAILED, the key will not have the ptree in the database! - %s", e.what());
+	}
+}

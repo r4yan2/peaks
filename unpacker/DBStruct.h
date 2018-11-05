@@ -1,7 +1,7 @@
 #ifndef UNPACKER_DBSTRUCT_H
 #define UNPACKER_DBSTRUCT_H
 
-namespace DBStruct{
+namespace UNPACKER_DBStruct{
 
     struct gpg_keyserver_data{
         int version = 0;
@@ -59,7 +59,7 @@ namespace DBStruct{
         std::string preferedSymmetric = "";
         bool isPrimaryUserId = false;
 
-        bool operator==(const DBStruct::signatures &s2) const{
+        bool operator==(const UNPACKER_DBStruct::signatures &s2) const{
             return s == s2.s && r == s2.r;
         }
     };

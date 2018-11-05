@@ -1,7 +1,7 @@
 #ifndef RECON_PTREEDB_H
 #define RECON_PTREEDB_H
 
-#include "RECON_DBManager.h"
+#include "DBManager.h"
 #include "Recon_settings.h"
 #include "Utils.h"
 #include <syslog.h>

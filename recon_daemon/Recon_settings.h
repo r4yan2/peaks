@@ -121,6 +121,14 @@ struct Configtype{
 
     /** if dry run is set recon daemon will only fetch certificates without importing them */
     bool dry_run;
+
+    unsigned int max_unpacker_limit;
+    std::string unpacker_tmp_folder;
+    std::string unpacker_error_folder;
+    std::string analyzer_tmp_folder;
+    std::string analyzer_error_folder;
+    std::string tmp_folder_gcd;
+    std::string dump_error_folder;
 };
 
 extern Configtype recon_settings;

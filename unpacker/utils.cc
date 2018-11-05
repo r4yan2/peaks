@@ -5,30 +5,30 @@
 #include <syslog.h>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
-
+#include "../recon_daemon/Recon_settings.h"
 
 #include "utils.h"
 
 using namespace boost::filesystem;
 using namespace std;
 
-namespace Utils{
+namespace UNPACKER_Utils{
     string get_file_name(const unsigned int &i, const thread::id &ID){
         stringstream t_id;
         t_id << ID;
-        return TMP_FOLDER.string() + t_id.str() + FILENAME.at(i);
+        return recon_settings.unpacker_tmp_folder + t_id.str() + FILENAME.at(i);
     }
 
     int create_folders(){
         boost::system::error_code returnedError;
 
-        create_directories( TMP_FOLDER, returnedError );
+        create_directories( recon_settings.unpacker_tmp_folder, returnedError );
 
         if ( returnedError ){
             return -1;  // did not successfully create directories
         }
         else{
-            create_directories( ERROR_FOLDER, returnedError );
+            create_directories( recon_settings.unpacker_error_folder, returnedError );
             if (returnedError){
                 return -1;
             }else{
@@ -41,7 +41,7 @@ namespace Utils{
         try{
             std::ofstream error_file;
             std::ifstream actual_file;
-            error_file.open(ERROR_FOLDER.string() + "Errors" + FILENAME.at(i), ios_base::app);
+            error_file.open(recon_settings.unpacker_error_folder + "Errors" + FILENAME.at(i), ios_base::app);
             actual_file.open(f);
 
             error_file.seekp(0, ios_base::end);
@@ -54,7 +54,7 @@ namespace Utils{
                 boost::random::uniform_int_distribution<> dist(1000, 10000);
 
                 string rnd_num = to_string(dist(gen));
-                copy_file(f, ERROR_FOLDER.string() + rnd_num + FILENAME.at(i), copy_option::fail_if_exists);
+                copy_file(f, recon_settings.unpacker_error_folder + rnd_num + FILENAME.at(i), copy_option::fail_if_exists);
             }catch (error_code &e){
                 syslog(LOG_CRIT, "Saving errors during CSV insertion FAILED, data will be lost! - %s", e.message().c_str());
             }
@@ -66,7 +66,7 @@ namespace Utils{
         vector<string> file_list;
 
         // cycle through the directory
-        for (directory_iterator itr(TMP_FOLDER); itr != end_itr; ++itr)
+        for (directory_iterator itr(recon_settings.unpacker_tmp_folder); itr != end_itr; ++itr)
         {
             // If it's not a directory, list it. If you want to list directories too, just remove this check.
             if (is_regular_file(itr->path()) && hasEnding(itr->path().string(), FILENAME.at(i))) {

@@ -1,5 +1,5 @@
-#ifndef UNPACKER_DBMANAGER_H
-#define UNPACKER_DBMANAGER_H
+#ifndef ANALYZER_DBMANAGER_H
+#define ANALYZER_DBMANAGER_H
 
 
 #include <cppconn/resultset.h>
@@ -14,29 +14,29 @@
 #include "DBStruct.h"
 #include "Math_Support.h"
 
-class DBManager {
+class ANALYZER_DBManager {
 public:
-    DBManager();
-    ~DBManager();
+    ANALYZER_DBManager();
+    ~ANALYZER_DBManager();
     void open_pubkey_files();
     void open_signatures_files();
 
-    std::vector<DBStruct::pubkey> get_pubkey(const unsigned long &l);
-    std::vector<DBStruct::signatures> get_signatures(const unsigned long &l);
+    std::vector<ANALYZER_DBStruct::pubkey> get_pubkey(const unsigned long &l);
+    std::vector<ANALYZER_DBStruct::signatures> get_signatures(const unsigned long &l);
     std::vector<NTL::ZZ> get_RSA_modulus();
     void write_repeated_r_csv();
     //bool search_signature(const NTL::ZZ &r);
-    //std::map<char, NTL::ZZ> getPubValues(DBStruct::signatures s);
+    //std::map<char, NTL::ZZ> getPubValues(ANALYZER_DBStruct::signatures s);
 
-    void write_broken_signature_csv(const DBStruct::SignatureStatus &ss);
-    void write_broken_key_csv(const DBStruct::KeyStatus &ks);
+    void write_broken_signature_csv(const ANALYZER_DBStruct::SignatureStatus &ss);
+    void write_broken_key_csv(const ANALYZER_DBStruct::KeyStatus &ks);
     void write_broken_modulus_csv(const std::vector<std::string> &broken_modulus);
 
     void insertCSV(const std::vector<std::string> &files, const unsigned int &table);
 
-    void write_analyzed_pk_csv(const DBStruct::pubkey &pk);
+    void write_analyzed_pk_csv(const ANALYZER_DBStruct::pubkey &pk);
 
-    void write_analyzed_sign_csv(const DBStruct::signatures &s);
+    void write_analyzed_sign_csv(const ANALYZER_DBStruct::signatures &s);
 
 private:
     std::map<unsigned int, std::ofstream> file_list;

@@ -7,6 +7,7 @@
 #include <mutex>
 #include <functional>
 #include <thread>
+#include "../recon_daemon/Recon_settings.h"
 
 class fastGCD{
 public:

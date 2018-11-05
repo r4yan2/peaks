@@ -1,3 +1,6 @@
+#ifndef THREAD_POOL_H
+#define THREAD_POOL_H
+
 #include <functional>
 #include <vector>
 #include <mutex>
@@ -20,3 +23,4 @@ private:
     std::mutex queue_mutex;
     std::condition_variable condition;
 };
+#endif

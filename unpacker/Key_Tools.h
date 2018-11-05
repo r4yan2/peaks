@@ -7,8 +7,8 @@
 
 namespace Key_Tools {
 
-    OpenPGP::Key::pkey readPkey(const OpenPGP::Key::Ptr &k, DBStruct::Unpacker_errors &modified);
-    void makePKMeaningful(OpenPGP::Key::pkey &pk, DBStruct::Unpacker_errors &modified);
+    OpenPGP::Key::pkey readPkey(const OpenPGP::Key::Ptr &k, UNPACKER_DBStruct::Unpacker_errors &modified);
+    void makePKMeaningful(OpenPGP::Key::pkey &pk, UNPACKER_DBStruct::Unpacker_errors &modified);
 
 };
 

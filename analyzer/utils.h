@@ -1,7 +1,5 @@
-#ifndef UNPACKER_Utils_H
-#define UNPACKER_Utils_H
-
-
+#ifndef ANALYZER_Utils_H
+#define ANALYZER_Utils_H
 
 #include <vector>
 #include <cstring>
@@ -10,7 +8,7 @@
 #include <map>
 
 
-namespace Utils{
+namespace ANALYZER_Utils{
     const unsigned int MAX_LIMIT = 100000;
     const unsigned int KEY_PER_THREAD_DEFAULT = 100;
     const unsigned int RSA_MINIMUM_SIZE = 2048;

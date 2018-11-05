@@ -5,19 +5,18 @@
 #include <thread>
 
 #include "DBManager.h"
-#include "DB_info.h"
+#include "../recon_daemon/Recon_settings.h"
 
 
 using namespace sql;
 using namespace std;
 
-
 // Database connector initialization
-DBManager::DBManager() {
-    DBManager::driver = get_driver_instance();
-    DBManager::con = shared_ptr<Connection>(driver->connect(DB_info::host, DB_info::user, DB_info::password));
+UNPACKER_DBManager::UNPACKER_DBManager() {
+    UNPACKER_DBManager::driver = get_driver_instance();
+    UNPACKER_DBManager::con = shared_ptr<Connection>(driver->connect(recon_settings.db_host, recon_settings.db_user, recon_settings.db_password));
     // Connect to the MySQL keys database
-    con->setSchema(DB_info::database);
+    con->setSchema(recon_settings.db_database);
 
     con->createStatement()->execute("set sql_log_bin = 0;");
     con->createStatement()->execute("set foreign_key_checks = 0;");
@@ -80,7 +79,7 @@ DBManager::DBManager() {
 
     insert_unpackerErrors_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Unpacker_errors FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
-                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (keyID,error);");
+                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (idx,error);");
 
     insert_unpacked_stmt = make_pair<string, string>(
                     "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE tmp_unpacker FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
@@ -89,18 +88,18 @@ DBManager::DBManager() {
 
 }
 
-DBManager::~DBManager(){
+UNPACKER_DBManager::~UNPACKER_DBManager(){
     for (auto &it: file_list){
         it.second.close();
     }
 };
 
-vector<DBStruct::gpg_keyserver_data> DBManager::get_certificates(const unsigned long &l) {
-    vector<DBStruct::gpg_keyserver_data> certificates;
+vector<UNPACKER_DBStruct::gpg_keyserver_data> UNPACKER_DBManager::get_certificates(const unsigned long &l) {
+    vector<UNPACKER_DBStruct::gpg_keyserver_data> certificates;
     get_analyzable_cert_stmt->setString(1, to_string(l));
     result = shared_ptr<ResultSet>(get_analyzable_cert_stmt->executeQuery());
     while(result->next()){
-        DBStruct::gpg_keyserver_data tmp_field = {
+        UNPACKER_DBStruct::gpg_keyserver_data tmp_field = {
                 .version = result->getInt("version"),
                 .fingerprint = result->getString("fingerprint"),
                 .certificate = result->getString("certificate")
@@ -110,7 +109,7 @@ vector<DBStruct::gpg_keyserver_data> DBManager::get_certificates(const unsigned 
     return certificates;
 }
 
-bool DBManager::existSignature(const DBStruct::signatures &s){
+bool UNPACKER_DBManager::existSignature(const UNPACKER_DBStruct::signatures &s){
     std::istream *r_sign = new istringstream(s.r);
     std::istream *s_sign = new istringstream(s.s);
     try {
@@ -128,7 +127,7 @@ bool DBManager::existSignature(const DBStruct::signatures &s){
     }
 }
 
-void DBManager::set_as_not_analyzable(const int &version, const string &fingerprint, const string &comment) {
+void UNPACKER_DBManager::set_as_not_analyzable(const int &version, const string &fingerprint, const string &comment) {
     try{
         insert_error_comments->setBigInt(1, fingerprint);
         insert_error_comments->setInt(2, version);
@@ -154,9 +153,9 @@ void DBManager::set_as_not_analyzable(const int &version, const string &fingerpr
     }
 }
 
-void DBManager::write_unpacked_csv(const OpenPGP::PublicKey::Ptr &key, const DBStruct::Unpacker_errors &mod){
+void UNPACKER_DBManager::write_unpacked_csv(const OpenPGP::PublicKey::Ptr &key, const UNPACKER_DBStruct::Unpacker_errors &mod){
     try{
-        ostream &f = file_list.at(Utils::UNPACKED);
+        ostream &f = file_list.at(UNPACKER_Utils::UNPACKED);
         f << '.' << '"' << to_string(key->version()) << "\",";
         f << '"' << hexlify(key->fingerprint()) << "\",";
         if (mod.modified){
@@ -170,9 +169,9 @@ void DBManager::write_unpacked_csv(const OpenPGP::PublicKey::Ptr &key, const DBS
     }
 }
 
-void DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
+void UNPACKER_DBManager::write_pubkey_csv(const UNPACKER_DBStruct::pubkey &pubkey) {
     try{
-        ostream &f = file_list.at(Utils::PUBKEY);
+        ostream &f = file_list.at(UNPACKER_Utils::PUBKEY);
         f << '.' << '"' << pubkey.keyId << "\",";
         f << '"' << pubkey.version << "\",";
         f << '"' << hexlify(pubkey.fingerprint) << "\",";
@@ -190,9 +189,9 @@ void DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
     }
 }
 
-void DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
+void UNPACKER_DBManager::write_userAttributes_csv(const UNPACKER_DBStruct::userAtt &ua) {
     try{
-        ostream &f = file_list.at(Utils::USER_ATTRIBUTES);
+        ostream &f = file_list.at(UNPACKER_Utils::USER_ATTRIBUTES);
         f << '.' << '"' << to_string(ua.id) << "\",";
         f << '"' << hexlify(ua.fingerprint) << "\",";
         f << '"' << ua.name << "\",";
@@ -205,9 +204,9 @@ void DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
     }
 }
 
-void DBManager::write_signature_csv(const DBStruct::signatures &ss) {
+void UNPACKER_DBManager::write_signature_csv(const UNPACKER_DBStruct::signatures &ss) {
     try{
-        ostream &f = file_list.at(Utils::SIGNATURE);
+        ostream &f = file_list.at(UNPACKER_Utils::SIGNATURE);
         f << '.' << '"' << ss.type << "\",";
         f << '"' << ss.pubAlgorithm << "\",";
         f << '"' << ss.hashAlgorithm << "\",";
@@ -243,9 +242,9 @@ void DBManager::write_signature_csv(const DBStruct::signatures &ss) {
     }
 }
 
-void DBManager::write_self_signature_csv(const DBStruct::signatures &ss) {
+void UNPACKER_DBManager::write_self_signature_csv(const UNPACKER_DBStruct::signatures &ss) {
     try{
-        ostream &f = file_list.at(Utils::SELF_SIGNATURE);
+        ostream &f = file_list.at(UNPACKER_Utils::SELF_SIGNATURE);
         f << '.' << '"' << ss.type << "\",";
         f << '"' << ss.pubAlgorithm << "\",";
         f << '"' << ss.hashAlgorithm << "\",";
@@ -266,9 +265,9 @@ void DBManager::write_self_signature_csv(const DBStruct::signatures &ss) {
     }
 }
 
-void DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod){
+void UNPACKER_DBManager::write_unpackerErrors_csv(const UNPACKER_DBStruct::Unpacker_errors &mod){
     try{
-        ostream &f = file_list.at(Utils::UNPACKER_ERRORS);
+        ostream &f = file_list.at(UNPACKER_Utils::UNPACKER_ERRORS);
         for (const auto &c: mod.comments){
             f << '.' << '"' << mod.keyId << "\",";
             f << '"' << c << "\",";
@@ -280,53 +279,53 @@ void DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod){
     }
 }
 
-void DBManager::insertCSV(const vector<string> &files, const unsigned int &table){
+void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned int &table){
     switch (table){
-        case Utils::PUBKEY:
+        case UNPACKER_Utils::PUBKEY:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_pubkey_stmt.first + f + insert_pubkey_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::PUBKEY);
+                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::PUBKEY);
                 }
             }
             break;
-        case Utils::SIGNATURE:
+        case UNPACKER_Utils::SIGNATURE:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_signature_stmt.first + f + insert_signature_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::SIGNATURE);
+                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::SIGNATURE);
                 }
             }
             break;
-        case Utils::SELF_SIGNATURE:
+        case UNPACKER_Utils::SELF_SIGNATURE:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_self_signature_stmt.first + f + insert_self_signature_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::SELF_SIGNATURE);
+                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::SELF_SIGNATURE);
                 }
             }
             break;
-        case Utils::USER_ATTRIBUTES:
+        case UNPACKER_Utils::USER_ATTRIBUTES:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_userAtt_stmt.first + f + insert_userAtt_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::USER_ATTRIBUTES);
+                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::USER_ATTRIBUTES);
                 }
             }
             break;
-        case Utils::UNPACKED:
+        case UNPACKER_Utils::UNPACKED:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute("CREATE TEMPORARY TABLE tmp_unpacker (version tinyint, fingerprint binary(20), unpacked tinyint);");
@@ -337,18 +336,18 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_unpacked_stmt FAILED, the key will result NOT UNPACKED in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::UNPACKED);
+                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::UNPACKED);
                 }
             }
             break;
-        case Utils::UNPACKER_ERRORS:
+        case UNPACKER_Utils::UNPACKER_ERRORS:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
                                       e.what());
-                    Utils::put_in_error(f, Utils::UNPACKER_ERRORS);
+                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::UNPACKER_ERRORS);
                 }
             }
             break;
@@ -366,7 +365,7 @@ void DBManager::insertCSV(const vector<string> &files, const unsigned int &table
     }
 }
 
-void DBManager::UpdateSignatureIssuingFingerprint(const unsigned long &l) {
+void UNPACKER_DBManager::UpdateSignatureIssuingFingerprint(const unsigned long &l) {
     try{
         shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
         insert_issuing_fingerprint->setUInt64(1, l);
@@ -377,7 +376,7 @@ void DBManager::UpdateSignatureIssuingFingerprint(const unsigned long &l) {
     }
 }
 
-void DBManager::UpdateSignatureIssuingUsername() {
+void UNPACKER_DBManager::UpdateSignatureIssuingUsername() {
     try{
         shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
         shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN key_primary_userID on "
@@ -391,7 +390,7 @@ void DBManager::UpdateSignatureIssuingUsername() {
     }
 }
 
-void DBManager::UpdateIsExpired() {
+void UNPACKER_DBManager::UpdateIsExpired() {
     try{
         shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
         shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures SET isExpired = 1 WHERE expirationTime < NOW();");
@@ -401,7 +400,7 @@ void DBManager::UpdateIsExpired() {
     }
 }
 
-void DBManager::UpdateIsRevoked() {
+void UNPACKER_DBManager::UpdateIsRevoked() {
     try{
         shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
         shared_ptr<Statement>(con->createStatement())->execute("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
@@ -415,7 +414,7 @@ void DBManager::UpdateIsRevoked() {
 }
 
 
-void DBManager::UpdateIsValid() {
+void UNPACKER_DBManager::UpdateIsValid() {
     try{
         shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
         shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 "
@@ -426,11 +425,11 @@ void DBManager::UpdateIsValid() {
     }
 }
 
-void DBManager::openCSVFiles(){
+void UNPACKER_DBManager::openCSVFiles(){
     // Open files
-    for (const auto &it: Utils::FILENAME){
-        DBManager::file_list.insert(std::pair<unsigned int, ofstream>(
+    for (const auto &it: UNPACKER_Utils::FILENAME){
+        UNPACKER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(
                 it.first,
-                ofstream(Utils::get_file_name(it.first, this_thread::get_id()), ios_base::app)));
+                ofstream(UNPACKER_Utils::get_file_name(it.first, this_thread::get_id()), ios_base::app)));
     }
 }

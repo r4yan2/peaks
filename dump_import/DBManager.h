@@ -1,5 +1,5 @@
-#ifndef UNPACKER_DBMANAGER_H
-#define UNPACKER_DBMANAGER_H
+#ifndef DUMPIMPORT_DBMANAGER_H
+#define DUMPIMPORT_DBMANAGER_H
 
 
 #include <cppconn/resultset.h>
@@ -13,11 +13,12 @@
 #include "DBStruct.h"
 #include "utils.h"
 
-class DBManager {
+namespace DBStruct = DUMP_DBStruct;
+class DUMPIMPORT_DBManager {
 public:
-    DBManager();
+    DUMPIMPORT_DBManager();
 
-    ~DBManager();
+    ~DUMPIMPORT_DBManager();
 
     bool existSignature(const DBStruct::signatures &s);
 

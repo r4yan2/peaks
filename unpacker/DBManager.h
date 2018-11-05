@@ -1,7 +1,6 @@
 #ifndef UNPACKER_DBMANAGER_H
 #define UNPACKER_DBMANAGER_H
 
-
 #include <cppconn/resultset.h>
 #include <cppconn/prepared_statement.h>
 #include <cppconn/driver.h>
@@ -13,22 +12,22 @@
 #include "DBStruct.h"
 #include "utils.h"
 
-class DBManager {
+class UNPACKER_DBManager {
 public:
-    DBManager();
-    ~DBManager();
+    UNPACKER_DBManager();
+    ~UNPACKER_DBManager();
 
     void openCSVFiles();
 
-    std::vector<DBStruct::gpg_keyserver_data> get_certificates(const unsigned long &l);
-    bool existSignature(const DBStruct::signatures &s);
+    std::vector<UNPACKER_DBStruct::gpg_keyserver_data> get_certificates(const unsigned long &l);
+    bool existSignature(const UNPACKER_DBStruct::signatures &s);
 
-    void write_pubkey_csv(const DBStruct::pubkey &pubkey);
-    void write_userAttributes_csv(const DBStruct::userAtt &ua);
-    void write_signature_csv(const DBStruct::signatures &ss);
-    void write_self_signature_csv(const DBStruct::signatures &ss);
-    void write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod);
-    void write_unpacked_csv(const OpenPGP::PublicKey::Ptr &key, const DBStruct::Unpacker_errors &mod);
+    void write_pubkey_csv(const UNPACKER_DBStruct::pubkey &pubkey);
+    void write_userAttributes_csv(const UNPACKER_DBStruct::userAtt &ua);
+    void write_signature_csv(const UNPACKER_DBStruct::signatures &ss);
+    void write_self_signature_csv(const UNPACKER_DBStruct::signatures &ss);
+    void write_unpackerErrors_csv(const UNPACKER_DBStruct::Unpacker_errors &mod);
+    void write_unpacked_csv(const OpenPGP::PublicKey::Ptr &key, const UNPACKER_DBStruct::Unpacker_errors &mod);
 
     void insertCSV(const std::vector<std::string> &files, const unsigned int &table);
 

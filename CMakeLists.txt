@@ -10,14 +10,11 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -Werror")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 
-add_definitions(-DTMP_FOLDER_CSV="/tmp/dump_import/")
-add_definitions(-DERROR_FOLDER="/tmp/gpg_keyserver_ERRORS/dump_import_errors/")
-add_definitions(-DDEFAULT_DUMP_PATH="/tmp/pgp_dump/")
-
 set(OpenPGP_DIRECTORY ${CMAKE_SOURCE_DIR}/OpenPGP)
 set(NTL_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/ntl)
 set(DUMP_IMPORT_DIRECTORY ${CMAKE_SOURCE_DIR}/dump_import)
 set(CGI_HANDLER_DIRECTORY ${CMAKE_SOURCE_DIR}/cgi_handler)
+set(UNPACKER_DIRECTORY ${CMAKE_SOURCE_DIR}/unpacker)
 set(CPPCMS_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/cppcms)
 set(GMP_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/gmp)
 
@@ -28,10 +25,13 @@ include_directories(${GMP_DIRECTORY}/include)
 include_directories(${NTL_DIRECTORY}/include)
 include_directories(${CPPCMS_DIRECTORY}/include)
 include_directories(${CGI_HANDLER_DIRECTORY})
+include_directories(${UNPACKER_DIRECTORY})
 
 add_subdirectory(cgi_handler)
 add_subdirectory(dump_import)
 add_subdirectory(recon_daemon)
+add_subdirectory(unpacker)
+add_subdirectory(analyzer)
 
 find_package(Boost REQUIRED COMPONENTS program_options)
 
@@ -56,4 +56,6 @@ target_link_libraries(peaks ${NTL_DIRECTORY}/lib/libntl.a)
 target_link_libraries(peaks ${GMP_DIRECTORY}/lib/libgmp.so)
 target_link_libraries(peaks dump_import)
 target_link_libraries(peaks recon_daemon)
+target_link_libraries(peaks unpacker)
+target_link_libraries(peaks analyzer)
 target_link_libraries(peaks -Wl,--whole-archive pks -Wl,--no-whole-archive)

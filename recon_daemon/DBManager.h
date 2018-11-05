@@ -10,6 +10,8 @@
 #include "logger.h"
 #include <iostream>
 #include "DBStruct.h"
+#include <fstream>
+
 
 class RECON_DBManager {
 public:
@@ -20,17 +22,17 @@ public:
      * @param key key of the node to recover
      * @return node struct corresponding to the found node
      */
-    DBStruct::node get_node(const std::string key);
+    RECON_DBStruct::node get_node(const std::string key);
 
     /** insert node into db
      * @param n node to insert
      */
-    void insert_node(const DBStruct::node &n);
+    void insert_node(const RECON_DBStruct::node &n);
 
     /** update node already present in db
      * @param n node to update
      */
-    void update_node(const DBStruct::node &n);
+    void update_node(const RECON_DBStruct::node &n);
 
     /** delete node from db
      * @param key key of the node to delete
@@ -55,9 +57,14 @@ public:
 
     /** helper to unlock tables */
     void unlockTables();
+
+	void write_ptree_csv(const RECON_DBStruct::node &pnode);
+	void openCSVFiles();
+	void insertCSV();
     
 private:
 
+	std::ofstream csv_file;
     sql::Driver *driver;
     std::shared_ptr<sql::Connection> con;
     std::shared_ptr<sql::PreparedStatement> get_pnode_stmt;
@@ -67,6 +74,7 @@ private:
     std::shared_ptr<sql::PreparedStatement> get_all_hash_stmt;
     std::shared_ptr<sql::PreparedStatement> check_key_stmt;
     std::shared_ptr<sql::ResultSet> result;
+	std::pair<std::string,std::string> insert_ptree_stmt;
 };
 
 
