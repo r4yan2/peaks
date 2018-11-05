@@ -8,7 +8,7 @@ add_definitions(-DGPG_COMPATIBLE)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -Werror")
 
-set(SOURCE_FILES Thread_Pool.cc unpacker.cc DBManager.cc Key_Tools.cc DBStruct.h utils.cc DB_info.h)
+set(SOURCE_FILES Thread_Pool.cc unpacker.cc DBManager.cc Key_Tools.cc DBStruct.h utils.cc)
 
 add_library(unpacker ${SOURCE_FILES})
 
