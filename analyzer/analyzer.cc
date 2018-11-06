@@ -44,12 +44,12 @@ int analyzer(po::variables_map &vm){
     if(vm.count("threads"))
         nThreads = vm["threads"].as<unsigned int>();
     
-	syslog(LOG_NOTICE, "Using %d Threads", nThreads);
+    syslog(LOG_NOTICE, "Using %d Threads", nThreads);
  
     if(vm.count("limit"))
         limit = vm["limit"].as<unsigned int>();
 
-	syslog(LOG_NOTICE, "Limiting analysis to %u certificates", limit);
+    syslog(LOG_NOTICE, "Limiting analysis to %u certificates", limit);
  
     if(vm.count("keys"))
         key_per_thread = vm["keys"].as<unsigned int>();

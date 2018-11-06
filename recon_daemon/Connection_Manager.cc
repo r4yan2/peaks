@@ -58,6 +58,7 @@ void Connection_Manager::set_timeout(){
   tv.tv_sec  = recon_settings.async_timeout_sec;
   tv.tv_usec = recon_settings.async_timeout_usec;
   setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+  setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 }
 
 void Connection_Manager::early_fail(std::string reason){
