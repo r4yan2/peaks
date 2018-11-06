@@ -20,7 +20,7 @@ Peer::Peer(Ptree &new_tree){
 
 peertype Peer::choose_partner(){
     
-    int choice = Utils::get_random(membership.size());
+    int choice = RECON_Utils::get_random(membership.size());
     peertype peer = membership[choice];
     g_logger.log(Logger_level::DEBUG, "choose as partner: " + peer.first);
     int http_port = cn.init_peer(peer);
@@ -75,10 +75,10 @@ void Peer::serve(){
 
 void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &elems){
 
-    g_logger.log(Logger_level::DEBUG, "Should recover " + std::to_string(elems.size()) + " elements, starting double elements check...");
+    g_logger.log(Logger_level::DEBUG, "Should recover " + std::to_string(elems.size()) + " elements, starting double check...");
     std::vector<NTL::ZZ_p> elements;
     for (auto e: elems){
-        if (!(tree.has_key(Utils::zz_to_hex(e))))
+        if (!(tree.has_key(RECON_Utils::zz_to_hex(e))))
             elements.push_back(e);
     }
 
@@ -116,8 +116,8 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
     }
     /*
     for (auto hash: elements)
-        if (std::find(hashes.begin(), hashes.end(), Utils::zz_to_hex(hash)) == hashes.end())
-            g_logger.log(Logger_level::DEBUG, "requested " + Utils::zz_to_hex(hash) + " but got a different hash after sync! This is caused by a known bug in Peaks...");
+        if (std::find(hashes.begin(), hashes.end(), RECON_Utils::zz_to_hex(hash)) == hashes.end())
+            g_logger.log(Logger_level::DEBUG, "requested " + RECON_Utils::zz_to_hex(hash) + " but got a different hash after sync! This is caused by a known bug in Peaks...");
             */
     for (auto hash: hashes)
         tree.insert(hash);

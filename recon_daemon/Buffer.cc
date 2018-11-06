@@ -132,7 +132,7 @@ std::vector<NTL::ZZ_p> Buffer::read_zz_array(){
     std::vector<NTL::ZZ_p> array(array_size);
     for (int i=0; i<array_size; i++){
         std::vector<unsigned char> zbytes = read_bytes(recon_settings.sks_zp_bytes);
-        array[i] = Utils::bytes_to_zz(zbytes);
+        array[i] = RECON_Utils::bytes_to_zz(zbytes);
     }
     return array;
 }

@@ -1,6 +1,6 @@
 #include "Utils.h"
 
-namespace Utils{
+namespace RECON_Utils{
 //ASCII loockup table
 int ASCIIHexToInt[] =
 {
@@ -128,5 +128,17 @@ int swap(int d){
 
    return a;
 }
+
+int create_folders(){
+    boost::system::error_code returnedError;
+
+    boost::filesystem::create_directories( recon_settings.recon_tmp_folder, returnedError );
+
+    if ( returnedError )
+        return -1;  // did not successfully create directories
+    else
+        return 0;
+}
+
 
 }

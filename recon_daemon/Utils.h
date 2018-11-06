@@ -11,8 +11,9 @@
 #include <iterator>
 #include <algorithm>
 #include "Recon_settings.h"
+#include <boost/filesystem.hpp>
 
-namespace Utils{
+namespace RECON_Utils{
 
 /** marshal NTL std::vector into suitable data for database insert */
 std::string marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements);
@@ -53,6 +54,8 @@ T pop_front(std::vector<T>& vec)
     vec.erase(vec.begin());
     return a;
 }
+
+int create_folders();
 
 }
 

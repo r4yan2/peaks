@@ -126,6 +126,7 @@ bool RECON_DBManager::check_key(const std::string k){
         check_key_stmt->setString(1,k);
         result = shared_ptr<ResultSet>(check_key_stmt->executeQuery());
         result->next();
+		result->getString("hash");
         //std::cout << k << "-> OK - " << result->getString("hash") << std::endl;
     } catch (exception &e){
         //std::cout << k << "-> KO" << std::endl;
@@ -150,13 +151,14 @@ void RECON_DBManager::write_ptree_csv(const RECON_DBStruct::node &pnode) {
 
 void RECON_DBManager::openCSVFiles(){
     // Open file
-    csv_file = ofstream("/tmp/ptree.csv");
+    csv_file = ofstream(recon_settings.recon_tmp_folder + "ptree.csv");
 }
 
 void RECON_DBManager::insertCSV(){
 	try{
-    	shared_ptr<Statement>(con->createStatement())->execute(insert_ptree_stmt.first + "/tmp/ptree.csv" + insert_ptree_stmt.second);
+    	shared_ptr<Statement>(con->createStatement())->execute(insert_ptree_stmt.first + recon_settings.recon_tmp_folder + "ptree.csv" + insert_ptree_stmt.second);
     }catch (exception &e){
         syslog(LOG_CRIT, "insert_ptree_stmt FAILED, the key will not have the ptree in the database! - %s", e.what());
 	}
 }
+

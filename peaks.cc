@@ -158,6 +158,7 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(recon_desc).run(), vm);	
+            recon_settings.dry_run = vm.count("dryrun") >= 1;
             recon(vm);
             }
         else{
@@ -330,6 +331,8 @@ void parse_config(std::string filename, po::variables_map &vm){
                 recon_settings.analyzer_error_folder = value;
             else if (name == "unpacker_tmp_folder")
                 recon_settings.unpacker_tmp_folder = value;
+            else if (name == "recon_tmp_folder")
+                recon_settings.recon_tmp_folder = value;
             else if (name == "unpacker_error_folder")
                 recon_settings.unpacker_error_folder = value;
             else if (name == "dump_error_folder")
@@ -342,9 +345,8 @@ void parse_config(std::string filename, po::variables_map &vm){
         recon_settings.join_threshold = recon_settings.split_threshold / 2;
         recon_settings.max_read_len = 1 << recon_settings.max_read_len_shift;
         NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(recon_settings.P_SKS_STRING.c_str()));
-        recon_settings.points = Utils::Zpoints(recon_settings.num_samples);
+        recon_settings.points = RECON_Utils::Zpoints(recon_settings.num_samples);
         recon_settings.debug = vm.count("debug") >= 1;
-        recon_settings.dry_run = vm.count("dryrun") >= 1;
 
     }
     else {
@@ -357,6 +359,10 @@ void parse_config(std::string filename, po::variables_map &vm){
 void build(po::variables_map &vm){
     
     std::cout << "Starting ptree builder" << std::endl;
+    if (RECON_Utils::create_folders() != 0){
+        std::cout << "Unable to create temporary directories!Exiting..." << std::endl;
+        exit(1);
+    }
     std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>();
     g_logger.log(Logger_level::DEBUG, "created empty ptree");
     int entries;
@@ -384,6 +390,7 @@ void build(po::variables_map &vm){
     dbm->lockTables();
     tree.commit_memtree();
     dbm->unlockTables();
+    remove_directory_content(recon_settings.recon_tmp_folder);
     std::cout << "Inserted " << entries << " entry!" << std::endl; 
     exit(0);
 }
@@ -392,7 +399,7 @@ void build(po::variables_map &vm){
 void recon(po::variables_map vm){
 
     std::cout << "Starting recon_daemon" << std::endl;
-    const std::vector<NTL::ZZ_p> points = Utils::Zpoints(recon_settings.num_samples);
+    const std::vector<NTL::ZZ_p> points = RECON_Utils::Zpoints(recon_settings.num_samples);
     std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(); 
     Ptree tree(dbm);
     if (tree.create()){

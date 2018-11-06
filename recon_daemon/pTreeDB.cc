@@ -49,8 +49,8 @@ bool Ptree::create(){
 
 pnode_ptr Ptree::get_node(const std::string &key){
   RECON_DBStruct::node n = dbm->get_node(key);
-  std::vector<NTL::ZZ_p> node_elements = Utils::unmarshall_vec_zz_p(n.elements);
-  std::vector<NTL::ZZ_p> node_svalues = Utils::unmarshall_vec_zz_p(n.svalues);
+  std::vector<NTL::ZZ_p> node_elements = RECON_Utils::unmarshall_vec_zz_p(n.elements);
+  std::vector<NTL::ZZ_p> node_svalues = RECON_Utils::unmarshall_vec_zz_p(n.svalues);
   pnode_ptr nd(new Pnode(dbm));
   nd->set_node_key(key);
   nd->set_node_svalues(node_svalues);
@@ -65,7 +65,7 @@ bool Ptree::has_key(const std::string &key){
 }
 
 void Ptree::insert(const std::string &hash){
-    NTL::ZZ_p elem = Utils::hex_to_zz(hash);
+    NTL::ZZ_p elem = RECON_Utils::hex_to_zz(hash);
     insert(elem);
 }
 
@@ -287,10 +287,10 @@ void Pnode::clear_node_elements(){
 void Pnode::commit_node(bool newnode){
   RECON_DBStruct::node n;
   n.key = node_key;
-  n.svalues = Utils::marshall_vec_zz_p(get_node_svalues());
+  n.svalues = RECON_Utils::marshall_vec_zz_p(get_node_svalues());
   n.num_elements = num_elements;
   n.leaf = leaf;
-  n.elements = Utils::marshall_vec_zz_p(get_node_elements());
+  n.elements = RECON_Utils::marshall_vec_zz_p(get_node_elements());
   if (newnode)
       dbm->insert_node(n);
   else
@@ -592,7 +592,7 @@ void Memnode::split(int depth){
 void Memnode::insert(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const bitset &bs, int depth){
     memnode_ptr cur_node = this;
     while(1){
-        g_logger.log(Logger_level::DEBUG, "num elements of " + cur_node->get_node_key() + "before inserting " + Utils::zz_to_hex(z) + std::to_string(cur_node->get_num_elements()) + "svalues are:" );
+        g_logger.log(Logger_level::DEBUG, "num elements of " + cur_node->get_node_key() + "before inserting " + RECON_Utils::zz_to_hex(z) + std::to_string(cur_node->get_num_elements()) + "svalues are:" );
         g_logger.log(Logger_level::DEBUG, cur_node->get_node_svalues());
         cur_node->update_svalues(marray);
         cur_node->set_num_elements(cur_node->get_num_elements() + 1);
@@ -669,10 +669,10 @@ void MemTree::commit_memtree(){
 
         RECON_DBStruct::node n;
         n.key = cur_node->get_node_key();
-        n.svalues = Utils::marshall_vec_zz_p(cur_node->get_node_svalues());
+        n.svalues = RECON_Utils::marshall_vec_zz_p(cur_node->get_node_svalues());
         n.num_elements = cur_node->get_num_elements();
         n.leaf = cur_node->is_leaf();
-        n.elements = Utils::marshall_vec_zz_p(cur_node->get_node_elements());
+        n.elements = RECON_Utils::marshall_vec_zz_p(cur_node->get_node_elements());
         dbm->write_ptree_csv(n);
 
         if (cur_node->is_leaf()){
@@ -693,7 +693,7 @@ memnode_ptr MemTree::get_root(){
 }
 
 void MemTree::insert(const std::string &hash){
-    NTL::ZZ_p elem = Utils::hex_to_zz(hash);
+    NTL::ZZ_p elem = RECON_Utils::hex_to_zz(hash);
     insert(elem);
 }
 

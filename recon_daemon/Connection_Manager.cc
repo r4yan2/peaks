@@ -1,5 +1,4 @@
 #include "Connection_Manager.h"
-using namespace Utils;
 
 Connection_Manager::Connection_Manager(){}
 Connection_Manager::~Connection_Manager(){}
@@ -245,7 +244,7 @@ std::string Connection_Manager::read_string_direct(){
    std::uint32_t size;
    std::string res = "failed";
    if (read_n_bytes(&size, sizeof(size), true)) {
-       size = Utils::swap(size);
+       size = RECON_Utils::swap(size);
        g_logger.log(Logger_level::DEBUG, "remote string size: " + std::to_string(size));
        if (size > recon_settings.max_read_len) g_logger.log(Logger_level::WARNING, "Oversized message!");
        g_logger.log(Logger_level::DEBUG, "fetching remote host status confirmation");
@@ -266,7 +265,7 @@ Message* Connection_Manager::read_message(bool tmp_socket, int signal) {
    std::uint32_t size;
    if (read_n_bytes(&size, sizeof(size), tmp_socket, signal)) {
        g_logger.log(Logger_level::DEBUG, "read 4 bytes ok");
-       size = Utils::swap(size);
+       size = RECON_Utils::swap(size);
        if (size > recon_settings.max_read_len) g_logger.log(Logger_level::WARNING, "Oversized message!");
        Buffer ibuf(size);
        if (read_n_bytes(ibuf.data(), size, tmp_socket, signal)) {

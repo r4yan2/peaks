@@ -126,6 +126,7 @@ struct Configtype{
     std::string unpacker_tmp_folder;
     std::string unpacker_error_folder;
     std::string analyzer_tmp_folder;
+    std::string recon_tmp_folder;
     std::string analyzer_error_folder;
     std::string tmp_folder_gcd;
     std::string dump_error_folder;
