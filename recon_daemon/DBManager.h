@@ -61,6 +61,7 @@ public:
 	void write_ptree_csv(const RECON_DBStruct::node &pnode);
 	void openCSVFiles();
 	void insertCSV();
+	void closeCSVFiles();
     
 private:
 

@@ -685,6 +685,7 @@ void MemTree::commit_memtree(){
         cur_node = node_list.front();
         node_list.pop();
     }
+    dbm->closeCSVFiles();
     dbm->insertCSV();
 }
 

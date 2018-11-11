@@ -162,3 +162,6 @@ void RECON_DBManager::insertCSV(){
 	}
 }
 
+void RECON_DBManager::closeCSVFiles(){
+    csv_file.close();
+}
