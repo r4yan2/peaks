@@ -13,7 +13,7 @@ import re
 import numpy as np
 from datetime import datetime
 
-def plot_ptree():
+def plot_ptree(_):
     fp = open('data/ptree_elements_per_node.csv', 'rb')
     text = fp.readline()
     fp.close()
@@ -30,7 +30,7 @@ def plot_ptree():
     ax.set_yscale('log')
     if args.view:
         plt.show()
-    plt.savefig("elementsxnode.svg")
+    plt.savefig("data/ptree/elementsxnode.svg")
     plt.clf()
     print "Saved", "elementsxnode.svg"
     
@@ -190,6 +190,7 @@ def ptree(args):
     data = (
             ("arity", arity),
             ("node_number", node_number),
+            ("leaf_node_number", len(leaf)),
             ("tree_heigth", tree_heigth),
             ("max_num_elements", max_num_elements),
             ("min_num_elements", min_num_elements),
@@ -513,6 +514,7 @@ def verify_mail(records, email):
 
 func_dictionary = {
         'ptree': ptree,
+        'plot_ptree': plot_ptree,
         'certificates': certificates,
         'userid': userid,
         'security': security
