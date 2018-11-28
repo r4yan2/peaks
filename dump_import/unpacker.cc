@@ -643,7 +643,9 @@ namespace Dumpimport {
                     break;
                 }
                 default:
-                    syslog(LOG_WARNING, "Not valid user attribute subpacket tag found: %d", a->get_type());
+                    Subpacket::Tag17::SubWrong::Ptr swt17 = static_pointer_cast<Subpacket::Tag17::SubWrong>(a);
+                    ua_struct.image = swt17 -> raw();
+                    syslog(LOG_WARNING, "Not valid user attribute subpacket tag found: %d, saving anyway with encoding = 0", a->get_type());
                     break;
             }
         }
