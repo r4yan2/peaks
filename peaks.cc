@@ -112,6 +112,7 @@ int main(int argc, char* argv[]){
                 ("csv-only", "stop certificate import after creating csv")
                 ("import-only", "start certificate import directly inserting csv into db")
                 ("fastimport, f", "fastimport")
+                ("selection, s", po::value<int>()->default_value(-1), "select which table to import")
                 ("noclean, n", "do not clean temporary folder");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);

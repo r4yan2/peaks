@@ -71,8 +71,14 @@ void import(po::variables_map &vm) {
     syslog(LOG_NOTICE, "Dump_import is starting up!");
     unsigned int nThreads = std::thread::hardware_concurrency() / 2 + 1;
     unsigned int key_per_thread;
+    int selection = -1;
     boost::filesystem::path path = recon_settings.default_dump_path;
     boost::filesystem::path csv_path = recon_settings.tmp_folder_csv;
+
+    if(vm.count("fastimport"))
+        selection = 0;
+    else if (vm.count("selection"))
+        selection = vm["selection"].as<int>();
 
     if(vm.count("path"))
         path = vm["path"].as<boost::filesystem::path>();
@@ -118,7 +124,7 @@ void import(po::variables_map &vm) {
     if (!(vm.count("import-only")))
         generate_csv(files, path, nThreads, key_per_thread, vm.count("fastimport"));
     if (!(vm.count("csv-only")))
-        import_csv(dbm, vm.count("fastimport"));
+        import_csv(dbm, selection);
     if (vm.count("noclean") == 0){
         std::cout << DUMP_Utils::getCurrentTime() << "Cleaning temporary folder." << std::endl;
         remove_directory_content(recon_settings.tmp_folder_csv);
@@ -156,45 +162,78 @@ void generate_csv(std::vector<std::string> files, boost::filesystem::path &path,
     }
 }
 
-void import_csv(std::shared_ptr<DUMPIMPORT_DBManager> dbm, int fastimport){
+void import_csv(std::shared_ptr<DUMPIMPORT_DBManager> dbm, int selection){
 
     std::cout << DUMP_Utils::getCurrentTime() << "Writing dumped packet in DB:" << std::endl;
 
     dbm->lockTables();
-    std::cout << DUMP_Utils::getCurrentTime() << "\tInserting Certificates" << std::endl;
-    dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::CERTIFICATE), DUMP_Utils::CERTIFICATE);
-    if (fastimport == 0){
-        std::cout << DUMP_Utils::getCurrentTime() << "\tInserting Pubkeys" << std::endl;
-        dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::PUBKEY), DUMP_Utils::PUBKEY);
-        std::cout << DUMP_Utils::getCurrentTime() << "\tInserting UserID" << std::endl;
-        dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::USERID), DUMP_Utils::USERID);
-        std::cout << DUMP_Utils::getCurrentTime() << "\tInserting User Attributes" << std::endl;
-        dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::USER_ATTRIBUTES), DUMP_Utils::USER_ATTRIBUTES);
-        std::cout << DUMP_Utils::getCurrentTime() << "\tInserting Signatures" << std::endl;
-        dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::SIGNATURE), DUMP_Utils::SIGNATURE);
-        std::cout << DUMP_Utils::getCurrentTime() << "\tInserting SelfSignatures" << std::endl;
-        dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::SELF_SIGNATURE), DUMP_Utils::SELF_SIGNATURE);
-        std::cout << DUMP_Utils::getCurrentTime() << "\tInserting Unpacker Errors" << std::endl;
-        dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::UNPACKER_ERRORS), DUMP_Utils::UNPACKER_ERRORS);
-        std::cout << DUMP_Utils::getCurrentTime() << "\tInserting Broken Keys" << std::endl;
-        dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::BROKEN_KEY), DUMP_Utils::BROKEN_KEY);
-
-        std::cout << DUMP_Utils::getCurrentTime() << "Updating DB fields:" << std::endl;
-
-        std::cout << DUMP_Utils::getCurrentTime() << "\tUpdating issuing fingerprint in Signatures" << std::endl;
-        dbm->UpdateSignatureIssuingFingerprint();
-
-        std::cout << DUMP_Utils::getCurrentTime() << "\tUpdating issuing username in Signatures" << std::endl;
-        dbm->UpdateSignatureIssuingUsername();
-
-        std::cout << DUMP_Utils::getCurrentTime() << "\tSetting expired flag" << std::endl;
-        dbm->UpdateIsExpired();
-
-        std::cout << DUMP_Utils::getCurrentTime() << "\tSetting revoked flag" << std::endl;
-        dbm->UpdateIsRevoked();
-
-        std::cout << DUMP_Utils::getCurrentTime() << "\tSetting valid flag" << std::endl;
-        dbm->UpdateIsValid();
+    switch(selection){
+        default:{}
+        case 0:{
+        std::cout << DUMP_Utils::getCurrentTime() << "\tInserting Certificates" << std::endl;
+        dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::CERTIFICATE), DUMP_Utils::CERTIFICATE);
+        if (selection == 0) break;
+           }
+        case 1:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tInserting Pubkeys" << std::endl;
+            dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::PUBKEY), DUMP_Utils::PUBKEY);
+            if (selection == 1) break;
+               }
+        case 2:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tInserting UserID" << std::endl;
+            dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::USERID), DUMP_Utils::USERID);
+            if (selection == 2) break;
+               }
+        case 3:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tInserting User Attributes" << std::endl;
+            dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::USER_ATTRIBUTES), DUMP_Utils::USER_ATTRIBUTES);
+            if (selection == 3) break;
+               }
+            case 4:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tInserting Signatures" << std::endl;
+            dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::SIGNATURE), DUMP_Utils::SIGNATURE);
+            if (selection == 4) break;
+               }
+            case 5:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tInserting SelfSignatures" << std::endl;
+            dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::SELF_SIGNATURE), DUMP_Utils::SELF_SIGNATURE);
+            if (selection == 5) break;
+               }
+            case 6:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tInserting Unpacker Errors" << std::endl;
+            dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::UNPACKER_ERRORS), DUMP_Utils::UNPACKER_ERRORS);
+            if (selection == 6) break;
+                  }
+            case 7:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tInserting Broken Keys" << std::endl;
+            dbm->insertCSV(DUMP_Utils::get_files(DUMP_Utils::BROKEN_KEY), DUMP_Utils::BROKEN_KEY);
+            if (selection == 7) break;
+                  }
+            case 8:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tUpdating issuing fingerprint in Signatures" << std::endl;
+            dbm->UpdateSignatureIssuingFingerprint();
+            if (selection == 8) break;
+                }
+            case 9:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tUpdating issuing username in Signatures" << std::endl;
+            dbm->UpdateSignatureIssuingUsername();
+            if (selection == 9) break;
+                }
+            case 10:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tSetting expired flag" << std::endl;
+            dbm->UpdateIsExpired();
+            if (selection == 10) break;
+                }
+            case 11:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tSetting revoked flag" << std::endl;
+            dbm->UpdateIsRevoked();
+            if (selection == 11) break;
+                }
+            case 12:{
+            std::cout << DUMP_Utils::getCurrentTime() << "\tSetting valid flag" << std::endl;
+            dbm->UpdateIsValid();
+            if (selection == 12) break;
+                }
     }
 
     dbm->unlockTables();
