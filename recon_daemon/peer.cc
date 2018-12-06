@@ -260,10 +260,9 @@ void Peer::gossip(){
             peertype peer = choose_partner();
             g_logger.log(Logger_level::DEBUG, "choosen partner " + peer.first);
             client_recon(peer);
-        } catch (connection_exception &e){
-            g_logger.log(Logger_level::DEBUG, std::string(e.what()));
         } catch (std::exception &e){
             g_logger.log(Logger_level::DEBUG, e.what());
+            cn.close_connection();
         }
         g_logger.log(Logger_level::DEBUG, "going to sleep...");
         std::this_thread::sleep_for(std::chrono::seconds{recon_settings.gossip_interval});
