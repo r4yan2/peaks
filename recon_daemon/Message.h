@@ -230,7 +230,7 @@ struct ReconRequestPoly: Message{
 struct ReconRequestFull: Message{
     ReconRequestFull():Message(Msg_type::ReconRequestFull){}
     bitset prefix;
-    zset samples;
+    zset elements;
     void marshal(Buffer &buf);
     void unmarshal(Buffer &buf);
 };
@@ -242,7 +242,7 @@ struct ReconRequestFull: Message{
  */
 struct Elements: Message{
     Elements():Message(Msg_type::Elements){}
-    zset samples;
+    zset elements;
     void marshal(Buffer &buf);
     void unmarshal(Buffer &buf);
 };
@@ -254,7 +254,7 @@ struct Elements: Message{
  */
 struct FullElements: Message{
     FullElements():Message(Msg_type::FullElements){}
-    zset samples;
+    zset elements;
     void marshal(Buffer &buf);
     void unmarshal(Buffer &buf);
 };
@@ -302,6 +302,9 @@ struct Error: Message{
     void unmarshal(Buffer &buf);
 };
 
+/** DBRequest message.
+ * Currently unused.
+ */
 struct DBRequest: Message{
     DBRequest():Message(Msg_type::DBRequest){}
     std::string text;
@@ -309,6 +312,9 @@ struct DBRequest: Message{
     void unmarshal(Buffer &buf);
 };
 
+/** DBReply message.
+ * Currently unused.
+ */
 struct DBReply: Message{
     DBReply():Message(Msg_type::DBReply){}
     std::string text;

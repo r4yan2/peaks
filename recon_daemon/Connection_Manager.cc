@@ -150,8 +150,8 @@ int Connection_Manager::check_remote_config(){
 
     g_logger.log(Logger_level::DEBUG, "checking remote config 4/4");
     
-    if (sockfd > 0 && check_socket_status(sockfd)){
-        early_fail("currently mutating");
+    if (sockfd > 0){
+        early_fail("sync already in progress");
         return -1;
     }
     if (remote_config->bq != local_config->bq){

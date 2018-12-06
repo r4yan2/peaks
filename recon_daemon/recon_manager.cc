@@ -7,7 +7,7 @@ Recon_manager::Recon_manager(Connection_Manager &conn_manager){
 Recon_manager::~Recon_manager(){}
 
 void Recon_manager::push_bottom(bottom_entry &bottom){
-    bottom_queue.push_back(bottom);
+    bottom_queue.push(bottom);
 }
 
 void Recon_manager::prepend_request(request_entry &req){
@@ -26,7 +26,7 @@ bottom_entry Recon_manager::top_bottom(){
 
 bottom_entry Recon_manager::pop_bottom(){
     bottom_entry tmp = bottom_queue.front();
-    bottom_queue.pop_front();
+    bottom_queue.pop();
     return tmp;
 }
 
@@ -68,7 +68,7 @@ void Recon_manager::send_request(request_entry &request){
     if ((request.node->is_leaf()) || (request.node->get_num_elements() < (int) recon_settings.split_threshold)){
         msg = new ReconRequestFull;
         ((ReconRequestFull*) msg)->prefix = request.key;
-        ((ReconRequestFull*) msg)->samples = zset(request.node->elements());
+        ((ReconRequestFull*) msg)->elements = zset(request.node->elements());
     }else{
         msg = new ReconRequestPoly;
         ((ReconRequestPoly*) msg)->prefix = request.key;
@@ -76,7 +76,7 @@ void Recon_manager::send_request(request_entry &request){
         ((ReconRequestPoly*) msg)->samples = request.node->get_node_svalues();
     }
     messages.push_back(msg);
-    bottom_queue.push_back(bottom_entry{.request = request});
+    bottom_queue.push(bottom_entry{.request = request});
 }
 
 void Recon_manager::handle_reply(Message* msg, request_entry &request){
@@ -107,9 +107,9 @@ void Recon_manager::handle_reply(Message* msg, request_entry &request){
             }
         case (Msg_type::Elements):
             {
-                zset samples = ((Elements*)msg)->samples;
-                g_logger.log(Logger_level::DEBUG, "handling msg Elements, samples size: " + std::to_string(samples.size()));
-                remote_set.add(samples);
+                zset elements = ((Elements*)msg)->elements;
+                g_logger.log(Logger_level::DEBUG, "handling msg Elements, samples size: " + std::to_string(elements.size()));
+                remote_set.add(elements);
                 g_logger.log(Logger_level::DEBUG, "Remote set size: " + std::to_string(remote_set.size()));
                 delete (Elements*) msg;
                 break;
@@ -119,9 +119,9 @@ void Recon_manager::handle_reply(Message* msg, request_entry &request){
                 std::vector<NTL::ZZ_p> elements = request.node->elements();
                 zset local_set = zset(elements);
                 zset local_needs, remote_needs;
-                std::tie(local_needs, remote_needs) = ((FullElements*)msg)->samples.symmetric_difference(local_set);
+                std::tie(local_needs, remote_needs) = ((FullElements*)msg)->elements.symmetric_difference(local_set);
                 Elements* m_elements = new Elements;
-                m_elements->samples = remote_needs;
+                m_elements->elements = remote_needs;
                 messages.push_back(m_elements);
                 remote_set.add(local_needs);
                 delete (FullElements*) msg;

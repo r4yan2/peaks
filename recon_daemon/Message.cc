@@ -21,28 +21,28 @@ void ReconRequestPoly::unmarshal(Buffer &buf){
 
 void ReconRequestFull::marshal(Buffer &buf){
     buf.write_bitset(prefix);
-    buf.write_zset(samples);
+    buf.write_zset(elements);
 }
 
 void ReconRequestFull::unmarshal(Buffer &buf){
     prefix = buf.read_bitset();
-    samples = buf.read_zset();
+    elements = buf.read_zset();
 }
 
 void Elements::marshal(Buffer &buf){
-    buf.write_zset(samples);
+    buf.write_zset(elements);
 }
 
 void Elements::unmarshal(Buffer &buf){
-    samples = buf.read_zset();
+    elements = buf.read_zset();
 }
 
 void FullElements::marshal(Buffer &buf){
-    buf.write_zset(samples);
+    buf.write_zset(elements);
 }
 
 void FullElements::unmarshal(Buffer &buf){
-    samples = buf.read_zset();
+    elements = buf.read_zset();
 }
 
 void SyncFail::marshal(Buffer &buf){}

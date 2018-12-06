@@ -62,6 +62,7 @@ public:
 	void openCSVFiles();
 	void insertCSV();
 	void closeCSVFiles();
+    std::vector<std::string> fetch_removed_elements();
     
 private:
 
@@ -74,6 +75,8 @@ private:
     std::shared_ptr<sql::PreparedStatement> delete_pnode_stmt;
     std::shared_ptr<sql::PreparedStatement> get_all_hash_stmt;
     std::shared_ptr<sql::PreparedStatement> check_key_stmt;
+    std::shared_ptr<sql::PreparedStatement> truncate_removed_hash_stmt;
+    std::shared_ptr<sql::PreparedStatement> get_removed_hash_stmt;
     std::shared_ptr<sql::ResultSet> result;
 	std::pair<std::string,std::string> insert_ptree_stmt;
 };

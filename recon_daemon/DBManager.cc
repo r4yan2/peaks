@@ -35,6 +35,10 @@ RECON_DBManager::RECON_DBManager() {
             "LINES STARTING BY '.' TERMINATED BY '\\n' (node_key, node_svalues, num_elements, leaf, node_elements) "
             );
 
+	get_removed_hash_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("select * from removed_hash"));
+
+	truncate_removed_hash_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("truncate removed_hash"));
+
 }
 
 RECON_DBManager::~RECON_DBManager(){
@@ -160,6 +164,17 @@ void RECON_DBManager::insertCSV(){
     }catch (exception &e){
         syslog(LOG_CRIT, "insert_ptree_stmt FAILED, the key will not have the ptree in the database! - %s", e.what());
 	}
+}
+
+std::vector<std::string> RECON_DBManager::fetch_removed_elements(){
+    std::vector<std::string> hashes;
+    result = shared_ptr<ResultSet>(get_removed_hash_stmt->executeQuery());
+    while(result->next()){
+        std::string hash = result->getString("hash");
+        hashes.push_back(hash);
+    }
+	truncate_removed_hash_stmt->executeQuery();
+    return hashes;
 }
 
 void RECON_DBManager::closeCSVFiles(){
