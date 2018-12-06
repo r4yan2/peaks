@@ -299,14 +299,14 @@ void Peer::client_recon(const peertype &peer){
                 //Request Full
                 comm = request_full_handler((ReconRequestFull*) msg); 
                 delete ((ReconRequestFull*) msg);
-                g_logger.log(Logger_level::DEBUG, "comm samples size: " + std::to_string(comm.samples.size()));
+                g_logger.log(Logger_level::DEBUG, "comm samples size: " + std::to_string(comm.elements.size()));
                 break;
                    }
             case Msg_type::Elements:{
                 //elements
-                comm.samples = ((Elements *) msg)->samples;
+                comm.elements = ((Elements *) msg)->elements;
                 delete ((Elements *) msg);
-                g_logger.log(Logger_level::DEBUG, "Elements request #elements: " + std::to_string(comm.samples.size()));
+                g_logger.log(Logger_level::DEBUG, "Elements request #elements: " + std::to_string(comm.elements.size()));
                 break;
                    }
             case Msg_type::Done:{
@@ -325,8 +325,8 @@ void Peer::client_recon(const peertype &peer){
                 g_logger.log(Logger_level::WARNING, "ERROR, UNKNOWN MESSAGE");
                 comm.status = Communication_status::ERROR;
         }
-        n += comm.samples.size();
-        response.add(comm.samples.elements());
+        n += comm.elements.size();
+        response.add(comm.elements.elements());
         g_logger.log(Logger_level::DEBUG, "current value of n: " + std::to_string(n));
 
         if (comm.status == Communication_status::ERROR){
@@ -529,10 +529,10 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     std::vector<NTL::ZZ_p> l_samples = node->get_node_svalues();
     int l_size = node->get_num_elements();
     std::vector<NTL::ZZ_p> elements;
-    std::vector<NTL::ZZ_p> local_samples, remote_samples;
+    std::vector<NTL::ZZ_p> local_elements, remote_elements;
 
     try{
-        std::tie(local_samples, remote_samples) = solve(r_samples, r_size, l_samples, l_size, recon_settings.points);
+        std::tie(local_elements, remote_elements) = solve(r_samples, r_size, l_samples, l_size, recon_settings.points);
         g_logger.log(Logger_level::DEBUG, "solved interpolation succesfully!");
     }
     //catch (solver_exception& e){
@@ -548,7 +548,7 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
                 elements = node->elements();
                 Communication newcomm;
                 FullElements* full_elements = new FullElements;
-                full_elements->samples.add(elements); 
+                full_elements->elements.add(elements); 
                 newcomm.messages.push_back(full_elements);
                 return newcomm;
         }
@@ -561,17 +561,17 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
         }
     }
     Communication newcomm;
-    zset remote_elements(remote_samples);
-    zset local_elements(local_samples);
-    newcomm.samples = remote_elements;
+    zset remote_elements_set(remote_elements);
+    zset local_elements_set(local_elements);
+    newcomm.elements = remote_elements_set;
     Elements* m_elements = new Elements;
-    m_elements->samples = local_elements; 
+    m_elements->elements = local_elements_set; 
     newcomm.messages.push_back(m_elements);
     return newcomm;
 }
 
 Communication Peer::request_full_handler(ReconRequestFull* req){
-    Myset<NTL::ZZ_p> remote_set(req->samples);
+    Myset<NTL::ZZ_p> remote_set(req->elements);
     Myset<NTL::ZZ_p> local_set;
     Communication newcomm;
     try{
@@ -590,9 +590,9 @@ Communication Peer::request_full_handler(ReconRequestFull* req){
     g_logger.log(Logger_level::DEBUG, "remote needs: ");
     g_logger.log(Logger_level::DEBUG, remote_needs);
 
-    newcomm.samples = local_needs;
+    newcomm.elements = local_needs;
     Elements* m_elements = new Elements;
-    m_elements->samples = remote_needs;
+    m_elements->elements = remote_needs;
     newcomm.messages.push_back(m_elements);
     return newcomm;
 }

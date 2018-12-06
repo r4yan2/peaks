@@ -105,6 +105,7 @@ class Connection_Manager{
 
 	    /** fail accordingly to the error passed */
         void early_fail(std::string);
+
 };
 
 #endif

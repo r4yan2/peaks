@@ -17,6 +17,7 @@
 #include "logger.h"
 #include <thread>
 #include <deque>
+#include <queue>
 #include <curl/curl.h>
 #include <dump_import.h>
 #include <unistd.h>
@@ -36,8 +37,8 @@ enum class Communication_status {NONE, ERROR, DONE};
  * server and client.
  */
 struct Communication{
-    /** samples resulting from the current communication */
-    zset samples;
+    /** elements resulting from the current communication */
+    zset elements;
     /** flag to mark if queued messages has to be send */
     bool send;
     /** status of the current message exchange */
@@ -159,7 +160,7 @@ class Recon_manager{
         std::deque<request_entry> request_queue;
         
         /** queue used to keep track of message */
-        std::deque<bottom_entry> bottom_queue;
+        std::queue<bottom_entry> bottom_queue;
 
         /** track the remote peer key set */
         zset remote_set;
