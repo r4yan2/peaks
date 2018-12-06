@@ -113,7 +113,8 @@ int Connection_Manager::init_peer(const peertype & peer){
     (char *)&serv_addr.sin_addr.s_addr,
     server->h_length);
     serv_addr.sin_port = htons(portno);
-    if (connect(tmpfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+    int err = connect(tmpfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr));
+    if (err < 0)
         throw connection_exception("ERROR connecting");
     g_logger.log(Logger_level::DEBUG, "connected succesfully to remote peer");
     return check_remote_config();
@@ -121,7 +122,9 @@ int Connection_Manager::init_peer(const peertype & peer){
 
 void Connection_Manager::close_connection(){
     shutdown(sockfd, 2);
+    shutdown(tmpfd, 2);
     close(sockfd);
+    close(tmpfd);
     sockfd = -1;
     g_logger.log(Logger_level::DEBUG, "connection closed succesfully");
 }
@@ -195,7 +198,18 @@ int Connection_Manager::check_remote_config(){
         g_logger.log(Logger_level::WARNING, "could not enable keep alive");
     
     set_timeout();
+
     
+    //int reuse = 1;
+    //if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) < 0)
+    //    std::cout << "setsockopt(SO_REUSEADDR) failed" << std::endl;
+
+    //if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&reuse, sizeof(reuse)) < 0) 
+    //    std::cout << "setsockopt(SO_REUSEPORT) failed" << std::endl;
+    //struct linger l_opt;
+    //l_opt.l_onoff = 1;
+    //l_opt.l_linger = 10;
+    //setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &l_opt, sizeof(l_opt));
     return http_port;
 }
 
