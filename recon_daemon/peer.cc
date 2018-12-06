@@ -119,9 +119,7 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
         if (std::find(hashes.begin(), hashes.end(), RECON_Utils::zz_to_hex(hash)) == hashes.end())
             g_logger.log(Logger_level::DEBUG, "requested " + RECON_Utils::zz_to_hex(hash) + " but got a different hash after sync! This is caused by a known bug in Peaks...");
             */
-    for (auto hash: hashes)
-        tree.insert(hash);
-    g_logger.log(Logger_level::DEBUG, "inserted " + std::to_string(hashes.size()) + " hashes into ptree");
+    tree.update(hashes);
 }
 
 static size_t

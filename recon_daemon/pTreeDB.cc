@@ -76,6 +76,17 @@ void Ptree::insert(const NTL::ZZ_p &z){
     root_node->insert(z, marray, bs, 0);
 }
 
+void Ptree::update(const std::vector<std::string> &hash_to_insert){
+
+    std::vector<std::string> hash_to_remove = dbm->fetch_removed_elements();
+    for (auto hash: hash_to_remove)
+        remove(hash);
+    for (auto hash: hash_to_insert)
+        insert(hash);
+    g_logger.log(Logger_level::DEBUG, "removed " + std::to_string(hash_to_remove.size()) + " hashes into ptree");
+    g_logger.log(Logger_level::DEBUG, "inserted " + std::to_string(hash_to_insert.size()) + " hashes into ptree");
+}
+
 pnode_ptr Ptree::new_child(pnode_ptr parent, int child_index){
   pnode_ptr n(new Pnode(dbm));
   n->set_leaf(true);
@@ -155,6 +166,11 @@ void Ptree::remove(const NTL::ZZ_p &z){
   std::vector<NTL::ZZ_p> marray = delete_element_array(z);
   root->remove(z, marray, bs, 0);
   dbm->delete_node(key);
+}
+
+void Ptree::remove(const std::string &hash){
+    NTL::ZZ_p elem = RECON_Utils::hex_to_zz(hash);
+    remove(elem);
 }
 
 Pnode::Pnode(){}

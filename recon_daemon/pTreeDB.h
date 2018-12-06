@@ -105,6 +105,13 @@ public:
      * @param z node to remove
      */
     void remove(const NTL::ZZ_p &z);
+    
+    /** remove an hash into the prefix-tree
+     * @param hash md5hash to remove
+     */
+    void remove(const std::string &hash);
+
+    void update(const std::vector<std::string> &hashes);
 };
 
 
