@@ -164,6 +164,7 @@ then
     make -j4
     #make test -j4
     make install
+    export PATH=$PATH:$starting_path/lib/cppcms/bin
 
     cd $starting_path
 
