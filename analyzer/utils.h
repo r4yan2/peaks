@@ -11,9 +11,18 @@
 namespace ANALYZER_Utils{
     const unsigned int MAX_LIMIT = 100000;
     const unsigned int KEY_PER_THREAD_DEFAULT = 100;
-    const unsigned int RSA_MINIMUM_SIZE = 2048;
-    const unsigned int ELGAMAL_DSA_SUBGROUP_MINIMUM_SIZE = 224;
-    const unsigned int ELGAMAL_DSA_GROUP_MINIMUM_SIZE = 2048;
+
+    const unsigned int RSA_BREAKABLE_SIZE = 550;
+    const unsigned int RSA_UNSAFE_SIZE = 768;
+    const unsigned int RSA_ADVISED_SIZE = 2048;
+    const unsigned int RSA_MINIMUM_EXP_SIZE = 18;
+
+    const unsigned int ELGAMAL_DSA_SUBGROUP_BREAKABLE_SIZE = 120;
+    const unsigned int ELGAMAL_DSA_SUBGROUP_UNSAFE_SIZE = 160;
+    const unsigned int ELGAMAL_DSA_SUBGROUP_ADVISED_SIZE = 224;
+    const unsigned int ELGAMAL_DSA_GROUP_BREAKABLE_SIZE = 550;
+    const unsigned int ELGAMAL_DSA_GROUP_UNSAFE_SIZE = 768;
+    const unsigned int ELGAMAL_DSA_GROUP_ADVISED_SIZE = 2048;
 
     namespace VULN_CODE {
         const unsigned int ERROR = 100;

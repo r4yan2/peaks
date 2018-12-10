@@ -278,9 +278,17 @@ void Analyzer::check_RSA(const ANALYZER_DBStruct::pubkey &pk, const shared_ptr<A
 
     // Key Size Check
     try{
-        if (NumBits(pk.n) < RSA_MINIMUM_SIZE) {
+        if (NumBits(pk.n) <= RSA_BREAKABLE_SIZE) {
             ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
-            ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::OUTDATED_KEY_SIZE) + to_string(NumBits(pk.n));
+            ks.vulnerabilityDescription = "KeySize breakable: " + to_string(NumBits(pk.n));
+            dbm->write_broken_key_csv(ks);
+        } else if ((NumBits(pk.n) > RSA_BREAKABLE_SIZE) and (NumBits(pk.n) < RSA_UNSAFE_SIZE)){
+            ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
+            ks.vulnerabilityDescription = "KeySize unsafe: " + to_string(NumBits(pk.n));
+            dbm->write_broken_key_csv(ks);
+        } else if ((NumBits(pk.n) > RSA_UNSAFE_SIZE) and (NumBits(pk.n) < RSA_ADVISED_SIZE)) {
+            ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
+            ks.vulnerabilityDescription = "KeySize below advided threshold: " + to_string(NumBits(pk.n));
             dbm->write_broken_key_csv(ks);
         }
     }catch (exception &e){
@@ -319,7 +327,7 @@ void Analyzer::check_RSA(const ANALYZER_DBStruct::pubkey &pk, const shared_ptr<A
 
     // Exponent Size Check
     try{
-        if (pk.e < 18) {
+        if (pk.e < RSA_MINIMUM_EXP_SIZE) {
             ks.vulnerabilityCode = VULN_CODE::RSA_EXP;
             ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::RSA_EXP) + Math_Support::zz_to_string(pk.e);
             dbm->write_broken_key_csv(ks);
@@ -468,41 +476,8 @@ void Analyzer::check_Elgamal_DSA(const ANALYZER_DBStruct::pubkey &pk, const shar
     }
 
     if (pk.pubAlgorithm == PKA::ID::DSA) {
-        // Group size check
-        try{
-            switch (NumBits(pk.p)){
-                case 1024:
-                    //if (NumBits(pk.q) != 160){
-                        ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
-                        ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::OUTDATED_KEY_SIZE) + to_string(NumBits(pk.p));
-                        dbm->write_broken_key_csv(ks);
-                    //}
-                    break;
-                case 2048:
-                    if (NumBits(pk.q) != 224 && NumBits(pk.q) != 256){
-                        ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
-                        ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::OUTDATED_KEY_SIZE) + to_string(NumBits(pk.p));
-                        dbm->write_broken_key_csv(ks);
-                    }
-                    break;
-                case 3072:
-                    if (NumBits(pk.q) != 256){
-                        ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
-                        ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::OUTDATED_KEY_SIZE) + to_string(NumBits(pk.p));
-                        dbm->write_broken_key_csv(ks);
-                    }
-                    break;
-                default:
-                    ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
-                    ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::OUTDATED_KEY_SIZE) + to_string(NumBits(pk.p));
-                    dbm->write_broken_key_csv(ks);
-                    break;
-            }
-        }catch (exception &e){
-            ks.vulnerabilityCode = VULN_CODE::ERROR + VULN_CODE::OUTDATED_KEY_SIZE;
-            ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::ERROR) + "check DSA p,q size - " + e.what();
-            dbm->write_broken_key_csv(ks);
-        }
+
+        ELGAMAL_DSA_group_size_check(NumBits(pk.p), ks, dbm);
 
         // q prime test
         try {
@@ -517,18 +492,7 @@ void Analyzer::check_Elgamal_DSA(const ANALYZER_DBStruct::pubkey &pk, const shar
             dbm->write_broken_key_csv(ks);
         }
 
-        // Subgroup Size Check
-        try{
-            if (NumBits(pk.q) < ELGAMAL_DSA_SUBGROUP_MINIMUM_SIZE) {
-                ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
-                ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::OUTDATED_KEY_SIZE) + to_string(NumBits(pk.q));
-                dbm->write_broken_key_csv(ks);
-            }
-        }catch (exception &e){
-            ks.vulnerabilityCode = VULN_CODE::ERROR + VULN_CODE::OUTDATED_KEY_SIZE;
-            ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::ERROR) + "check DSA q size - " + e.what();
-            dbm->write_broken_key_csv(ks);
-        }
+        ELGAMAL_DSA_subgroup_size_check(NumBits(pk.q), ks, dbm);
 
         // q divisor of p - 1
         try{
@@ -574,17 +538,7 @@ void Analyzer::check_Elgamal_DSA(const ANALYZER_DBStruct::pubkey &pk, const shar
             dbm->write_broken_key_csv(ks);
         }
         // Group size check
-        try{
-            if (NumBits(pk.p) < ELGAMAL_DSA_GROUP_MINIMUM_SIZE) {
-                ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
-                ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::OUTDATED_KEY_SIZE) + to_string(NumBits(pk.p));
-                dbm->write_broken_key_csv(ks);
-            }
-        }catch (exception &e){
-            ks.vulnerabilityCode = VULN_CODE::ERROR + VULN_CODE::OUTDATED_KEY_SIZE;
-            ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::ERROR) + "check Elgamal p size - " + e.what();
-            dbm->write_broken_key_csv(ks);
-        }
+        ELGAMAL_DSA_group_size_check(NumBits(pk.p), ks, dbm);
     }
 
 
@@ -601,6 +555,52 @@ void Analyzer::check_Elgamal_DSA(const ANALYZER_DBStruct::pubkey &pk, const shar
         dbm->write_broken_key_csv(ks);
     }
 }
+
+void Analyzer::ELGAMAL_DSA_group_size_check(const unsigned int &p, ANALYZER_DBStruct::KeyStatus &ks, const std::shared_ptr<ANALYZER_DBManager> &dbm) const{
+    try{
+        if (p <= ELGAMAL_DSA_GROUP_BREAKABLE_SIZE){
+              ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
+              ks.vulnerabilityDescription = "Group breakable size: " + to_string(p);
+              dbm->write_broken_key_csv(ks);
+        } else if ((p > ELGAMAL_DSA_GROUP_BREAKABLE_SIZE) and (p <= ELGAMAL_DSA_GROUP_UNSAFE_SIZE)){
+              ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
+              ks.vulnerabilityDescription = "Group unsafe size: " + to_string(p);
+               dbm->write_broken_key_csv(ks);
+        } else if ((p > ELGAMAL_DSA_GROUP_UNSAFE_SIZE) and (p <= ELGAMAL_DSA_GROUP_ADVISED_SIZE)){
+              ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
+              ks.vulnerabilityDescription = "Group below advised size: " + to_string(p);
+              dbm->write_broken_key_csv(ks);
+        }
+    }catch (exception &e){
+        ks.vulnerabilityCode = VULN_CODE::ERROR + VULN_CODE::OUTDATED_KEY_SIZE;
+        ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::ERROR) + "check DSA p,q size - " + e.what();
+        dbm->write_broken_key_csv(ks);
+    }
+}
+
+void Analyzer::ELGAMAL_DSA_subgroup_size_check(const unsigned int &q, ANALYZER_DBStruct::KeyStatus &ks, const std::shared_ptr<ANALYZER_DBManager> &dbm) const{
+        // Subgroup Size Check
+    try{
+        if (q <= ELGAMAL_DSA_SUBGROUP_BREAKABLE_SIZE) {
+            ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
+            ks.vulnerabilityDescription = "Subgroup breakable size: " + to_string(q);
+            dbm->write_broken_key_csv(ks);
+        } else if ((q > ELGAMAL_DSA_SUBGROUP_BREAKABLE_SIZE) and (q <= ELGAMAL_DSA_SUBGROUP_UNSAFE_SIZE)) {
+            ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
+            ks.vulnerabilityDescription = "Subgroup unsafe size: " + to_string(q);
+            dbm->write_broken_key_csv(ks);
+        } else if ((q > ELGAMAL_DSA_SUBGROUP_UNSAFE_SIZE) and (q <= ELGAMAL_DSA_SUBGROUP_ADVISED_SIZE)) {
+            ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
+            ks.vulnerabilityDescription = "Subgroup below advised size: " + to_string(q);
+            dbm->write_broken_key_csv(ks);
+        }
+    }catch (exception &e){
+        ks.vulnerabilityCode = VULN_CODE::ERROR + VULN_CODE::OUTDATED_KEY_SIZE;
+        ks.vulnerabilityDescription = VULN_NAME.at(VULN_CODE::ERROR) + "check DSA q size - " + e.what();
+        dbm->write_broken_key_csv(ks);
+    }
+}
+
 
 bool Analyzer::check_signature(const signatures &sign, const shared_ptr<ANALYZER_DBManager> &dbm) const{
     ZZ signedHash = conv<ZZ>(mpitodec(rawtompi(sign.signedHash)).c_str());

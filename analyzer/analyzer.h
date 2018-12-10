@@ -18,6 +18,8 @@ public:
 
 private:
     void analyze_pubkey(ANALYZER_DBStruct::pubkey pk, const std::shared_ptr<ANALYZER_DBManager> &dbm) const;
+    void ELGAMAL_DSA_subgroup_size_check(const unsigned int &q, ANALYZER_DBStruct::KeyStatus &ks, const std::shared_ptr<ANALYZER_DBManager> &dbm) const;
+    void ELGAMAL_DSA_group_size_check(const unsigned int &p, ANALYZER_DBStruct::KeyStatus &ks, const std::shared_ptr<ANALYZER_DBManager> &dbm) const;
     void analyze_signature(const ANALYZER_DBStruct::signatures &sign, const std::shared_ptr<ANALYZER_DBManager> &dbm) const;
 
     void check_RSA(const ANALYZER_DBStruct::pubkey &pk, const std::shared_ptr<ANALYZER_DBManager> &dbm) const;
