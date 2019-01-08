@@ -81,7 +81,6 @@ void Buffer::write_zz_array(const std::vector<NTL::ZZ_p> &to_write){
     write_int(to_write.size());
     for (size_t i=0; i<to_write.size(); i++) 
         write_zz_p(to_write[i]);
-    g_logger.log(Logger_level::DEBUG, "Wrote NTL::ZZ_p array to buffer succesfully");
 }
 
 void Buffer::write_zz_p(const NTL::ZZ_p &to_write, int pad_to){

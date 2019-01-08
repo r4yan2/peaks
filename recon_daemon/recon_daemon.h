@@ -7,7 +7,6 @@
 #include "DBManager.h"
 #include "peer.h"
 #include "pTreeDB.h"
-#include "logger.h"
 #include <sys/syslog.h>
 #include "../dump_import/Config.h"
 

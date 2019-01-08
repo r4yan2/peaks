@@ -4,12 +4,12 @@
 #include <NTL/ZZ.h>
 #include "myset.h"
 #include <map>
-#include "logger.h"
 #include <istream>
 #include <sstream>
 #include "Recon_settings.h"
 #include "Utils.h"
 #include "Bitset.h"
+#include <sys/syslog.h>
 
 typedef Bitset bitset;
 typedef Myset<NTL::ZZ_p> zset;

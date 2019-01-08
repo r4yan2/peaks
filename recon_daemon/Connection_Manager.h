@@ -23,9 +23,9 @@
 #include <streambuf>
 #include "exception.h"
 #include "Message.h"
-#include "logger.h"
 #include <algorithm>
 #include "Recon_settings.h"
+#include <sys/syslog.h>
 
 typedef std::pair<std::string, int> peertype;
 typedef Myset<NTL::ZZ_p> zset;

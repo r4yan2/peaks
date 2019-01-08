@@ -7,7 +7,6 @@
 #include <forward_list>
 #include <vector>
 #include <regex>
-#include "logger.h"
 #include <iostream>
 #include "DBStruct.h"
 #include "Recon_settings.h"

@@ -7,7 +7,6 @@
 #include <syslog.h>
 #include <iostream>
 #include <stdexcept>
-#include "logger.h"
 #include "Bitset.h"
 #include "myset.h"
 #include <queue>

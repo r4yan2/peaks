@@ -4,6 +4,9 @@
 void build(po::variables_map &vm){
     
     std::cout << "Starting ptree builder" << std::endl;
+    openlog("peaks_recon_daemon", LOG_PID, LOG_USER);
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    syslog(LOG_NOTICE, "Ptree builder is starting up!");
     if (RECON_Utils::create_folders(vm["recon_tmp_folder"].as<std::string>()) != 0){
         std::cout << "Unable to create temporary directories!Exiting..." << std::endl;
         exit(1);
@@ -18,7 +21,6 @@ void build(po::variables_map &vm){
 
     std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(db_settings);
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
-    g_logger.log(Logger_level::DEBUG, "created empty ptree");
     int entries;
     std::vector<std::string> hashes;
     hashes = dbm->get_all_hash();
@@ -49,7 +51,6 @@ void build(po::variables_map &vm){
             fflush(stdout);
         }
     }
-    g_logger.log(Logger_level::DEBUG, "fetched hashes from DB");
 
     std::cout << std::endl;
     std::cout << "Writing resulting ptree to DB!" << std::endl;

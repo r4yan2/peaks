@@ -14,7 +14,6 @@
 #include <NTL/ZZ_pX.h>
 #include <NTL/ZZ_pXFactoring.h>
 #include <algorithm>
-#include "logger.h"
 #include <thread>
 #include <deque>
 #include <queue>

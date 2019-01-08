@@ -22,7 +22,7 @@ std::vector<NTL::ZZ_p> Ptree::add_element_array(const NTL::ZZ_p &z){
   for(size_t i=0; i<settings.num_samples; i++){
     marray[i] = settings.points[i] - z;
     if (marray[i] == 0){
-        g_logger.log(Logger_level::CRITICAL, "marray has a zero element!");
+        syslog(LOG_CRIT, "marray has a zero element!");
         throw std::runtime_error("marray has a zero element");
     }
   }
@@ -86,8 +86,8 @@ void Ptree::update(const std::vector<std::string> &hash_to_insert){
         remove(hash);
     for (auto hash: hash_to_insert)
         insert(hash);
-    g_logger.log(Logger_level::DEBUG, "removed " + std::to_string(hash_to_remove.size()) + " hashes into ptree");
-    g_logger.log(Logger_level::DEBUG, "inserted " + std::to_string(hash_to_insert.size()) + " hashes into ptree");
+    syslog(LOG_DEBUG, "removed %d hashes from the ptree", int(hash_to_remove.size()));
+    syslog(LOG_DEBUG, "inserted %d hashes into the ptree", int(hash_to_insert.size()));
 }
 
 pnode_ptr Ptree::new_child(pnode_ptr parent, int child_index){
@@ -120,8 +120,6 @@ pnode_ptr Ptree::new_child(pnode_ptr parent, int child_index){
     }
   }
   std::string node_key = key.to_string();
-  if (parent!=NULL)
-    g_logger.log(Logger_level::DEBUG, "Creating node with key" + node_key + " son of " + parent->get_node_key());
   n->set_node_key(node_key);
   std::vector<NTL::ZZ_p> svalues(settings.num_samples);
   for (size_t i=0; i < settings.num_samples; i++){
@@ -145,8 +143,7 @@ pnode_ptr Ptree::node(bitset &key){
             n = get_node(str_key);
             break;
         }   catch (std::exception &e){
-            g_logger.log(Logger_level::WARNING, "Error during node fetching");
-            std::cout << e.what();
+                syslog(LOG_WARNING, "Error during node fetching");
         }
         if (key.size() == 0) break;
   
@@ -376,7 +373,6 @@ int Pnode::next(const bitset &bs, int depth){
     int key;
     int h_key = next_hockeypuck(bs, depth);
     int s_key = next_sks(bs, depth);
-    //g_logger.log(Logger_level::DEBUG, "Calculated next child - hockeypuck: " + std::to_string(h_key) + " sks: " + std::to_string(s_key));
     if (settings.sks_bitstring == 1)
         key = s_key;
     else
@@ -422,7 +418,7 @@ void Pnode::split(int depth){
   leaf = false;
   node_elements.clear();
   if ((node_elements.size() != 0) || (split_elements.size() == 0))
-      g_logger.log(Logger_level::CRITICAL, "you did something wrong");
+      syslog(LOG_WARNING, "you did something wrong");
   
   commit_node();
 
@@ -468,7 +464,7 @@ void Pnode::remove(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, con
         try{
           cur_node->join();
         } catch (std::exception &e){
-          g_logger.log(Logger_level::WARNING, "Caught exception while joining node");
+          syslog(LOG_WARNING, "Caught exception while joining node");
         }
         break;
       }
@@ -477,14 +473,14 @@ void Pnode::remove(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, con
             cur_node->commit_node();
           }
           catch (std::exception &e){
-            g_logger.log(Logger_level::CRITICAL, "Node commit failed because of " + std::string(e.what()));
+            syslog(LOG_WARNING, "Node commit failed because of %s", e.what());
           }
           int child_index = cur_node->next(bs, depth);
           std::vector<pnode_ptr> child_vec;
           try{
               child_vec = cur_node->children();
           } catch (std::exception &e){
-            g_logger.log(Logger_level::CRITICAL, "Error during child node recover, error: " + std::string(e.what()));
+            syslog(LOG_CRIT, "Error during child node recover, error: %s", e.what());
           }
           cur_node = child_vec[child_index];
           depth++;
@@ -494,15 +490,14 @@ void Pnode::remove(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, con
     try{
       cur_node->delete_element(z);
     } catch (std::exception &e){
-        g_logger.log(Logger_level::WARNING, "Error during elements delete, error: " + std::string(e.what()));
+        syslog(LOG_WARNING, "Error during elements delete, error: %s", e.what());
     }
   cur_node->commit_node();
 }
 
 void Pnode::update_svalues(const std::vector<NTL::ZZ_p> &marray){
-  if (marray.size() != settings.num_samples) g_logger.log(Logger_level::CRITICAL, "marray and points do not have the same size");
-  g_logger.log(Logger_level::DEBUG, "Updating svalues with marray");
-  g_logger.log(Logger_level::DEBUG, marray);
+  if (marray.size() != settings.num_samples) 
+      syslog(LOG_CRIT, "marray and points do not have the same size");
   for (size_t i=0; i < marray.size(); i++){
       node_svalues[i] = node_svalues[i] * marray[i];
   }
@@ -520,7 +515,6 @@ void Pnode::insert(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, con
             else {
                 std::ostringstream os;
                 os << z;
-                g_logger.log(Logger_level::DEBUG, "Inserting " + os.str() + " to node " + cur_node->node_key);
                 cur_node->insert_element(z);
                 cur_node->commit_node();
                 return;
@@ -590,7 +584,7 @@ void Memnode::split(int depth){
   set_leaf(false);
   clear_node_elements();
   if ((get_node_elements().size() != 0) || (split_elements.size() == 0))
-      g_logger.log(Logger_level::CRITICAL, "you did something wrong");
+      syslog(LOG_CRIT, "you did something wrong");
 
   //create child nodes
   uint32_t num = 1 << uint32_t(settings.bq);
@@ -613,12 +607,8 @@ void Memnode::split(int depth){
 void Memnode::insert(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const bitset &bs, int depth){
     memnode_ptr cur_node = this;
     while(1){
-        g_logger.log(Logger_level::DEBUG, "num elements of " + cur_node->get_node_key() + "before inserting " + RECON_Utils::zz_to_hex(z) + std::to_string(cur_node->get_num_elements()) + "svalues are:" );
-        g_logger.log(Logger_level::DEBUG, cur_node->get_node_svalues());
         cur_node->update_svalues(marray);
         cur_node->set_num_elements(cur_node->get_num_elements() + 1);
-        g_logger.log(Logger_level::DEBUG, "after we have #elements " + std::to_string(cur_node->get_num_elements()) + " and svalues: ");
-        g_logger.log(Logger_level::DEBUG, cur_node->get_node_svalues());
         if (cur_node->is_leaf()){
             if (cur_node->get_node_elements().size() > settings.split_threshold){
                 cur_node->split(depth);
@@ -626,7 +616,6 @@ void Memnode::insert(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, c
             else{
                 std::ostringstream os;
                 os << z;
-                g_logger.log(Logger_level::DEBUG, "Inserting " + os.str() + " to node " + cur_node->get_node_key());
                 cur_node->insert_element(z);
                 return;
             }
@@ -671,7 +660,6 @@ memnode_ptr MemTree::new_child(memnode_ptr parent, int child_index){
   }
   std::string node_key = key.to_string();
   if (parent!=NULL)
-    g_logger.log(Logger_level::DEBUG, "Creating node with key " + node_key + " son of " + parent->get_node_key());
   n->set_node_key(node_key);
   std::vector<NTL::ZZ_p> svalues(settings.num_samples);
   for (size_t i=0; i < settings.num_samples; i++){

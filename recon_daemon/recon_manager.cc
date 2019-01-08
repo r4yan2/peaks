@@ -81,25 +81,22 @@ void Recon_manager::send_request(request_entry &request){
 }
 
 void Recon_manager::handle_reply(Message* msg, request_entry &request){
-    g_logger.log(Logger_level::DEBUG, "handling message type " + std::to_string(msg->type));
     switch (msg->type){
         case (Msg_type::SyncFail):
             {
                 if (request.node->is_leaf()){
-                    g_logger.log(Logger_level::CRITICAL, "Syncfail at leaf node");
+                    syslog(LOG_CRIT, "Syncfail at leaf node");
                     delete (SyncFail*) msg;
                     return;
                 }
                 std::vector<pnode_ptr> children = request.node->children();
                 request_entry req;
                 req.key = bitset(children[0]->get_node_key());
-                g_logger.log(Logger_level::DEBUG, "sending ReconRequestFull for the following node: " + children[0]->get_node_key() + ", which contains " + std::to_string(children[0]->elements().size()) + " elements");
                 req.node = children[0];
                 push_request(req);
                 for (size_t i=1; i<children.size(); i++){
                     request_entry req;
                     req.key = bitset(children[i]->get_node_key());
-                    g_logger.log(Logger_level::DEBUG, "sending ReconRequestFull for the following node: " + children[i]->get_node_key() + ", which contains " + std::to_string(children[i]->elements().size()) + " elements");
                     req.node = children[i];
                     prepend_request(req);
                 }
@@ -109,9 +106,7 @@ void Recon_manager::handle_reply(Message* msg, request_entry &request){
         case (Msg_type::Elements):
             {
                 zset elements = ((Elements*)msg)->elements;
-                g_logger.log(Logger_level::DEBUG, "handling msg Elements, samples size: " + std::to_string(elements.size()));
                 remote_set.add(elements);
-                g_logger.log(Logger_level::DEBUG, "Remote set size: " + std::to_string(remote_set.size()));
                 delete (Elements*) msg;
                 break;
             }
@@ -130,7 +125,7 @@ void Recon_manager::handle_reply(Message* msg, request_entry &request){
             }
         default:
             {
-                g_logger.log(Logger_level::WARNING, "Arrived unexpected message type " + std::to_string(msg->type));
+                syslog(LOG_WARNING, "Arrived unexpected message type %d", msg->type);
             }
     }
 }

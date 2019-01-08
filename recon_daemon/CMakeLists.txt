@@ -8,7 +8,7 @@ add_definitions(-DGPG_COMPATIBLE)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g3 -O0 -pg")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -Werror")
 
-set(SOURCE_FILES recon_daemon.cc peer.cc recon_manager.cc Connection_Manager.cc Message.cc Buffer.cc Bitset.cc logger.cc exception.cc myset.cc pTreeDB.cc DBManager.cc Utils.cc DBStruct.h)
+set(SOURCE_FILES recon_daemon.cc peer.cc recon_manager.cc Connection_Manager.cc Message.cc Buffer.cc Bitset.cc exception.cc myset.cc pTreeDB.cc DBManager.cc Utils.cc DBStruct.h)
 
 add_library(recon_daemon ${SOURCE_FILES})
 

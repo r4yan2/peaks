@@ -9,14 +9,12 @@ void ReconRequestPoly::marshal(Buffer &buf){
 }
 
 void ReconRequestPoly::unmarshal(Buffer &buf){
-     g_logger.log(Logger_level::DEBUG, "unpacking reconrequestpoly");
      prefix = buf.read_bitset();
      size = buf.read_int();
      samples = buf.read_zz_array();
 
      //DEBUG
      std::string test = prefix.to_string();
-     g_logger.log(Logger_level::DEBUG, "prefix: " + test + " size: " + std::to_string(size));
 }
 
 void ReconRequestFull::marshal(Buffer &buf){
@@ -123,7 +121,8 @@ void Peer_config::unmarshal(Buffer &buf){
             val = buf.read_int();
                 //if (val > settings.max_read_len)
                 //   g_logger.log(Logger_level::WARNING, "Oversized message!");
-            if (val != 4) g_logger.log(Logger_level::WARNING, "Invalid len size!");
+            if (val != 4) 
+                syslog(LOG_WARNING, "Invalid len size!");
             val = buf.read_int();
             }
          else value = buf.read_string();

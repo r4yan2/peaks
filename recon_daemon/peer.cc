@@ -13,11 +13,8 @@ Peer::Peer(Ptree &new_tree, Recon_config &peer_settings, Connection_config &conn
         membership.push_back(std::make_pair(addr, port));
     }
     if (membership.size() == 0){
-        g_logger.log(Logger_level::WARNING, "Membership file is empty! Stopping Recon");
+        syslog(LOG_WARNING, "Membership file provided is empty!");
         exit(0);
-    }else{
-        for (peertype peer : membership)
-            g_logger.log(Logger_level::DEBUG, "Membership entry: " + peer.first);
     }
 }
 
@@ -25,7 +22,7 @@ peertype Peer::choose_partner(){
     
     int choice = RECON_Utils::get_random(membership.size());
     peertype peer = membership[choice];
-    g_logger.log(Logger_level::DEBUG, "choose as partner: " + peer.first);
+    syslog(LOG_DEBUG, "choose as partner: %s", peer.first.c_str());
     int http_port = cn.init_peer(peer);
     return std::make_pair(peer.first, http_port);
 }
@@ -52,25 +49,23 @@ void Peer::start_client(){
 
 void Peer::serve(){
     
-    g_logger.log(Logger_level::DEBUG, "starting gossip server");
+    syslog(LOG_DEBUG, "starting gossip server");
 
     cn.setup_listener(settings.peaks_recon_port);
     std::vector<std::string> addresses;
     std::transform(membership.begin(), membership.end(), std::back_inserter(addresses), (const std::string& (*)(const peertype&))std::get<0>);
 
-    g_logger.log(Logger_level::DEBUG, "parsed membership, starting acceptor loop");
     for (;;){
-        g_logger.log(Logger_level::DEBUG, "server loop");
         peertype remote_peer;
         bool check;
         std::tie(check, remote_peer) = cn.acceptor(addresses);
         if (check){
-            g_logger.log(Logger_level::DEBUG, "Accepted remote peer " + remote_peer.first + ", starting interaction...");
+            syslog(LOG_DEBUG, "Accepted remote peer %s, starting interaction...", remote_peer.first.c_str());
             //std::thread srv_c {&Peer::interact_with_client, this, remote_peer};
             try{
                 interact_with_client(remote_peer);
             }catch(std::exception &e){
-                g_logger.log(Logger_level::WARNING, std::string(e.what()));
+                syslog(LOG_WARNING, "server terminated with exception: %s", e.what());
             }
         }
     }
@@ -78,7 +73,7 @@ void Peer::serve(){
 
 void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &elems){
 
-    g_logger.log(Logger_level::DEBUG, "Should recover " + std::to_string(elems.size()) + " elements, starting double check...");
+    syslog(LOG_DEBUG, "Should recover %d elements, starting double check!", int(elems.size()));
     std::vector<NTL::ZZ_p> elements;
     for (auto e: elems){
         if (!(tree.has_key(RECON_Utils::zz_to_hex(e))))
@@ -87,18 +82,17 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
 
     int elements_size = elements.size();
     if (elements_size == 0){
-        g_logger.log(Logger_level::DEBUG, "No elements to recover!");
         return;
     }
     int c_size = settings.request_chunk_size;
-    g_logger.log(Logger_level::DEBUG, "Will recover: " + std::to_string(elements_size));
+    syslog(LOG_DEBUG, "Will recover: %d", int(elements_size));
     std::vector<std::string> keys;
     if (c_size > elements_size){
-        g_logger.log(Logger_level::DEBUG, "requesting all element at once!");
+        syslog(LOG_DEBUG, "requesting all element at once!");
         keys = request_chunk(peer, elements);
     }else{
         for (int i=0; i <= elements_size/c_size; i++){
-            g_logger.log(Logger_level::DEBUG, "requesting chunk " + std::to_string(i+1));
+            syslog(LOG_DEBUG, "requesting chunk %d", (i+1));
             int start = i*c_size;
             int slice = c_size*(i+1);
             int end = (elements_size < slice) ? elements_size : slice;
@@ -108,19 +102,18 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
             keys.insert(keys.end(), new_keys.begin(), new_keys.end());
         }
     }
-    g_logger.log(Logger_level::DEBUG, "fetched " + std::to_string(keys.size()) + " keys from peer!");
+    syslog(LOG_DEBUG, "fetched %d from peer", int(keys.size()));
     if (settings.dry_run){
-        g_logger.log(Logger_level::WARNING, "DRY RUN, exiting without inserting certificates");
+        syslog(LOG_WARNING, "DRY RUN, exiting without inserting certificates");
         return;
     }
     std::vector<std::string> hashes = di.dump_import(keys);
     if (hashes.size() != elements.size() and not settings.ignore_known_bug){
-        g_logger.log(Logger_level::WARNING, "number of recovered keys does not match number of hashes recovered! This is caused by a known bug in peaks, sorry...");
+        syslog(LOG_WARNING, "number of recovered keys does not match number of hashes recovered! This is caused by a known bug in peaks, sorry...");
     }
     /*
     for (auto hash: elements)
         if (std::find(hashes.begin(), hashes.end(), RECON_Utils::zz_to_hex(hash)) == hashes.end())
-            g_logger.log(Logger_level::DEBUG, "requested " + RECON_Utils::zz_to_hex(hash) + " but got a different hash after sync! This is caused by a known bug in Peaks...");
             */
     tree.update(hashes);
 }
@@ -147,7 +140,7 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
         buffer.write_zz_p(zp, hashquery_len);
     }
     const std::string url = std::string("http://") + peer.first + std::string(":") + std::to_string(peer.second) + std::string("/pks/hashquery");
-    g_logger.log(Logger_level::DEBUG, "Requesting url "+url);
+    syslog(LOG_DEBUG, "Requesting url %s", url.c_str());
     std::ostringstream response;
 
     curl_global_init(CURL_GLOBAL_ALL);
@@ -165,9 +158,9 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
  
       CURLcode res_code = curl_easy_perform(curl);
-      g_logger.log(Logger_level::DEBUG, "Curl request performed");
+      syslog(LOG_DEBUG, "Curl request performed");
       if(res_code != CURLE_OK)
-        g_logger.log(Logger_level::WARNING, "curl_easy_perform() failed:" +std::string(curl_easy_strerror(res_code)));
+        syslog(LOG_WARNING, "curl_easy_perform() failed: %s", curl_easy_strerror(res_code));
        
       long response_code;
       curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
@@ -195,15 +188,11 @@ void Peer::interact_with_client(peertype &remote_peer){
     request_entry req = request_entry{.node = root, .key = newset};
     recon.push_request(req);
     while(!(recon.done())){
-        g_logger.log(Logger_level::DEBUG, "entering server response loop");
         if (recon.bottom_queue_empty()){
-            g_logger.log(Logger_level::DEBUG, "bottom queue empty: generating initial request");
             request_entry request = recon.pop_request();
             recon.send_request(request);
         } else{
-            g_logger.log(Logger_level::DEBUG, "fetching request from bottom queue");
             bottom_entry bottom = recon.top_bottom();
-            g_logger.log(Logger_level::DEBUG, "Bottom State: " + std::to_string(bottom.state));
             switch(bottom.state){
                 case recon_state::FlushEnded:
                     {
@@ -215,13 +204,10 @@ void Peer::interact_with_client(peertype &remote_peer){
                     {
                         Message* msg;
                         try{
-                            g_logger.log(Logger_level::DEBUG, "trying async operation");
                             msg = cn.read_message_async();
-                            g_logger.log(Logger_level::DEBUG, "async operation succesfully fetched message");
                             recon.pop_bottom();
                             recon.handle_reply(msg, bottom.request);
                         } catch(std::invalid_argument &e){
-                            g_logger.log(Logger_level::DEBUG, "no message on async operation");
                             if((recon.bottom_queue_size() > settings.max_outstanding_recon_req) || 
                                 (recon.request_queue_size() == 0)){
                                 if (recon.is_flushing()){
@@ -233,7 +219,6 @@ void Peer::interact_with_client(peertype &remote_peer){
                                     }
                                 }
                                 else{
-                                    g_logger.log(Logger_level::DEBUG, "recon flushing");
                                     recon.flush_queue();
                                 }
                             } else {
@@ -241,7 +226,7 @@ void Peer::interact_with_client(peertype &remote_peer){
                                 recon.send_request(req);
                             }
                         } catch(std::exception &e){
-                            g_logger.log(Logger_level::DEBUG, "Unexpected catch " + std::string(e.what()));
+                            syslog(LOG_DEBUG, "Unexpected catch %s", e.what());
                         }
                         break;
                     }
@@ -257,22 +242,21 @@ void Peer::interact_with_client(peertype &remote_peer){
 void Peer::gossip(){
     for (;;){
         try{
-            g_logger.log(Logger_level::DEBUG, "starting gossip client");
+            syslog(LOG_DEBUG, "starting gossip client");
             peertype peer = choose_partner();
-            g_logger.log(Logger_level::DEBUG, "choosen partner " + peer.first);
+            syslog(LOG_DEBUG, "choosen partner %s", peer.first.c_str());
             client_recon(peer);
         } catch (std::exception &e){
-            g_logger.log(Logger_level::DEBUG, e.what());
+            syslog(LOG_DEBUG, "%s", e.what());
             cn.close_connection();
         }
-        g_logger.log(Logger_level::DEBUG, "going to sleep...");
+        syslog(LOG_DEBUG, "going to sleep...");
         std::this_thread::sleep_for(std::chrono::seconds{settings.gossip_interval});
-        g_logger.log(Logger_level::DEBUG, "...resuming gossip");
+        syslog(LOG_DEBUG, "...resuming gossip");
     }
 }
 
 void Peer::client_recon(const peertype &peer){
-    g_logger.log(Logger_level::DEBUG, "Starting recon as client with peer " + peer.first + ", http_port " + std::to_string(peer.second));
     zset response;
     std::vector<Message*> pending;
 
@@ -287,7 +271,6 @@ void Peer::client_recon(const peertype &peer){
         // fetch request + craft response
        
         Message* msg = cn.read_message();
-        g_logger.log(Logger_level::DEBUG, "prepare to handle message type" + std::to_string(msg->type));
         switch (msg->type){
             case Msg_type::ReconRequestPoly:{
                 //ReconRequestPoly
@@ -299,19 +282,16 @@ void Peer::client_recon(const peertype &peer){
                 //Request Full
                 comm = request_full_handler((ReconRequestFull*) msg); 
                 delete ((ReconRequestFull*) msg);
-                g_logger.log(Logger_level::DEBUG, "comm samples size: " + std::to_string(comm.elements.size()));
                 break;
                    }
             case Msg_type::Elements:{
                 //elements
                 comm.elements = ((Elements *) msg)->elements;
                 delete ((Elements *) msg);
-                g_logger.log(Logger_level::DEBUG, "Elements request #elements: " + std::to_string(comm.elements.size()));
                 break;
                    }
             case Msg_type::Done:{
                 //done
-                g_logger.log(Logger_level::DEBUG, "DONE RECON!");
                 comm.status = Communication_status::DONE;
                 break;
                    }
@@ -322,12 +302,12 @@ void Peer::client_recon(const peertype &peer){
                    }
             default:
                 //???
-                g_logger.log(Logger_level::WARNING, "ERROR, UNKNOWN MESSAGE");
+                syslog(LOG_WARNING, "ERROR, UNKNOWN MESSAGE");
                 comm.status = Communication_status::ERROR;
         }
         n += comm.elements.size();
         response.add(comm.elements.elements());
-        g_logger.log(Logger_level::DEBUG, "current value of n: " + std::to_string(n));
+        syslog(LOG_DEBUG, "current value of n: %d", n);
 
         if (comm.status == Communication_status::ERROR){
             Error* error_msg = new Error;
@@ -341,14 +321,9 @@ void Peer::client_recon(const peertype &peer){
                 cn.close_connection();
                 return;
         }
-        for (auto m: comm.messages)
-            g_logger.log(Logger_level::DEBUG, "Adding Message type " + std::to_string(m->type));
-        g_logger.log(Logger_level::DEBUG, "Resulting communication has " + std::to_string(comm.messages.size()) + " messages");
         pending.insert(pending.end(), comm.messages.begin(), comm.messages.end());
-        g_logger.log(Logger_level::DEBUG, "There are now " + std::to_string(pending.size()) + " pending messages");
         if (comm.send){
             // send response
-            g_logger.log(Logger_level::DEBUG, "sending pending messages");
             cn.send_bulk_messages(pending);
             pending.clear();
         }
@@ -368,7 +343,7 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
     //we need the Lagrange form of
     //the interpolating polynomial
     if (size_diff > values.size()-1){
-        g_logger.log(Logger_level::WARNING, "Could not interpolate because size_diff > size of values!");
+        syslog(LOG_WARNING, "Could not interpolate because size_diff > size of values!");
         throw solver_exception();
         }
     int mbar = tree.get_settings().mbar;
@@ -399,7 +374,6 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
     /*
     //gauss form
     gauss(matrix);
-    g_logger.log(Logger_level::DEBUG, "Finished gauss form");
 
     //normalization
     
@@ -456,7 +430,6 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
         }
 }
 
-    g_logger.log(Logger_level::DEBUG, "Finished gauss form and normalizing");
 
     //back substitute
     int last;
@@ -478,7 +451,6 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
         }
     }
 
-    g_logger.log(Logger_level::DEBUG, "applied back substitute");
     
     NTL::ZZ_pX a_poly;
     NTL::ZZ_pX b_poly;
@@ -492,7 +464,6 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
     NTL::ZZ_pX num = a_poly/g_poly;
     NTL::ZZ_pX den = b_poly/g_poly;
 
-    g_logger.log(Logger_level::DEBUG, "Calculated num and den");
     NTL::ZZ_p last_point = points.back();
     NTL::ZZ_p num_val = eval(num,last_point);
     NTL::ZZ_p den_val = eval(den,last_point);
@@ -508,7 +479,6 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
     os << std::endl;
     os << den_factor;
     os << std::endl;
-    g_logger.log(Logger_level::DEBUG, "Find roots done!\n" + os.str());
     std::vector<NTL::ZZ_p> stl_num_factor, stl_den_factor;
 
     for (auto e: num_factor)
@@ -524,7 +494,6 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     std::vector<NTL::ZZ_p> r_samples = req->samples;
     bitset key = req->prefix;
     std::string prefix_str = key.to_string();
-    g_logger.log(Logger_level::DEBUG, "ReconRequestPoly for node: " + prefix_str);
     pnode_ptr node = tree.node(key);
     std::vector<NTL::ZZ_p> l_samples = node->get_node_svalues();
     int l_size = node->get_num_elements();
@@ -533,18 +502,15 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
 
     try{
         std::tie(local_elements, remote_elements) = solve(r_samples, r_size, l_samples, l_size, tree.get_settings().points);
-        g_logger.log(Logger_level::DEBUG, "solved interpolation succesfully!");
     }
     //catch (solver_exception& e){
     catch (std::exception &e){
-        g_logger.log(Logger_level::DEBUG, "catched logger exception: " + std::string(e.what()));
         if ((strncmp(e.what(),"low_mbar",8)) && 
                     (
                      (node->is_leaf()) ||
                      (node->get_num_elements() < tree.get_settings().ptree_thresh_mult * tree.get_settings().mbar)
                      )
             ){
-                g_logger.log(Logger_level::DEBUG, "Preparing to send FullElements request for " + node->get_node_key());
                 elements = node->elements();
                 Communication newcomm;
                 FullElements* full_elements = new FullElements;
@@ -553,7 +519,6 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
                 return newcomm;
         }
         else {
-            g_logger.log(Logger_level::DEBUG, "Preparing to send Syncfail");
             Communication newcomm;
             SyncFail* fail = new SyncFail;
             newcomm.messages.push_back(fail);
@@ -582,13 +547,8 @@ Communication Peer::request_full_handler(ReconRequestFull* req){
         return newcomm;
     }
     std::string prefix_str = req->prefix.to_string();
-    g_logger.log(Logger_level::DEBUG, "ReconRequestFull for node: " + prefix_str);
     std::vector<NTL::ZZ_p> local_needs, remote_needs;
     std::tie(local_needs, remote_needs) = remote_set.symmetric_difference(local_set); 
-    g_logger.log(Logger_level::DEBUG, "Local needs: ");
-    g_logger.log(Logger_level::DEBUG, local_needs);
-    g_logger.log(Logger_level::DEBUG, "remote needs: ");
-    g_logger.log(Logger_level::DEBUG, remote_needs);
 
     newcomm.elements = local_needs;
     Elements* m_elements = new Elements;

@@ -12,7 +12,7 @@ void Connection_Manager::setup_listener(int portno){
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd < 0){
-        g_logger.log(Logger_level::CRITICAL, "error on binding");
+        syslog(LOG_CRIT, "error on binding");
         throw (std::runtime_error("error on binding"));
     }
     bzero((char *) &serv_addr, sizeof(serv_addr));
@@ -23,8 +23,8 @@ void Connection_Manager::setup_listener(int portno){
 
     int err = bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)); 
     if (err < 0)
-        g_logger.log(Logger_level::CRITICAL, "error on binding");
-    g_logger.log(Logger_level::DEBUG, "binding ok, proceed to listen for incoming connections");
+        syslog(LOG_CRIT, "error on bind!");
+    syslog(LOG_DEBUG, "binding ok, proceed to listen for incoming connections");
     listen(listenfd, 10);
 }
 
@@ -34,7 +34,7 @@ std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> &
     socklen_t clilen = sizeof(client_addr);
     tmpfd = accept(listenfd, (struct sockaddr*)&client_addr, &clilen);
     if (tmpfd < 0){
-        g_logger.log(Logger_level::WARNING, "Error on accept");
+        syslog(LOG_WARNING, "Error on accept");
         return std::make_pair(false, remote_peer);
     }
     struct sockaddr_in* pV4Addr = (struct sockaddr_in*)&client_addr;
@@ -45,14 +45,13 @@ std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> &
     size_t pos = it - addresses.begin();
     if (pos >= addresses.size()){
         // ip does not belong to membership
-        g_logger.log(Logger_level::WARNING, std::string(ip_str) + " blocked because not in membership");
+        syslog(LOG_WARNING, "blocked %s because not in membership", ip_str);
         close(tmpfd);
         return std::make_pair(false, remote_peer);
         }
     int remote_port = check_remote_config();
     if (remote_port < 0)
         return std::make_pair(false, remote_peer);
-    g_logger.log(Logger_level::DEBUG, "connection accepted and configured correctly");
     remote_peer = std::make_pair(std::string(ip_str), remote_port);
     return std::make_pair(true, remote_peer);
 }
@@ -67,7 +66,7 @@ void Connection_Manager::set_timeout(){
 
 void Connection_Manager::early_fail(std::string reason){
 
-    g_logger.log(Logger_level::DEBUG, "Config mismatch, reason: " + reason);
+    syslog(LOG_WARNING, "Config mismatch, reason: %s", reason.c_str());
     Buffer buf;
     Config_mismatch* msg = new Config_mismatch;
     msg->reason = reason;
@@ -120,7 +119,6 @@ int Connection_Manager::init_peer(const peertype & peer){
     int err = connect(tmpfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr));
     if (err < 0)
         throw connection_exception("ERROR connecting");
-    g_logger.log(Logger_level::DEBUG, "connected succesfully to remote peer");
     return check_remote_config();
 }
 
@@ -130,13 +128,11 @@ void Connection_Manager::close_connection(){
     close(sockfd);
     close(tmpfd);
     sockfd = -1;
-    g_logger.log(Logger_level::DEBUG, "connection closed succesfully");
 }
 
 
 int Connection_Manager::check_remote_config(){
 
-    g_logger.log(Logger_level::DEBUG, "checking remote config 1/4");
     Peer_config* local_config = new Peer_config;
     local_config->version = settings.peaks_version;
     local_config->http_port = settings.peaks_http_port;
@@ -144,15 +140,12 @@ int Connection_Manager::check_remote_config(){
     local_config->mbar = settings.mbar;
     local_config->filters = settings.peaks_filters;
 
-    g_logger.log(Logger_level::DEBUG, "checking remote config 2/4");
 
     send_message(local_config, true);
 
-    g_logger.log(Logger_level::DEBUG, "checking remote config 3/4");
 
     Peer_config* remote_config = (Peer_config*) read_message(true);
 
-    g_logger.log(Logger_level::DEBUG, "checking remote config 4/4");
     
     if (sockfd > 0){
         early_fail("sync already in progress");
@@ -167,15 +160,6 @@ int Connection_Manager::check_remote_config(){
         return -1;
     }
 
-    g_logger.log(Logger_level::DEBUG, 
-            "checking remote config successful" +
-            std::string(", version= ") + remote_config->version + 
-            ", mbar= " + std::to_string(remote_config->mbar) + 
-            ", bq = " + std::to_string(remote_config->bq) + 
-            ", filters= "  + remote_config->filters + 
-            ", other = " + std::to_string(remote_config->other.size())
-            );
-
     //send config ack
     Config_ok* msg = new Config_ok;
     send_message_direct(msg);
@@ -184,10 +168,10 @@ int Connection_Manager::check_remote_config(){
     std::string remote_status = read_string_direct();
     if (strcmp(remote_status.c_str(),"passed")){
         std::string reason = read_string_direct();
-        g_logger.log(Logger_level::WARNING, "remote host rejected config, status: " + remote_status + " reason: " + reason);
+
+        syslog(LOG_WARNING, "remote host rejected config, reason: %s", reason.c_str());
         return -1;
     }
-    g_logger.log(Logger_level::DEBUG, "checking remote config successful");
 
     int http_port = remote_config->http_port;
     delete local_config;
@@ -199,7 +183,7 @@ int Connection_Manager::check_remote_config(){
 
     // set keep alive for 1 minute
     if (!(toggle_keep_alive(1, 1, 1, 60)))
-        g_logger.log(Logger_level::WARNING, "could not enable keep alive");
+        syslog(LOG_WARNING, "could not enable keep alive");
     
     set_timeout();
 
@@ -238,16 +222,16 @@ bool Connection_Manager::read_n_bytes(void *buf, std::size_t n, bool tmp_socket,
             ret = recv(sockfd, cbuf + offset, n - offset, signal);
         if (ret < 0 && (errno != EINTR || errno != EWOULDBLOCK || errno != EAGAIN)) {
             // IOException
-            g_logger.log(Logger_level::DEBUG, "IOException on recv, sorry but it is normal during recon as server");
+            syslog(LOG_DEBUG, "IOException on recv, sorry but it is normal during recon as server");
             throw std::invalid_argument(strerror(errno));
         } else if (ret == 0) {
             // No data available
             if (offset == 0){
-                g_logger.log(Logger_level::WARNING, "No data available, Expected: " + std::to_string(n) + " Got: " + std::to_string(offset+ret));   
+                syslog(LOG_WARNING, "No data available, Expected: %d, Got: %d", int(n), int(offset+ret));   
                 return false;
             }else{
                 //Protocol Exception
-                g_logger.log(Logger_level::WARNING, "Underflow on recv");
+                syslog(LOG_WARNING, "Underflow on recv");
                 throw std::underflow_error("Unexpected end of stream");
             }
         } else if (offset + ret == n) {
@@ -264,14 +248,13 @@ std::string Connection_Manager::read_string_direct(){
    std::string res = "failed";
    if (read_n_bytes(&size, sizeof(size), true)) {
        size = RECON_Utils::swap(size);
-       g_logger.log(Logger_level::DEBUG, "remote string size: " + std::to_string(size));
-       if (size > settings.max_read_len) g_logger.log(Logger_level::WARNING, "Oversized message!");
-       g_logger.log(Logger_level::DEBUG, "fetching remote host status confirmation");
+       if (size > settings.max_read_len) 
+           syslog(LOG_WARNING, "Oversized message!");
        Buffer buf(size);
        read_n_bytes(buf.data(), size, true);
        res = buf.to_str();
    } else
-       g_logger.log(Logger_level::WARNING, "Unexpected end of stream");
+       syslog(LOG_WARNING, "Unexpected end of stream");
    return res;
 }
 
@@ -283,15 +266,13 @@ Message* Connection_Manager::read_message_async(){
 Message* Connection_Manager::read_message(bool tmp_socket, int signal) {
    std::uint32_t size;
    if (read_n_bytes(&size, sizeof(size), tmp_socket, signal)) {
-       g_logger.log(Logger_level::DEBUG, "read 4 bytes ok");
        size = RECON_Utils::swap(size);
-       if (size > settings.max_read_len) g_logger.log(Logger_level::WARNING, "Oversized message!");
+       if (size > settings.max_read_len) 
+           syslog(LOG_WARNING, "Oversized message!");
        Buffer ibuf(size);
        if (read_n_bytes(ibuf.data(), size, tmp_socket, signal)) {
-       g_logger.log(Logger_level::DEBUG, "read " + std::to_string(size) +" bytes ok");
            ibuf.set_read_only();
            uint8_t type = ibuf.read_uint8();
-           g_logger.log(Logger_level::DEBUG, "unpacking message type" + std::to_string(type));
            switch (type){
                 case Msg_type::ReconRequestPoly: {
                             ReconRequestPoly* data = new ReconRequestPoly;
@@ -360,17 +341,17 @@ Message* Connection_Manager::read_message(bool tmp_socket, int signal) {
                              return data;
                             }
                              
-                default: g_logger.log(Logger_level::WARNING, "Cannot understand message type during recon!");
+                default: syslog(LOG_WARNING, "Cannot understand message type during recon!");
         }
 
        } else {
            //Protocol Exception
-           g_logger.log(Logger_level::WARNING, "Unexpected end of stream");
+           syslog(LOG_WARNING, "Unexpected end of stream");
            throw std::underflow_error("Unexpected end of stream");
        }
    } else {
        // connection was closed
-       g_logger.log(Logger_level::WARNING, "Unexpected end of stream");
+       syslog(LOG_WARNING, "Unexpected end of stream");
        throw std::underflow_error("Unexpected end of stream");
    }
    Error* data = new Error;
@@ -381,7 +362,6 @@ void Connection_Manager::write_message(Buffer &buffer, Message* m, bool wrap){
     Buffer partial_buffer;
     if (wrap)
         partial_buffer.push_back((unsigned char)m->type);
-    g_logger.log(Logger_level::DEBUG, "Preparing to write message type" + std::to_string(m->type));
     switch(m->type){
         case Msg_type::ReconRequestPoly:{
                                             ((ReconRequestPoly*)m)->marshal(partial_buffer);
@@ -434,12 +414,11 @@ void Connection_Manager::write_message(Buffer &buffer, Message* m, bool wrap){
                                      break;
                                       }
         default:
-                                 g_logger.log(Logger_level::DEBUG, "Writing message type " + std::to_string(m->type) + " which have no content...");
+                                 break;
     }
     if (wrap)
         partial_buffer.write_self_len();
     buffer.append(partial_buffer);
-    g_logger.log(Logger_level::DEBUG, "buffer filled with partial buffer");
 }
 
 void Connection_Manager::send_message_direct(Message* m){
@@ -467,8 +446,6 @@ void Connection_Manager::send_peer(Buffer &buf, bool tmp_socket){
         err = send(tmpfd, buf.data(), buf.size(), MSG_NOSIGNAL);
     else
         err = send(sockfd, buf.data(), buf.size(), MSG_NOSIGNAL);
-    g_logger.log(Logger_level::DEBUG, "Writing message of size " + std::to_string(buf.size()));
     if (err < 0)
         throw send_message_exception(); 
-    g_logger.log(Logger_level::DEBUG, "data sent ok");
 }
