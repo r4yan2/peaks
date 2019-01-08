@@ -11,15 +11,16 @@
 #include <Key.h>
 #include <iostream>
 #include "DBStruct.h"
+#include "Config.h"
 #include "utils.h"
 
 namespace DBStruct = DUMP_DBStruct;
 class DUMPIMPORT_DBManager {
 public:
-    DUMPIMPORT_DBManager();
-
+    DUMPIMPORT_DBManager(Dumpimport_DBConfig &settings_);
     ~DUMPIMPORT_DBManager();
 
+    void init_database_connection();
     bool existSignature(const DBStruct::signatures &s);
 
     void write_pubkey_csv(const DBStruct::pubkey &pubkey);
@@ -50,6 +51,7 @@ public:
 
 private:
 
+    Dumpimport_DBConfig settings;
     std::map<unsigned int, std::ofstream> file_list;
     sql::Driver *driver;
     std::shared_ptr<sql::Connection> con;

@@ -73,14 +73,20 @@ class Peer{
         Connection_Manager cn;
         /** hold the ptree reference */
         Ptree tree;
+        /** hold the settings for the peer */
+        Recon_config settings;
         /** hold the list of peers specified in membership file */
         std::vector<peertype> membership;
+        /** Helper object to reach out the certificate importer */
+        ReconImporter di;
+
+        Message_config msg_config;
     public:
         /** 
          * constructor take a ptree on which operate
          * @param new_tree Init with the reference to the curren ptree
          */ 
-        Peer(Ptree &new_tree);
+        Peer(Ptree &new_tree, Recon_config &peer_settings, Connection_config &conn_settings, ReconImporter &di, Message_config &conf);
 
         /** choose random peer partner among the
          * one specified in membership
@@ -155,6 +161,7 @@ class Peer{
  */
 class Recon_manager{
     private:
+        Message_config settings;
 
         /** queue used to keep track of message */
         std::deque<request_entry> request_queue;
@@ -178,7 +185,7 @@ class Recon_manager{
         /** recon manager is initialized with a reference to the current connection manager 
          * @param conn_manager reference to initialized connection manage
          */
-        Recon_manager(Connection_Manager &conn_manager);
+        Recon_manager(Connection_Manager &conn_manager, Message_config &msg_config);
         ~Recon_manager();
 
         /** push value to the bottom queue

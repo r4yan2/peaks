@@ -217,8 +217,8 @@ DROP TABLE IF EXISTS `UserID`;
 CREATE TABLE `UserID` (
   `ownerkeyID` bigint(20) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
-  `name` varchar(750) CHARACTER SET utf8 NOT NULL,
-  `email` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name` varchar(750) NOT NULL,
+  `email` varchar(500) DEFAULT NULL,
   `is_analyze` tinyint(4) DEFAULT NULL,
   `bindingAuthentic` tinyint(4) NOT NULL,
   PRIMARY KEY (`fingerprint`,`name`(200)) USING BTREE,

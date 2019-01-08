@@ -8,6 +8,7 @@
 #include <vector>
 #include "db_key.h"
 #include "utils.h"
+#include "Config.h"
 
 namespace peaks {
 
@@ -33,7 +34,7 @@ struct userID_data{
 
 class DBManager {
 public:
-    DBManager();
+    DBManager(const Cgi_DBConfig &db_settings);
     ~DBManager();
     int searchKey(std::string key, std::istream*& result);
     std::istream* shortIDQuery(const std::string &keyID);

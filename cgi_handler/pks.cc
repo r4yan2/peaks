@@ -380,3 +380,42 @@ string Pks::genEntry(DB_Key *keyInfo) {
                                userID.c_str());
 }
 
+void serve(po::variables_map &vm, po::parsed_options &parsed){
+   po::options_description serve_desc("serve options");
+   std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
+   if (std::find(opts.begin(), opts.end(), "-c") == opts.end()){
+       opts.push_back("-c");
+       opts.push_back(vm["cppcms_config"].as<std::string>());
+   }
+   std::vector<char *> new_argv;
+   std::transform(opts.begin(), opts.end(), std::back_inserter(new_argv), [](const std::string s) -> char* {
+           char *pc = new char[s.size() + 1];
+           std::strcpy(pc, s.c_str());
+           return pc;
+           }
+           );
+
+    Cgi_DBConfig cgi_settings = {
+        vm["db_host"].as<std::string>(),
+        vm["db_user"].as<std::string>(),
+        vm["db_password"].as<std::string>(),
+        vm["db_database"].as<std::string>(),
+    };
+    openlog("peaks", LOG_PID, LOG_USER);
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    syslog(LOG_NOTICE, "peaks server is starting up!");
+    try {
+        cppcms::service srv(opts.size(), &new_argv[0]);
+        srv.applications_pool().mount(cppcms::applications_factory<Pks>(cgi_settings));
+        srv.run();
+    }
+    catch(std::exception const &e) {
+        std::cerr << e.what() << std::endl;
+        syslog(LOG_CRIT, "Error during starting up: %s", e.what());
+    }
+
+    std::cout << "Exiting..." << std::endl;
+    closelog();
+}
+
+

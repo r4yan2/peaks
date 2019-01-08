@@ -5,7 +5,6 @@
 #include <syslog.h>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
-#include "../recon_daemon/Recon_settings.h"
 
 #include "utils.h"
 
@@ -13,35 +12,30 @@ using namespace boost::filesystem;
 using namespace std;
 
 namespace DUMP_Utils{
-    string get_file_name(const unsigned int &i, const thread::id &ID){
+    string get_file_name(const std::string &csv_folder, const unsigned int &i, const thread::id &ID){
         stringstream t_id;
         t_id << ID;
-        return recon_settings.tmp_folder_csv + t_id.str() + FILENAME.at(i);
+        return csv_folder + t_id.str() + FILENAME.at(i);
     }
 
-    int create_folders(){
+    int create_folder(const std::string &folder_name){
         boost::system::error_code returnedError;
 
-		create_directories( recon_settings.tmp_folder_csv, returnedError );
+		create_directories(folder_name, returnedError );
 
         if ( returnedError ){
             return -1;  // did not successfully create directories
         }
         else{
-            create_directories( recon_settings.dump_error_folder, returnedError );
-            if (returnedError){
-                return -1;
-            }else{
-                return 0;
+            return 0;
             } // directories successfully created
         }
-    }
 
-    void put_in_error(const string &f, const unsigned int &i){
+    void put_in_error(const std::string &error_folder, const string &f, const unsigned int &i){
         try{
             std::ofstream error_file;
             std::ifstream actual_file;
-            error_file.open(recon_settings.dump_error_folder + string("Errors") + FILENAME.at(i), ios_base::app);
+            error_file.open(error_folder + string("Errors") + FILENAME.at(i), ios_base::app);
             actual_file.open(f);
 
             error_file.seekp(0, ios_base::end);
@@ -54,18 +48,18 @@ namespace DUMP_Utils{
                 boost::random::uniform_int_distribution<> dist(1000, 10000);
 
                 string rnd_num = to_string(dist(gen));
-                copy_file(f, recon_settings.dump_error_folder + rnd_num + FILENAME.at(i), copy_option::fail_if_exists);
+                copy_file(f, error_folder + rnd_num + FILENAME.at(i), copy_option::fail_if_exists);
             }catch (error_code &e){
                 syslog(LOG_CRIT, "Saving errors during CSV insertion FAILED, data will be lost! - %s", e.message().c_str());
             }
         }
     }
 
-    vector<string> get_files(const unsigned int &i){
+    vector<string> get_files(const std::string &tmp_folder, const unsigned int &i){
         directory_iterator end_itr;
         vector<string> file_list;
 
-        for (directory_iterator itr(recon_settings.tmp_folder_csv); itr != end_itr; ++itr){
+        for (directory_iterator itr(tmp_folder); itr != end_itr; ++itr){
             if (hasEnding(itr->path().string(), FILENAME.at(i))) {
                 string current_file = itr->path().string();
                 file_list.push_back(itr->path().string());
@@ -109,4 +103,19 @@ namespace DUMP_Utils{
         }
     }
 
+    void remove_directory_content(const std::string &foldername)
+    {
+        // These are data types defined in the "dirent" header
+        DIR *theFolder = opendir(foldername.c_str());
+        struct dirent *next_file;
+        char filepath[512];
+    
+        while ( (next_file = readdir(theFolder)) != NULL )
+        {
+            // build the path for each file in the folder
+            sprintf(filepath, "%s/%s", foldername.c_str(), next_file->d_name);
+            remove(filepath);
+        }
+        closedir(theFolder);
+    }
 }

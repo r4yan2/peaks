@@ -13,10 +13,11 @@
 #include <Key.h>
 #include "DBStruct.h"
 #include "Math_Support.h"
+#include "Config.h"
 
 class ANALYZER_DBManager {
 public:
-    ANALYZER_DBManager();
+    ANALYZER_DBManager(Analyzer_DBConfig &settings);
     ~ANALYZER_DBManager();
     void open_pubkey_files();
     void open_signatures_files();
@@ -39,6 +40,8 @@ public:
     void write_analyzed_sign_csv(const ANALYZER_DBStruct::signatures &s);
 
 private:
+    Analyzer_DBConfig settings;
+
     std::map<unsigned int, std::ofstream> file_list;
 
     sql::Driver *driver;

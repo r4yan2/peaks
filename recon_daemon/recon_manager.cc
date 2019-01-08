@@ -1,6 +1,7 @@
 #include "peer.h"
 
-Recon_manager::Recon_manager(Connection_Manager &conn_manager){
+Recon_manager::Recon_manager(Connection_Manager &conn_manager, Message_config &msg_config){
+    settings = msg_config;
     cn = conn_manager;
 }
 
@@ -11,7 +12,7 @@ void Recon_manager::push_bottom(bottom_entry &bottom){
 }
 
 void Recon_manager::prepend_request(request_entry &req){
-    if (request_queue.size() < recon_settings.max_request_queue_len){
+    if (request_queue.size() < settings.max_request_queue_len){
         request_queue.push_front(req);
     }
 }
@@ -56,7 +57,7 @@ bool Recon_manager::is_flushing(){
 bool Recon_manager::done(){
     return ((request_queue.size() == 0) &&
             (bottom_queue.size() == 0) &&
-            (remote_set.size() < recon_settings.max_recover_size));
+            (remote_set.size() < settings.max_recover_size));
 }
 
 bool Recon_manager::bottom_queue_empty(){
@@ -65,7 +66,7 @@ bool Recon_manager::bottom_queue_empty(){
 
 void Recon_manager::send_request(request_entry &request){
     Message* msg;
-    if ((request.node->is_leaf()) || (request.node->get_num_elements() < (int) recon_settings.split_threshold)){
+    if ((request.node->is_leaf()) || (request.node->get_num_elements() < (int) settings.split_threshold)){
         msg = new ReconRequestFull;
         ((ReconRequestFull*) msg)->prefix = request.key;
         ((ReconRequestFull*) msg)->elements = zset(request.node->elements());

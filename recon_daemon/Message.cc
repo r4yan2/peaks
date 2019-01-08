@@ -112,13 +112,17 @@ void Peer_config::unmarshal(Buffer &buf){
      std::string key;
      std::uint32_t val = 0;
      std::string value;
-     std::uint32_t a = buf.read_int(true);
+     std::uint32_t a = buf.read_int();
+     //if (a > settings.max_read_len)
+     //   g_logger.log(Logger_level::WARNING, "Oversized message!");
      for (uint32_t i=0; i<a; i++){
          key = buf.read_string();
          if ((key == "http port") ||
             (key == "bitquantum") ||
             (key == "mbar")) {
-            val = buf.read_int(true);
+            val = buf.read_int();
+                //if (val > settings.max_read_len)
+                //   g_logger.log(Logger_level::WARNING, "Oversized message!");
             if (val != 4) g_logger.log(Logger_level::WARNING, "Invalid len size!");
             val = buf.read_int();
             }

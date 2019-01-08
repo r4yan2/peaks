@@ -41,10 +41,12 @@ class Connection_Manager{
         int sockfd = -1;
         int tmpfd = -1;
         int listenfd = -1;
+        Connection_config settings;
     public:
 
         /** default constructor */
         Connection_Manager();
+        Connection_Manager(Connection_config &conn_settings);
 
         /** init connection as client 
          * with given peer peer */

@@ -22,7 +22,7 @@ namespace Unpacker {
     
         unsigned int nThreads = std::thread::hardware_concurrency() / 2 + 1;
         unsigned int key_per_thread;
-        unsigned int limit = recon_settings.max_unpacker_limit;
+        unsigned int limit = vm["max_unpacker_limit"].as<unsigned int>();
     
         if(vm.count("threads"))
             nThreads = vm["threads"].as<unsigned int>();
@@ -37,13 +37,26 @@ namespace Unpacker {
         else
             key_per_thread = 1 + ((limit - 1)/nThreads); 
      
-    
-        if(UNPACKER_Utils::create_folders() == -1){
+        if(UNPACKER_Utils::create_folders(vm["unpacker_tmp_folder"].as<std::string>()) == -1){
             syslog(LOG_WARNING,  "Unable to create temp folder");
             exit(-1);
         }
     
-        std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>();
+        if (UNPACKER_Utils::create_folders(vm["unpacker_error_folder"].as<std::string>()) == -1){
+            syslog(LOG_WARNING,  "Unable to create temp folder");
+            exit(-1);
+        }
+        Unpacker_DBConfig db_settings = {
+            vm["db_host"].as<std::string>(),
+            vm["db_user"].as<std::string>(),
+            vm["db_password"].as<std::string>(),
+            vm["db_database"].as<std::string>(),
+            vm["unpacker_tmp_folder"].as<std::string>(),
+            vm["unpacker_error_folder"].as<std::string>(),
+        };
+
+        std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>(db_settings);
+        dbm->init_database_connection();
     
         std::vector<UNPACKER_DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
     
@@ -72,7 +85,7 @@ namespace Unpacker {
                     continue;
                 }
             }
-            pool->Add_Job([=] { return Unpacker::unpack_key_th(pks); });
+            pool->Add_Job([=] { return Unpacker::unpack_key_th(dbm, pks); });
         }
     
         pool->Stop_Filling_UP();
@@ -82,12 +95,12 @@ namespace Unpacker {
             th.join();
         }
     
-        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::PUBKEY), UNPACKER_Utils::PUBKEY);
-        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::USER_ATTRIBUTES), UNPACKER_Utils::USER_ATTRIBUTES);
-        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::SIGNATURE), UNPACKER_Utils::SIGNATURE);
-        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::SELF_SIGNATURE), UNPACKER_Utils::SELF_SIGNATURE);
-        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::UNPACKED), UNPACKER_Utils::UNPACKED);
-        dbm->insertCSV(UNPACKER_Utils::get_files(UNPACKER_Utils::UNPACKER_ERRORS), UNPACKER_Utils::UNPACKER_ERRORS);
+        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::PUBKEY), UNPACKER_Utils::PUBKEY);
+        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::USER_ATTRIBUTES), UNPACKER_Utils::USER_ATTRIBUTES);
+        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::SIGNATURE), UNPACKER_Utils::SIGNATURE);
+        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::SELF_SIGNATURE), UNPACKER_Utils::SELF_SIGNATURE);
+        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::UNPACKED), UNPACKER_Utils::UNPACKED);
+        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::UNPACKER_ERRORS), UNPACKER_Utils::UNPACKER_ERRORS);
         dbm->UpdateSignatureIssuingFingerprint(limit);
         dbm->UpdateSignatureIssuingUsername();
         dbm->UpdateIsExpired();
@@ -98,8 +111,7 @@ namespace Unpacker {
         return 0;
     }
 
-    void unpack_key_th(const vector<PublicKey::Ptr> &pks){
-        shared_ptr<UNPACKER_DBManager> dbm(new UNPACKER_DBManager());
+    void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm, const vector<PublicKey::Ptr> &pks){
         dbm->openCSVFiles();
 
         for (const auto &pk : pks) {

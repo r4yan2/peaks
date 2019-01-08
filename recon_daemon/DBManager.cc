@@ -5,16 +5,16 @@
 #include <thread>
 
 #include "DBManager.h"
-#include "Recon_settings.h"
 
 using namespace sql;
 using namespace std;
 // Database connector initialization
-RECON_DBManager::RECON_DBManager() {
+RECON_DBManager::RECON_DBManager(Recon_DBConfig dbsettings) {
+    settings = dbsettings;
     RECON_DBManager::driver = get_driver_instance();
-    RECON_DBManager::con = shared_ptr<Connection>(driver->connect(recon_settings.db_host, recon_settings.db_user, recon_settings.db_password));
+    RECON_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
     // Connect to the MySQL keys database
-    con->setSchema(recon_settings.db_database);
+    con->setSchema(settings.db_database);
 
     // Create prepared Statements
     
@@ -155,12 +155,12 @@ void RECON_DBManager::write_ptree_csv(const RECON_DBStruct::node &pnode) {
 
 void RECON_DBManager::openCSVFiles(){
     // Open file
-    csv_file = ofstream(recon_settings.recon_tmp_folder + "ptree.csv");
+    csv_file = ofstream(settings.tmp_folder + "ptree.csv");
 }
 
 void RECON_DBManager::insertCSV(){
 	try{
-    	shared_ptr<Statement>(con->createStatement())->execute(insert_ptree_stmt.first + recon_settings.recon_tmp_folder + "ptree.csv" + insert_ptree_stmt.second);
+    	shared_ptr<Statement>(con->createStatement())->execute(insert_ptree_stmt.first + settings.tmp_folder + "ptree.csv" + insert_ptree_stmt.second);
     }catch (exception &e){
         syslog(LOG_CRIT, "insert_ptree_stmt FAILED, the key will not have the ptree in the database! - %s", e.what());
 	}

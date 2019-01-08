@@ -10,12 +10,13 @@
 #include "logger.h"
 #include <iostream>
 #include "DBStruct.h"
+#include "Recon_settings.h"
 #include <fstream>
 
 
 class RECON_DBManager {
 public:
-    RECON_DBManager();
+    RECON_DBManager(Recon_DBConfig settings);
     ~RECON_DBManager();
 
     /** recover a node from the database
@@ -66,6 +67,7 @@ public:
     
 private:
 
+    Recon_DBConfig settings;
 	std::ofstream csv_file;
     sql::Driver *driver;
     std::shared_ptr<sql::Connection> con;

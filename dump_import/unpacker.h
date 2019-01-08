@@ -15,9 +15,9 @@
 #include <common/errors.h>
 #include <thread>
 #include <cmath>
-#include <regex.h>
+#include <boost/regex.hpp>
+#include <regex>
 #include "Key_Tools.h"
-#include "../recon_daemon/Recon_settings.h"
 #include <boost/program_options.hpp>
 #include <stdio.h>
 #include <dirent.h>
@@ -28,8 +28,8 @@ using namespace OpenPGP;
 namespace Dumpimport {
 
     void dump_import(po::variables_map &vm);
-    void unpack_string_th(const std::vector<std::string> keys);
-    void unpack_dump_th(const std::vector<std::string> &files, const bool &fast);
+    void unpack_string_th(std::shared_ptr<DUMPIMPORT_DBManager> &dbm, const std::vector<std::string> keys);
+    void unpack_dump_th(std::shared_ptr<DUMPIMPORT_DBManager> &dbm, const std::vector<std::string> &files, const bool &fast);
     void unpack_dump(std::ifstream &key_file, const std::shared_ptr<DUMPIMPORT_DBManager> &dbm);
     void unpack_string(std::string key, const std::shared_ptr<DUMPIMPORT_DBManager> &dbm);
     void fast_unpack(Key::Ptr &key, const std::shared_ptr<DUMPIMPORT_DBManager> &dbm);

@@ -11,12 +11,22 @@
 #include <iostream>
 #include "DBStruct.h"
 #include "utils.h"
+#include "Config.h"
 
 class UNPACKER_DBManager {
+    static std::pair<std::string, std::string> insert_pubkey_stmt, 
+        insert_signature_stmt, 
+        insert_self_signature_stmt, 
+        insert_userAtt_stmt, 
+        insert_unpackerErrors_stmt, 
+        insert_unpacked_stmt;
+
+
 public:
-    UNPACKER_DBManager();
+    UNPACKER_DBManager(Unpacker_DBConfig &settings);
     ~UNPACKER_DBManager();
 
+    void init_database_connection();
     void openCSVFiles();
 
     std::vector<UNPACKER_DBStruct::gpg_keyserver_data> get_certificates(const unsigned long &l);
@@ -42,16 +52,24 @@ public:
     void UpdateSignatureIssuingUsername();
 
 private:
+    Unpacker_DBConfig settings;
+
     std::map<unsigned int, std::ofstream> file_list;
 
     sql::Driver *driver;
+
     std::shared_ptr<sql::Connection> con;
-    std::shared_ptr<sql::PreparedStatement> get_analyzable_cert_stmt, get_signature_by_index, set_key_not_analyzable,
-            insert_error_comments, insert_issuing_fingerprint;
+
     std::shared_ptr<sql::ResultSet> result;
 
-    std::pair<std::string, std::string> insert_pubkey_stmt, insert_signature_stmt, insert_self_signature_stmt,
-            insert_userAtt_stmt, insert_unpackerErrors_stmt, insert_unpacked_stmt;
+    std::shared_ptr<sql::PreparedStatement> get_analyzable_cert_stmt, 
+        get_signature_by_index, 
+        set_key_not_analyzable,
+        insert_error_comments,
+        insert_issuing_fingerprint;
+
+
+
 
 };
 

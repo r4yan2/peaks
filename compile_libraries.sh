@@ -10,6 +10,7 @@ get="fetch";
 ! __exists fetch && get="curl -OL";
 
 starting_path=$PWD;
+cpus=$((`cat /proc/cpuinfo | grep processor | wc -l` - 1));
 
 if [ ! -d lib/gmp ];
 then
@@ -68,8 +69,8 @@ then
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
     fi
-    make -j4
-    make check -j4
+    make -j$cpus
+    make check -j$cpus
     make install
     
     cd $starting_path
@@ -121,8 +122,8 @@ then
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
     fi
-    make -j4
-    make check -j4
+    make -j$cpus
+    make check -j$cpus
     make install
 
     cd $starting_path
@@ -161,10 +162,9 @@ then
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
     fi
-    make -j4
+    make -j$cpus
     #make test -j4
     make install
-    export PATH=$PATH:$starting_path/lib/cppcms/bin
 
     cd $starting_path
 
@@ -180,7 +180,7 @@ then
     echo 'Compiling OpenPGP'
 
     cd OpenPGP
-    make -j4 gpg-compatible
+    make -j$cpus gpg-compatible
     
     cd $starting_path
 fi

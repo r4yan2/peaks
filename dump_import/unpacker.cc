@@ -5,8 +5,7 @@ using namespace OpenPGP;
 
 namespace Dumpimport {
 
-    void unpack_string_th(const vector<string> keys){
-        shared_ptr<DUMPIMPORT_DBManager> dbm(new DUMPIMPORT_DBManager());
+    void unpack_string_th(std::shared_ptr<DUMPIMPORT_DBManager> &dbm, const vector<string> keys){
         dbm->openCSVFiles();
         int i=0;
         for (auto key_str : keys){
@@ -14,7 +13,7 @@ namespace Dumpimport {
             try{
                 Key::Ptr key;
                 key = std::make_shared<Key>(key_str);
-                unpack(key, dbm);
+                fast_unpack(key, dbm);
             }catch (exception &e){
                 syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", e.what());
                 cerr << "Key not unpacked due to not meaningfulness (" << e.what() << ")." << endl;
@@ -28,8 +27,7 @@ namespace Dumpimport {
     }
 
 
-    void unpack_dump_th(const vector<std::string> &files, const bool &fast){
-        shared_ptr<DUMPIMPORT_DBManager> dbm(new DUMPIMPORT_DBManager());
+    void unpack_dump_th(std::shared_ptr<DUMPIMPORT_DBManager> &dbm, const vector<std::string> &files, const bool &fast){
         dbm->openCSVFiles();
 
         for (const auto &f : files) {
@@ -613,6 +611,18 @@ namespace Dumpimport {
 
     DBStruct::userID get_userID_data(const Packet::Tag::Ptr &user_pkt, const Packet::Key::Ptr &key) {
         Packet::Tag13::Ptr t13 = dynamic_pointer_cast<Packet::Tag13>(user_pkt);
+        boost::regex pattern("[\\w_.+-]+@[a-zA-Z0-9.-]+[a-zA-Z]+");
+        boost::smatch result;
+        // get Email
+        string user = t13->get_contents();
+        string email = "";
+
+        /*
+        if (user.size() < 5000 && boost::regex_search(user, result, pattern)){
+            email = result[0];
+        }
+        */
+        /*
         std::regex mail_regex(
                 "<(?:(?:[^<>()\\[\\].,;:\\s@\"]+(?:\\.[^<>()\\[\\].,;:\\s@\"]+)*)|\".+\")@(?:(?:[^<>()‌​\\[\\].,;:\\s@\"]+\\.)+[^<>()\\[\\].,;:\\s@\"]{2,})>");
         // get Email
@@ -622,7 +632,8 @@ namespace Dumpimport {
 
         if (user.size() < 5000 && std::regex_search(user.c_str(), match, mail_regex)){
             email = string(match[0].first + 1, match[0].first + strlen(match[0].first) - 1);
-        }
+		}
+        */
         return DBStruct::userID {
                 .ownerkeyID = mpitodec(rawtompi(key->get_keyid())),
                 .fingerprint = key->get_fingerprint(),
@@ -757,7 +768,8 @@ namespace Dumpimport {
         gk->version = k->version();
         gk->ID = mpitodec(rawtompi(k->keyid()));
         gk->certificate = k->raw();
-        gk->hash = hexlify(Hash::use(Hash::ID::MD5, concat(get_ordered_packet(k->get_packets()))), true);
+        std::string concatenation = concat(get_ordered_packet(k->get_packets()));
+        gk->hash = hexlify(Hash::use(Hash::ID::MD5, concatenation), true);
     }
 
     PGP::Packets get_ordered_packet(PGP::Packets packet_list){
@@ -780,6 +792,7 @@ namespace Dumpimport {
             out += unhexlify(makehex(p->raw().size(), 8));
             out += p->raw();
         }
+
         return out;
     }
 

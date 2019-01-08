@@ -12,6 +12,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 
 set(OpenPGP_DIRECTORY ${CMAKE_SOURCE_DIR}/OpenPGP)
 set(NTL_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/ntl)
+set(BOOST_ROOT ${CMAKE_SOURCE_DIR}/lib/boost)
 set(DUMP_IMPORT_DIRECTORY ${CMAKE_SOURCE_DIR}/dump_import)
 set(CGI_HANDLER_DIRECTORY ${CMAKE_SOURCE_DIR}/cgi_handler)
 set(UNPACKER_DIRECTORY ${CMAKE_SOURCE_DIR}/unpacker)
@@ -20,7 +21,7 @@ set(GMP_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/gmp)
 
 include_directories(${OpenPGP_DIRECTORY})
 include_directories(${DUMP_IMPORT_DIRECTORY})
-include_directories(${CMAKE_SOURCE_DIR}/boost_1_63_0)
+include_directories(${CMAKE_SOURCE_DIR}/lib/boost/include)
 include_directories(${GMP_DIRECTORY}/include)
 include_directories(${NTL_DIRECTORY}/include)
 include_directories(${CPPCMS_DIRECTORY}/include)
@@ -33,7 +34,10 @@ add_subdirectory(recon_daemon)
 add_subdirectory(unpacker)
 add_subdirectory(analyzer)
 
-find_package(Boost REQUIRED COMPONENTS program_options)
+SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} "/home/ray/Projects/peaks/lib/boost/include")
+SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "/home/ray/Projects/peaks/lib/boost/lib")
+
+find_package(Boost REQUIRED program_options)
 
 add_executable(peaks peaks.cc)
 

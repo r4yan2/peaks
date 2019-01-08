@@ -16,7 +16,6 @@ set(OpenPGP_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../OpenPGP)
 include_directories(${OpenPGP_DIRECTORY})
 link_directories(${OpenPGP_DIRECTORY})
 
-find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 
 target_link_libraries(unpacker ${OpenPGP_DIRECTORY}/libOpenPGP.a)
 target_link_libraries(unpacker ${Boost_LIBRARIES})

@@ -1,9 +1,12 @@
 #include "peer.h"
 
-Peer::Peer(Ptree &new_tree){
+Peer::Peer(Ptree &new_tree, Recon_config &peer_settings, Connection_config &conn_settings, ReconImporter &di_, Message_config &conf){
+    msg_config = conf;
+    di = di_;
     tree = new_tree;
-    cn = Connection_Manager();
-    std::ifstream f(recon_settings.membership_config);
+    settings = peer_settings;
+    cn = Connection_Manager(conn_settings);
+    std::ifstream f(settings.membership_config);
     std::string addr;
     int port;
     while(f >> addr >> port){
@@ -51,7 +54,7 @@ void Peer::serve(){
     
     g_logger.log(Logger_level::DEBUG, "starting gossip server");
 
-    cn.setup_listener(recon_settings.peaks_recon_port);
+    cn.setup_listener(settings.peaks_recon_port);
     std::vector<std::string> addresses;
     std::transform(membership.begin(), membership.end(), std::back_inserter(addresses), (const std::string& (*)(const peertype&))std::get<0>);
 
@@ -87,7 +90,7 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
         g_logger.log(Logger_level::DEBUG, "No elements to recover!");
         return;
     }
-    int c_size = recon_settings.request_chunk_size;
+    int c_size = settings.request_chunk_size;
     g_logger.log(Logger_level::DEBUG, "Will recover: " + std::to_string(elements_size));
     std::vector<std::string> keys;
     if (c_size > elements_size){
@@ -106,12 +109,12 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
         }
     }
     g_logger.log(Logger_level::DEBUG, "fetched " + std::to_string(keys.size()) + " keys from peer!");
-    if (recon_settings.dry_run){
+    if (settings.dry_run){
         g_logger.log(Logger_level::WARNING, "DRY RUN, exiting without inserting certificates");
         return;
     }
-    std::vector<std::string> hashes = dump_import(keys);
-    if (hashes.size() != elements.size() and not recon_settings.ignore_known_bug){
+    std::vector<std::string> hashes = di.dump_import(keys);
+    if (hashes.size() != elements.size() and not settings.ignore_known_bug){
         g_logger.log(Logger_level::WARNING, "number of recovered keys does not match number of hashes recovered! This is caused by a known bug in peaks, sorry...");
     }
     /*
@@ -139,7 +142,7 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
     buffer.write_int(chunk.size());
     for (auto zp: chunk){
         //hashquery are 16 byte long
-        int hashquery_len = recon_settings.hashquery_len;
+        int hashquery_len = settings.hashquery_len;
         buffer.write_int(hashquery_len);
         buffer.write_zz_p(zp, hashquery_len);
     }
@@ -186,7 +189,7 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
 }
 
 void Peer::interact_with_client(peertype &remote_peer){
-    Recon_manager recon = Recon_manager(cn);
+    Recon_manager recon = Recon_manager(cn, msg_config);
     pnode_ptr root = tree.get_root();
     bitset newset(0);
     request_entry req = request_entry{.node = root, .key = newset};
@@ -219,7 +222,7 @@ void Peer::interact_with_client(peertype &remote_peer){
                             recon.handle_reply(msg, bottom.request);
                         } catch(std::invalid_argument &e){
                             g_logger.log(Logger_level::DEBUG, "no message on async operation");
-                            if((recon.bottom_queue_size() > recon_settings.max_outstanding_recon_req) || 
+                            if((recon.bottom_queue_size() > settings.max_outstanding_recon_req) || 
                                 (recon.request_queue_size() == 0)){
                                 if (recon.is_flushing()){
                                     recon.pop_bottom();
@@ -263,7 +266,7 @@ void Peer::gossip(){
             cn.close_connection();
         }
         g_logger.log(Logger_level::DEBUG, "going to sleep...");
-        std::this_thread::sleep_for(std::chrono::seconds{recon_settings.gossip_interval});
+        std::this_thread::sleep_for(std::chrono::seconds{settings.gossip_interval});
         g_logger.log(Logger_level::DEBUG, "...resuming gossip");
     }
 }
@@ -333,7 +336,7 @@ void Peer::client_recon(const peertype &peer){
             cn.send_message(error_msg);
             return;
         } 
-        else if ((comm.status == Communication_status::DONE) || (n >= recon_settings.max_recover_size)){
+        else if ((comm.status == Communication_status::DONE) || (n >= settings.max_recover_size)){
                 fetch_elements(peer, response.elements());
                 cn.close_connection();
                 return;
@@ -368,7 +371,7 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
         g_logger.log(Logger_level::WARNING, "Could not interpolate because size_diff > size of values!");
         throw solver_exception();
         }
-    int mbar = recon_settings.mbar;
+    int mbar = tree.get_settings().mbar;
     if ((mbar + size_diff)%2 != 0) mbar--;
     int ma = (mbar + size_diff)/2;
     int mb = (mbar - size_diff)/2;
@@ -529,7 +532,7 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     std::vector<NTL::ZZ_p> local_elements, remote_elements;
 
     try{
-        std::tie(local_elements, remote_elements) = solve(r_samples, r_size, l_samples, l_size, recon_settings.points);
+        std::tie(local_elements, remote_elements) = solve(r_samples, r_size, l_samples, l_size, tree.get_settings().points);
         g_logger.log(Logger_level::DEBUG, "solved interpolation succesfully!");
     }
     //catch (solver_exception& e){
@@ -538,7 +541,7 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
         if ((strncmp(e.what(),"low_mbar",8)) && 
                     (
                      (node->is_leaf()) ||
-                     (node->get_num_elements() < recon_settings.ptree_thresh_mult * recon_settings.mbar)
+                     (node->get_num_elements() < tree.get_settings().ptree_thresh_mult * tree.get_settings().mbar)
                      )
             ){
                 g_logger.log(Logger_level::DEBUG, "Preparing to send FullElements request for " + node->get_node_key());

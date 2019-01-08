@@ -7,15 +7,17 @@
 #include <mutex>
 #include <functional>
 #include <thread>
-#include "../recon_daemon/Recon_settings.h"
+#include "Config.h"
 
 class fastGCD{
 public:
-    fastGCD(std::vector<NTL::ZZ> INPUT_FN, unsigned int GCD_THREADS);
+    fastGCD(std::vector<NTL::ZZ> INPUT_FN, unsigned int GCD_THREADS, std::string &analyzer_gcd_folder);
 
     std::vector<std::string> compute();
 
 private:
+    std::string gcd_folder;
+
     const std::vector<NTL::ZZ> INPUT_FN;
     const std::string OUTPUT_FN = "output.mpz";
     const unsigned int GCD_THREADS = std::thread::hardware_concurrency() / 2;

@@ -11,6 +11,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -Werror")
 
 set(SOURCE_FILES dump_import.cc DBManager.cc Thread_Pool.cc unpacker.cc DBStruct.h utils.cc Key_Tools.cc)
 add_library(dump_import ${SOURCE_FILES})
+find_package(Boost REQUIRED system filesystem regex)
 
 target_link_libraries(dump_import ${OpenPGP_DIRECTORY}/libOpenPGP.a)
 target_link_libraries(dump_import gmp)

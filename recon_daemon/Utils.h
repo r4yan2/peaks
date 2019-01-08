@@ -21,9 +21,6 @@ std::string marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements);
 /** unmarshal NTL std::vector coming from a database query */
 std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(const std::string &blob);
 
-/** calculate Zpoints for the current number of samples */
-std::vector<NTL::ZZ_p> Zpoints(int num_samples);
-
 /** convert a number in finite field (ZZ_p) into a bitstring representation */
 //boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
 
@@ -55,7 +52,7 @@ T pop_front(std::vector<T>& vec)
     return a;
 }
 
-int create_folders();
+int create_folders(const std::string &folder_name);
 
 }
 

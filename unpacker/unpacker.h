@@ -7,7 +7,6 @@
 #include "DBManager.h"
 #include "DBStruct.h"
 #include <boost/program_options.hpp>
-#include "../recon_daemon/Recon_settings.h"
 #include <functional>
 #include <Misc/radix64.h>
 #include <syslog.h>
@@ -24,7 +23,7 @@ namespace po = boost::program_options;
 namespace Unpacker {
 
 	int unpacker(po::variables_map &vm);
-    void unpack_key_th(const std::vector<OpenPGP::PublicKey::Ptr> &pks);
+    void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm, const std::vector<OpenPGP::PublicKey::Ptr> &pks);
     void unpack_key(const OpenPGP::PublicKey::Ptr &key, const std::shared_ptr<UNPACKER_DBManager> &dbm);
     UNPACKER_DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey);
     UNPACKER_DBStruct::pubkey get_publicKey_data(const OpenPGP::Packet::Tag::Ptr &p, const OpenPGP::Packet::Key::Ptr &priKey);

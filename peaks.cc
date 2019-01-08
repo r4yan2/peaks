@@ -1,24 +1,19 @@
-#include "cgi_handler/pks.h"
-#include "recon_daemon/logger.h"
-#include "recon_daemon/Recon_settings.h"
-#include "recon_daemon/Utils.h"
-#include "recon_daemon/DBManager.h"
-#include "recon_daemon/peer.h"
-#include "recon_daemon/pTreeDB.h"
 #include <fstream>
 #include <string>
-#include <NTL/ZZ_p.h>
 #include <iostream>
 #include <boost/program_options.hpp>
-
+#include <exception>
 #include <syslog.h>
 #include <cstring>
+#include <thread>
 
+#include "cgi_handler/pks.h"
+#include "recon_daemon/recon_daemon.h"
 #include "unpacker/unpacker.h"
 #include "dump_import/dump_import.h"
 #include "analyzer/analyzer.h"
-/** declaring global recon_settings, which will hold the settings for peaks */
-Configtype recon_settings;
+
+/** convenient renaming for program_options, totally optional */
 namespace po = boost::program_options;
 
 /** help function shows up the help message when command line is incorrect */
@@ -29,15 +24,6 @@ void help();
  * @param vm variables_map of boost::program_options, because command line by default overrides config file
  */
 void parse_config(std::string filename, po::variables_map &vm);
-
-/** peaks serve starter */
-void serve(int argc, char* argv[]);
-
-/** peaks build starter */
-void build(po::variables_map &vm);
-
-/** peaks recon starter */
-void recon(po::variables_map vm);
 
 /** \mainpage Peaks Keyserver Documentation
  *
@@ -61,7 +47,7 @@ int main(int argc, char* argv[]){
         ("help,h", "Print this help message")
         ("debug,d", "Turn on debug output")
         ("log-to-file,f", po::value<std::string>()->default_value(""), "Redirect log to the specified file")
-        ("config, c", po::value<std::string>()->default_value("./peaks_config"), "Specify path of the config file (Default is in the same directory of peaks executable)")
+        ("config, c", po::value<std::string>(), "Specify path of the config file (Default is in the same directory of peaks executable)")
         ("command", po::value<std::string>()->required(), "command to execute")
         ("subargs", po::value<std::vector<std::string> >(), "Arguments for command");
 
@@ -79,28 +65,33 @@ int main(int argc, char* argv[]){
 
         std::string cmd = vm["command"].as<std::string>();
 
-        std::string filename = "peaks_config";
-        parse_config(filename, vm);
-        g_logger.init(vm.count("debug"), vm["log-to-file"].as<std::string>());
+
+        std::vector<std::string> filenames;
+        filenames.push_back("peaks_config");
+        filenames.push_back("/var/lib/peaks/peaks_config");
+        if (vm.count("config"))
+            filenames.insert(filenames.begin(), vm["config"].as<std::string>());
+
+        bool parsed_config = false;
+        for (auto filename: filenames){
+            try{
+                parse_config(filename, vm);
+                parsed_config = true;
+                break;
+            }
+            catch(std::runtime_error& e){
+                continue;
+            }
+        }
+
+        if (!(parsed_config))
+            exit(0);
         
         if (cmd == "serve"){
-            po::options_description serve_desc("serve options");
-            std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-            if (std::find(opts.begin(), opts.end(), "-c") == opts.end()){
-                opts.push_back("-c");
-                opts.push_back(recon_settings.cppcms_config);
-            }
-            std::vector<char *> new_argv;
-            std::transform(opts.begin(), opts.end(), std::back_inserter(new_argv), [](const std::string s) -> char* {
-                    char *pc = new char[s.size() + 1];
-                    std::strcpy(pc, s.c_str());
-                    return pc;
-                    }
-                    );
-            serve(opts.size(), &new_argv[0]);
+            serve(vm, parsed);
 	    }
         else if (cmd == "build"){
-            po::options_description build_desc("build options");
+            //po::options_description build_desc("build options");
             build(vm);
             }
         else if (cmd == "import"){
@@ -118,7 +109,8 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(import_desc).run(), vm);
-            import(vm);
+            Importer importer = Importer();
+            importer.import(vm);
             }
         else if (cmd == "unpack"){
             po::options_description unpack_desc("unpack options");
@@ -132,7 +124,7 @@ int main(int argc, char* argv[]){
             po::store(po::command_line_parser(opts).options(unpack_desc).run(), vm);
 			while(true){
             	Unpacker::unpacker(vm);
-        		std::this_thread::sleep_for(std::chrono::seconds{recon_settings.gossip_interval});
+        		std::this_thread::sleep_for(std::chrono::seconds{vm["gossip_interval"].as<int>()});
 			}
         }
         else if (cmd == "analyze"){
@@ -146,7 +138,7 @@ int main(int argc, char* argv[]){
             po::store(po::command_line_parser(opts).options(analyzer_desc).run(), vm);
 			while(true){
             	analyzer(vm);
-        		std::this_thread::sleep_for(std::chrono::seconds{recon_settings.gossip_interval});
+        		std::this_thread::sleep_for(std::chrono::seconds{vm["gossip_interval"].as<int>()});
 			}
 
         }
@@ -159,7 +151,6 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(recon_desc).run(), vm);	
-            recon_settings.dry_run = vm.count("dryrun") >= 1;
             recon(vm);
             }
         else{
@@ -242,198 +233,66 @@ void help(){
 }
 
 void parse_config(std::string filename, po::variables_map &vm){
+    std::cout << "searching config file " << filename << std::endl;
     std::ifstream cFile (filename);
     if (cFile.is_open())
     {
-        std::string line;
-        while(getline(cFile, line)){
-            line.erase(remove_if(line.begin(), line.end(), isspace),
-                                 line.end());
-            if(line[0] == '#' || line.empty())
-                continue;
-            auto delimiterPos = line.find("=");
-            auto name = line.substr(0, delimiterPos);
-            auto value = line.substr(delimiterPos + 1);
-            if (name == "mbar")
-                recon_settings.mbar = std::stoi(value);
-            else if (name == "bq")
-                recon_settings.bq = std::stoi(value);
-            else if (name == "max_ptree_nodes")
-                recon_settings.max_ptree_nodes = std::stoi(value);
-            else if (name == "ptree_thresh_mult")
-                recon_settings.ptree_thresh_mult = std::stoi(value);
-            else if (name == "P_SKS_STRING")
-                recon_settings.P_SKS_STRING = value;
-            else if (name == "sks_zp_bytes")
-                recon_settings.sks_zp_bytes = std::stoi(value);
-            else if (name == "hashquery_len")
-                recon_settings.hashquery_len = std::stoi(value);
-            else if (name == "reconciliation_timeout")
-                recon_settings.reconciliation_timeout = std::stoi(value);
-            else if (name == "peaks_version")
-                recon_settings.peaks_version = value;
-            else if (name == "peaks_recon_port")
-                recon_settings.peaks_recon_port = std::stoi(value);
-            else if (name == "peaks_http_port")
-                recon_settings.peaks_http_port = std::stoi(value);
-            else if (name == "peaks_filters")
-                recon_settings.peaks_filters = value;
-            else if (name == "name")
-                recon_settings.name = value;
-            else if (name == "gossip_interval")
-                recon_settings.gossip_interval = std::stoi(value);
-            else if (name == "max_read_len_shift")
-                recon_settings.max_read_len_shift = std::stoi(value);
-            else if (name == "max_recover_size")
-                recon_settings.max_recover_size = std::stoi(value);
-            else if (name == "default_timeout")
-                recon_settings.default_timeout = std::stoi(value);
-            else if (name == "max_request_queue_len")
-                recon_settings.max_request_queue_len = std::stoi(value);
-            else if (name == "request_chunk_size")
-                recon_settings.request_chunk_size = std::stoi(value);
-            else if (name == "max_outstanding_recon_req")
-                recon_settings.max_outstanding_recon_req = std::stoi(value);
-            else if (name == "sks_compliant")
-                recon_settings.sks_compliant = std::stoi(value);
-            else if (name == "sks_bitstring")
-                recon_settings.sks_bitstring = std::stoi(value);
-            else if (name == "async_timeout_sec")
-                recon_settings.async_timeout_sec = std::stoi(value);
-            else if (name == "async_timeout_usec")
-                recon_settings.async_timeout_usec = std::stoi(value);
-            else if (name == "ignore_known_bug")
-                recon_settings.ignore_known_bug = std::stoi(value) >= 1;
-
-            else if (name == "db_host")
-                recon_settings.db_host = value;
-            else if (name == "db_database")
-                recon_settings.db_database = value;
-            else if (name == "db_user")
-                recon_settings.db_user = value;
-            else if (name == "db_password")
-                recon_settings.db_password = value;
-
-            else if (name == "membership_config")
-                recon_settings.membership_config = value;
-            else if (name == "cppcms_config")
-                recon_settings.cppcms_config = value;
-
-            else if (name == "default_dump_path")
-                recon_settings.default_dump_path = value;
-            else if (name == "tmp_folder_csv")
-                recon_settings.tmp_folder_csv = value;
-
-            else if (name == "max_unpacker_limit")
-                recon_settings.max_unpacker_limit = std::stoi(value);
-            else if (name == "analyzer_tmp_folder")
-                recon_settings.analyzer_tmp_folder = value;
-            else if (name == "analyzer_error_folder")
-                recon_settings.analyzer_error_folder = value;
-            else if (name == "unpacker_tmp_folder")
-                recon_settings.unpacker_tmp_folder = value;
-            else if (name == "recon_tmp_folder")
-                recon_settings.recon_tmp_folder = value;
-            else if (name == "unpacker_error_folder")
-                recon_settings.unpacker_error_folder = value;
-            else if (name == "dump_error_folder")
-                recon_settings.dump_error_folder = value;
-            else if (name == "tmp_folder_gcd")
-                recon_settings.tmp_folder_gcd = value;
-        }
-        recon_settings.num_samples = recon_settings.mbar + 1;
-        recon_settings.split_threshold = recon_settings.ptree_thresh_mult * recon_settings.mbar;
-        recon_settings.join_threshold = recon_settings.split_threshold / 2;
-        recon_settings.max_read_len = 1 << recon_settings.max_read_len_shift;
-        NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(recon_settings.P_SKS_STRING.c_str()));
-        recon_settings.points = RECON_Utils::Zpoints(recon_settings.num_samples);
-        recon_settings.debug = vm.count("debug") >= 1;
+        std::cout << "config file found!" << std::endl;
+        po::options_description config("Configuration");
+        config.add_options()
+            ("mbar", po::value<int>())
+            ("bq", po::value<int>())
+            ("max_ptree_nodes", po::value<int>())
+            ("ptree_thresh_mult", po::value<int>())
+            ("P_SKS_STRING", po::value<std::string>())
+            ("reconciliation_timeout", po::value<int>())
+            ("peaks_version", po::value<std::string>())
+            ("peaks_recon_port", po::value<int>())
+            ("peaks_http_port", po::value<int>())
+            ("peaks_filters", po::value<std::string>())
+            ("name", po::value<std::string>())
+            ("gossip_interval", po::value<int>())
+            ("max_read_len_shift", po::value<int>())
+            ("max_recover_size", po::value<int>())
+            ("default_timeout", po::value<int>())
+            ("max_request_queue_len", po::value<int>())
+            ("request_chunk_size", po::value<int>())
+            ("max_outstanding_recon_req", po::value<int>())
+            ("sks_compliant", po::value<int>())
+            ("sks_bitstring", po::value<int>())
+            ("async_timeout_sec", po::value<int>())
+            ("async_timeout_usec", po::value<int>())
+            ("ignore_known_bug", po::value<bool>())
+            ("unpack_on_import", po::value<bool>())
+            ("db_host", po::value<std::string>())
+            ("db_database", po::value<std::string>())
+            ("db_password", po::value<std::string>())
+            ("membership_config", po::value<std::string>())
+            ("cppcms_config", po::value<std::string>())
+            ("default_dump_path", po::value<std::string>())
+            ("max_unpacker_limit", po::value<int>())
+            ("analyzer_tmp_folder", po::value<std::string>())
+            ("analyzer_error_folder", po::value<std::string>())
+            ("analyzer_gcd_folder", po::value<std::string>())
+            ("unpacker_tmp_folder", po::value<std::string>())
+            ("unpacker_error_folder", po::value<std::string>())
+            ("recon_tmp_folder", po::value<std::string>())
+            ("dumpimport_tmp_folder", po::value<std::string>())
+            ("dumpimport_error_folder", po::value<std::string>())
+            ;
+        po::store(po::parse_config_file(cFile, config, false), vm);
+        vm.insert(std::make_pair("sks_zp_bytes", po::variable_value(17, false)));
+        vm.insert(std::make_pair("hashquery_len", po::variable_value(16, false)));
+        vm.insert(std::make_pair("num_samples", po::variable_value(vm["mbar"].as<int>() + 1, false)));
+        vm.insert(std::make_pair("split_threshold", po::variable_value(vm["ptree_thresh_mult"].as<int>() * vm["mbar"].as<int>(), false)));
+        vm.insert(std::make_pair("join_threshold", po::variable_value(vm["split_threshold"].as<int>() / 2, false)));
+        vm.insert(std::make_pair("max_read_len", po::variable_value(1 << vm["max_read_len_shift"].as<int>(), false)));
+        vm.insert(std::make_pair("points", po::variable_value(Zpoints(vm["num_samples"].as<int>()), false)));
 
     }
     else {
-        std::cerr << "Couldn't open config file for reading.\n";
-        exit(0);
+        throw std::runtime_error("Couldn't open config file for reading");
     }
-}
-
-//PEAKS_PTREE_BUILDER
-void build(po::variables_map &vm){
-    
-    std::cout << "Starting ptree builder" << std::endl;
-    if (RECON_Utils::create_folders() != 0){
-        std::cout << "Unable to create temporary directories!Exiting..." << std::endl;
-        exit(1);
-    }
-    std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>();
-    g_logger.log(Logger_level::DEBUG, "created empty ptree");
-    int entries;
-    std::vector<std::string> hashes;
-    hashes = dbm->get_all_hash();
-    entries = hashes.size();
-    if (entries == 0){
-        std::cout << "DB is empty! Aborting..." << std::endl;
-        exit(0);
-    }
-    MemTree tree(dbm);
-    int progress = 0;
-    for (auto hash : hashes){
-        tree.insert(hash);
-        progress += 1;
-        if (progress%1000 == 0){
-            printf ("\rProgress: %3d%%", (progress*100)/entries);
-            fflush(stdout);
-        }
-    }
-    g_logger.log(Logger_level::DEBUG, "fetched hashes from DB");
-
-    std::cout << std::endl;
-    std::cout << "Writing resulting ptree to DB!" << std::endl;
-    dbm->lockTables();
-    tree.commit_memtree();
-    dbm->unlockTables();
-    remove_directory_content(recon_settings.recon_tmp_folder);
-    std::cout << "Inserted " << entries << " entry!" << std::endl; 
-    exit(0);
-}
-
-//PEAKS_RECON_DAEMON
-void recon(po::variables_map vm){
-
-    std::cout << "Starting recon_daemon" << std::endl;
-    const std::vector<NTL::ZZ_p> points = RECON_Utils::Zpoints(recon_settings.num_samples);
-    std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(); 
-    Ptree tree(dbm);
-    if (tree.create()){
-        std::cout << "pTree appears to be empty...Exiting for your server satefy.\nIf you know what you're doing restart peaks to continue, this is a one-time check" << std::endl;
-        exit(0);
-    }
-    Peer peer = Peer(tree);
-    if (vm.count("server-only"))
-        peer.start_server();
-    else if (vm.count("client-only"))
-        peer.start_client();
-    else
-        peer.start();
-    exit(0);
-}
-
-//PEAKS_CGI_HANDLER
-void serve(int argc, char* argv[]){
-    openlog("peaks", LOG_PID, LOG_USER);
-    setlogmask (LOG_UPTO (LOG_NOTICE));
-    syslog(LOG_NOTICE, "peaks server is starting up!");
-    try {
-        cppcms::service srv(argc, argv);
-        srv.applications_pool().mount(cppcms::applications_factory<peaks::Pks>());
-        srv.run();
-    }
-    catch(std::exception const &e) {
-        std::cerr << e.what() << std::endl;
-        syslog(LOG_CRIT, "Error during starting up: %s", e.what());
-    }
-
-    std::cout << "Exiting..." << std::endl;
-    closelog();
 }
 
 

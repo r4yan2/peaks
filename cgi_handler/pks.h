@@ -10,13 +10,17 @@
 #include <cppcms/http_request.h>
 #include "db.h"
 #include "db_key.h"
+#include <boost/program_options.hpp>
 
+namespace po = boost::program_options;
+
+void serve(po::variables_map &vm, po::parsed_options &parsed);
 namespace peaks {
 
 class Pks : public cppcms::application {
 public:
-    Pks(cppcms::service &srv) : cppcms::application(srv) {
-        dbm = new DBManager();
+    Pks(cppcms::service &srv, const Cgi_DBConfig &db_config) : cppcms::application(srv) {
+        dbm = new DBManager(db_config);
 
         dispatcher().assign("/lookup", &Pks::lookup, this);
         mapper().assign("lookup", "/lookup");

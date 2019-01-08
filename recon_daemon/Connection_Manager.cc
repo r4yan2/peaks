@@ -1,6 +1,10 @@
 #include "Connection_Manager.h"
 
-Connection_Manager::Connection_Manager(){}
+Connection_Manager::Connection_Manager(){};
+
+Connection_Manager::Connection_Manager(Connection_config &conn_settings){
+    settings = conn_settings;
+}
 Connection_Manager::~Connection_Manager(){}
 
 void Connection_Manager::setup_listener(int portno){
@@ -55,8 +59,8 @@ std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> &
 
 void Connection_Manager::set_timeout(){
   struct timeval tv;
-  tv.tv_sec  = recon_settings.async_timeout_sec;
-  tv.tv_usec = recon_settings.async_timeout_usec;
+  tv.tv_sec  = settings.async_timeout_sec;
+  tv.tv_usec = settings.async_timeout_usec;
   setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
   setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 }
@@ -134,11 +138,11 @@ int Connection_Manager::check_remote_config(){
 
     g_logger.log(Logger_level::DEBUG, "checking remote config 1/4");
     Peer_config* local_config = new Peer_config;
-    local_config->version = recon_settings.peaks_version;
-    local_config->http_port = recon_settings.peaks_http_port;
-    local_config->bq = recon_settings.bq;
-    local_config->mbar = recon_settings.mbar;
-    local_config->filters = recon_settings.peaks_filters;
+    local_config->version = settings.peaks_version;
+    local_config->http_port = settings.peaks_http_port;
+    local_config->bq = settings.bq;
+    local_config->mbar = settings.mbar;
+    local_config->filters = settings.peaks_filters;
 
     g_logger.log(Logger_level::DEBUG, "checking remote config 2/4");
 
@@ -261,7 +265,7 @@ std::string Connection_Manager::read_string_direct(){
    if (read_n_bytes(&size, sizeof(size), true)) {
        size = RECON_Utils::swap(size);
        g_logger.log(Logger_level::DEBUG, "remote string size: " + std::to_string(size));
-       if (size > recon_settings.max_read_len) g_logger.log(Logger_level::WARNING, "Oversized message!");
+       if (size > settings.max_read_len) g_logger.log(Logger_level::WARNING, "Oversized message!");
        g_logger.log(Logger_level::DEBUG, "fetching remote host status confirmation");
        Buffer buf(size);
        read_n_bytes(buf.data(), size, true);
@@ -281,7 +285,7 @@ Message* Connection_Manager::read_message(bool tmp_socket, int signal) {
    if (read_n_bytes(&size, sizeof(size), tmp_socket, signal)) {
        g_logger.log(Logger_level::DEBUG, "read 4 bytes ok");
        size = RECON_Utils::swap(size);
-       if (size > recon_settings.max_read_len) g_logger.log(Logger_level::WARNING, "Oversized message!");
+       if (size > settings.max_read_len) g_logger.log(Logger_level::WARNING, "Oversized message!");
        Buffer ibuf(size);
        if (read_n_bytes(ibuf.data(), size, tmp_socket, signal)) {
        g_logger.log(Logger_level::DEBUG, "read " + std::to_string(size) +" bytes ok");

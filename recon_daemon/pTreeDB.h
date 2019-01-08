@@ -29,6 +29,9 @@ typedef Memnode* memnode_ptr;
  * refernce to the database manager
  */
 class Ptree{
+private:
+    /** Settings */
+    Ptree_config settings;
 protected: 
     /** Pointer to the root node */
     pnode_ptr root;
@@ -42,7 +45,7 @@ public:
 	/** Constructor for ptree
      * @param dbp Databse manager pointer, will be passed to created nodes
      */
-    Ptree(std::shared_ptr<RECON_DBManager> dbp);
+    Ptree(std::shared_ptr<RECON_DBManager> dbp, Ptree_config &settings_);
     ~Ptree();
  
     /** Getter for root node
@@ -55,6 +58,8 @@ public:
      * @return calculated vector
      */
     std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z);
+
+    Ptree_config get_settings();
     /** Calculate marray after deletion of given element
      * @param z element for which subtraction has to be made
      * @resulting array to subtract
@@ -120,7 +125,7 @@ public:
 class Pnode: public Ptree, public std::enable_shared_from_this<Pnode>{
     
 private:
-
+    Ptree_config settings;
     /** node key is the identifier of the node */
     std::string node_key;
 
@@ -140,7 +145,7 @@ public:
     Pnode();
 
     /** like ptree nodes are initialized keeping a reference to the database manager */
-    Pnode(std::shared_ptr<RECON_DBManager>);
+    Pnode(std::shared_ptr<RECON_DBManager> dbp, Ptree_config &settings_);
     ~Pnode();
     
     /** setter for node key
@@ -259,9 +264,10 @@ public:
 class MemTree: public Ptree{
     private:
         memnode_ptr root;
+        Ptree_config settings;
     public:
         MemTree();
-        MemTree(std::shared_ptr<RECON_DBManager>);
+        MemTree(std::shared_ptr<RECON_DBManager>, Ptree_config &settings_);
         ~MemTree();
         memnode_ptr get_node(const std::string &key);
 
@@ -279,6 +285,7 @@ class Memnode: public MemTree, public Pnode{
     private:
         /** since memnodes are not stored in db each node keep a reference to it's childs */
         std::vector<memnode_ptr> child_vec;
+        Ptree_config settings;
     public:
         Memnode();
         ~Memnode();

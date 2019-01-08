@@ -87,14 +87,16 @@ void Buffer::write_zz_array(const std::vector<NTL::ZZ_p> &to_write){
 void Buffer::write_zz_p(const NTL::ZZ_p &to_write, int pad_to){
     //reinit of the module is needed, otherwise ntl will
     //complain
-    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(recon_settings.P_SKS_STRING.c_str()));
+    //NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(msg_settings.P_SKS_STRING.c_str()));
+    if (pad_to == 0)
+        pad_to = NumBytes(to_write.modulus());
 
     NTL::ZZ z = rep(to_write);
     int num_bytes = NumBytes(z);
     std::vector<unsigned char> buf_z(num_bytes);
     BytesFromZZ(buf_z.data(), z, num_bytes);
     buf.insert(buf.end(), buf_z.begin(), buf_z.end());
-    if (num_bytes < recon_settings.sks_zp_bytes){
+    if (num_bytes < pad_to){
         padding(pad_to - num_bytes);
     }
 }
@@ -106,12 +108,11 @@ uint8_t Buffer::read_uint8(){
 }
 
 // Read int from data chunk
-int Buffer::read_int(bool check_len){
+int Buffer::read_int(){
     unsigned int res;
     unsigned char *dst = (unsigned char *)&res;
 
     for (int i=3; i>=0; i--, it++) dst[i] = *it;
-    if (check_len && (res > recon_settings.max_read_len)) g_logger.log(Logger_level::WARNING, "Oversized message!");
     return res;
 }
 
@@ -127,11 +128,11 @@ bitset Buffer::read_bitset() {
 std::vector<NTL::ZZ_p> Buffer::read_zz_array(){
     //reinit of the module is needed, otherwise ntl will
     //complain
-    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(recon_settings.P_SKS_STRING.c_str()));
+    //NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(msg_settings.P_SKS_STRING.c_str()));
     int array_size = read_int();
     std::vector<NTL::ZZ_p> array(array_size);
     for (int i=0; i<array_size; i++){
-        std::vector<unsigned char> zbytes = read_bytes(recon_settings.sks_zp_bytes);
+        std::vector<unsigned char> zbytes = read_bytes(NumBytes(NTL::ZZ_p::modulus()));
         array[i] = RECON_Utils::bytes_to_zz(zbytes);
     }
     return array;

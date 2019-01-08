@@ -5,7 +5,6 @@
 
 #include "DBManager.h"
 #include "utils.h"
-#include "../recon_daemon/Recon_settings.h"
 
 
 using namespace sql;
@@ -16,11 +15,12 @@ using namespace NTL;
 
 
 // Database connector initialization
-ANALYZER_DBManager::ANALYZER_DBManager() {
+ANALYZER_DBManager::ANALYZER_DBManager(Analyzer_DBConfig &analyzer_settings) {
+    settings = analyzer_settings;
     ANALYZER_DBManager::driver = get_driver_instance();
-    ANALYZER_DBManager::con = shared_ptr<Connection>(driver->connect(recon_settings.db_host, recon_settings.db_user, recon_settings.db_password));
+    ANALYZER_DBManager::con = shared_ptr<Connection>(driver->connect(analyzer_settings.db_host, analyzer_settings.db_user, analyzer_settings.db_password));
     // Connect to the MySQL keys database
-    con->setSchema(recon_settings.db_database);
+    con->setSchema(analyzer_settings.db_database);
 
     con->createStatement()->execute("set sql_log_bin = 0;");
     con->createStatement()->execute("set foreign_key_checks = 0;");
@@ -312,7 +312,7 @@ void ANALYZER_DBManager::write_analyzed_sign_csv(const ANALYZER_DBStruct::signat
 
 void ANALYZER_DBManager::write_broken_modulus_csv(const std::vector<std::string> &broken_modulus) {
     try{
-        ofstream f = ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::BROKEN_MODULUS, this_thread::get_id()), ios_base::app);
+        ofstream f = ofstream(ANALYZER_Utils::get_file_name(settings.analyzer_tmp_folder, ANALYZER_Utils::BROKEN_MODULUS, this_thread::get_id()), ios_base::app);
         for (const auto &n: broken_modulus){
             f << '.' << '"' << n << '"' << "\n";
         }
@@ -357,7 +357,7 @@ void ANALYZER_DBManager::write_repeated_r_csv() {
                       "Signatures where (pubAlgorithm = 16 or pubAlgorithm = 17 or pubAlgorithm = 18) and id not in "
                       "(SELECT signature_id from SignatureStatus WHERE vulnerabilityCode = 24) and is_analyzed = 1 GROUP by "
                       "issuingKeyId, r having count(r) > 1"));
-        ofstream f = ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::REPEATED_R, this_thread::get_id()), ios_base::app);
+        ofstream f = ofstream(ANALYZER_Utils::get_file_name(settings.analyzer_tmp_folder, ANALYZER_Utils::REPEATED_R, this_thread::get_id()), ios_base::app);
         while (result->next()) {
             f << '.' << '"' << result->getInt("id") << '"' << "\n";
         }
@@ -383,7 +383,7 @@ void ANALYZER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "set_pubkey_analyzed_stmt FAILED, the key will result ANALYZABLE in the database! - %s",
                                       e.what());
-                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::ANALYZED_PUBKEY);
+                    ANALYZER_Utils::put_in_error(settings.analyzer_error_folder, f, ANALYZER_Utils::ANALYZED_PUBKEY);
                 }
             }
             break;
@@ -399,7 +399,7 @@ void ANALYZER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "set_analyzed_signature_stmt FAILED, the signature will result ANALYZABLE in the database! - %s",
                                       e.what());
-                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::ANALYZED_SIGNATURE);
+                    ANALYZER_Utils::put_in_error(settings.analyzer_error_folder, f, ANALYZER_Utils::ANALYZED_SIGNATURE);
                 }
             }
             break;
@@ -410,7 +410,7 @@ void ANALYZER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_broken_key_stmt FAILED, the key will result not broken in the database! - %s",
                                       e.what());
-                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::BROKEN_PUBKEY);
+                    ANALYZER_Utils::put_in_error(settings.analyzer_error_folder, f, ANALYZER_Utils::BROKEN_PUBKEY);
                 }
             }
             break;
@@ -429,7 +429,7 @@ void ANALYZER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_broken_modulus_stmt FAILED, the key will result not broken in the database! - %s",
                                       e.what());
-                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::BROKEN_MODULUS);
+                    ANALYZER_Utils::put_in_error(settings.analyzer_error_folder, f, ANALYZER_Utils::BROKEN_MODULUS);
                 }
             }
             break;
@@ -440,7 +440,7 @@ void ANALYZER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_broken_signature_stmt FAILED, the signature will result not broken in the database! - %s",
                                       e.what());
-                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::BROKEN_SIGNATURE);
+                    ANALYZER_Utils::put_in_error(settings.analyzer_error_folder, f, ANALYZER_Utils::BROKEN_SIGNATURE);
                 }
             }
             break;
@@ -459,7 +459,7 @@ void ANALYZER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_repeated_r_stmt FAILED, the signature will result not broken in the database! - %s",
                                       e.what());
-                    ANALYZER_Utils::put_in_error(f, ANALYZER_Utils::REPEATED_R);
+                    ANALYZER_Utils::put_in_error(settings.analyzer_error_folder, f, ANALYZER_Utils::REPEATED_R);
                 }
             }
             break;
@@ -480,16 +480,16 @@ void ANALYZER_DBManager::insertCSV(const vector<string> &files, const unsigned i
 
 void ANALYZER_DBManager::open_pubkey_files() {
     ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(ANALYZER_Utils::ANALYZED_PUBKEY,
-                         ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::ANALYZED_PUBKEY, this_thread::get_id()), ios_base::app)));
+                         ofstream(ANALYZER_Utils::get_file_name(settings.analyzer_tmp_folder, ANALYZER_Utils::ANALYZED_PUBKEY, this_thread::get_id()), ios_base::app)));
     ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(ANALYZER_Utils::BROKEN_PUBKEY,
-                         ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::BROKEN_PUBKEY, this_thread::get_id()), ios_base::app)));
+                         ofstream(ANALYZER_Utils::get_file_name(settings.analyzer_tmp_folder, ANALYZER_Utils::BROKEN_PUBKEY, this_thread::get_id()), ios_base::app)));
 }
 
 void ANALYZER_DBManager::open_signatures_files() {
     ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(ANALYZER_Utils::ANALYZED_SIGNATURE,
-                                                                  ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::ANALYZED_SIGNATURE, this_thread::get_id()), ios_base::app)));
+                                                                  ofstream(ANALYZER_Utils::get_file_name(settings.analyzer_tmp_folder, ANALYZER_Utils::ANALYZED_SIGNATURE, this_thread::get_id()), ios_base::app)));
     ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(ANALYZER_Utils::BROKEN_SIGNATURE,
-                                                                  ofstream(ANALYZER_Utils::get_file_name(ANALYZER_Utils::BROKEN_SIGNATURE, this_thread::get_id()), ios_base::app)));
+                                                                  ofstream(ANALYZER_Utils::get_file_name(settings.analyzer_tmp_folder, ANALYZER_Utils::BROKEN_SIGNATURE, this_thread::get_id()), ios_base::app)));
 }
 
 ANALYZER_DBManager::~ANALYZER_DBManager(){

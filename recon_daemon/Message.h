@@ -118,7 +118,7 @@ class Buffer{
          * the resulting byte string
          * is sent as a byte string
          */
-        void write_zz_p(const NTL::ZZ_p&, int pad_to = recon_settings.sks_zp_bytes);
+        void write_zz_p(const NTL::ZZ_p&, int pad_to = 0);
 
         /** write an array of ZZ_p elements.
          * First write the length of the zset
@@ -135,12 +135,9 @@ class Buffer{
 
         /** read an int from the buffer.
          * read an integer number from buf, using 
-         * big endian notation. If check_len
-         * flag is enabled the number is checked
-         * against the maximum read length defined
-         * in settings.
+         * big endian notation.
          */
-        int read_int(bool check_len=false);
+        int read_int();
 
         /** read a single byte from the buffer.
          * This single byte will determine 

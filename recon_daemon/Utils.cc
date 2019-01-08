@@ -34,14 +34,16 @@ NTL::ZZ_p hex_to_zz(const std::string &hash){
     NTL::ZZ_p elem(0);
     std::reverse(inthash.begin(), inthash.end());
     
-    if (recon_settings.sks_compliant == 1){
+    //if (recon_settings.sks_compliant == 1){
         for (size_t i=0; i < inthash.size(); i++){
             elem = elem * (2<<7) + inthash[i];
         }
+        /*
     }else{
         for (size_t i=0; i < inthash.size(); i++)
             elem += (2<<(7*i)) * inthash[i];
     }
+    */
     return elem;
 }
 
@@ -49,16 +51,14 @@ NTL::ZZ_p bytes_to_zz(const std::vector<unsigned char> &bytes){
     NTL::ZZ_p elem;
     //std::reverse(bytes.begin(), bytes.end());
 
-    if (recon_settings.sks_compliant == 1){
-        /*
-        for (size_t i=0; i < bytes.size(); i++){
-            elem = elem * (2<<7) + (uint8_t) bytes[i];
-            */
+    //if (recon_settings.sks_compliant == 1){
         elem = NTL::conv<NTL::ZZ_p>(NTL::ZZFromBytes(bytes.data(), bytes.size()));
+    /*
     }else{
         for (size_t i=0; i < bytes.size(); i++)
             elem += (2<<(7*i)) * (uint8_t) bytes[i];
     }
+    */
     return elem;
 
 }
@@ -81,16 +81,6 @@ std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(const std::string &blob){
         res.push_back(NTL::conv<NTL::ZZ_p>(NTL::conv<NTL::ZZ>(str.c_str())));
     return res;
     */
-}
-
-std::vector<NTL::ZZ_p> Zpoints(int num_samples){
-  std::vector<NTL::ZZ_p> points(num_samples);
-  for (int i=0; i<num_samples; i++){
-    int val = ((i + 1) / 2) * ((i % 2 == 0) ? 1 : (-1));
-    NTL::ZZ_p tmp(val);
-    points[i]=tmp;
-  }
-  return points;
 }
 
 std::string ZZp_to_bitstring(const NTL::ZZ_p &num){
@@ -129,10 +119,10 @@ int swap(int d){
    return a;
 }
 
-int create_folders(){
+int create_folders(const std::string &folder_name){
     boost::system::error_code returnedError;
 
-    boost::filesystem::create_directories( recon_settings.recon_tmp_folder, returnedError );
+    boost::filesystem::create_directories(folder_name, returnedError );
 
     if ( returnedError )
         return -1;  // did not successfully create directories

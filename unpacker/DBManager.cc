@@ -5,40 +5,44 @@
 #include <thread>
 
 #include "DBManager.h"
-#include "../recon_daemon/Recon_settings.h"
 
 
 using namespace sql;
 using namespace std;
 
 // Database connector initialization
-UNPACKER_DBManager::UNPACKER_DBManager() {
-    UNPACKER_DBManager::driver = get_driver_instance();
-    UNPACKER_DBManager::con = shared_ptr<Connection>(driver->connect(recon_settings.db_host, recon_settings.db_user, recon_settings.db_password));
-    // Connect to the MySQL keys database
-    con->setSchema(recon_settings.db_database);
+UNPACKER_DBManager::UNPACKER_DBManager(Unpacker_DBConfig &un_settings){
+    settings = un_settings;
+};
 
-    con->createStatement()->execute("set sql_log_bin = 0;");
+void UNPACKER_DBManager::init_database_connection(){
+    UNPACKER_DBManager::driver = get_driver_instance();
+    UNPACKER_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
+    // Connect to the MySQL keys database
+    con->setSchema(settings.db_database);
+
+    //con->createStatement()->execute("set sql_log_bin = 0;");
     con->createStatement()->execute("set foreign_key_checks = 0;");
 
     // Create prepared Statements
     get_analyzable_cert_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT version, fingerprint, certificate "
-                                     "FROM gpg_keyserver WHERE is_unpacked = 0 LIMIT ?"));
-
+                                         "FROM gpg_keyserver WHERE is_unpacked = 0 LIMIT ?"));
+    
     get_signature_by_index = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT id "
-                                     "FROM Signatures WHERE r = (?) and s = (?)"));
-
+                                         "FROM Signatures WHERE r = (?) and s = (?)"));
+    
     insert_error_comments = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT INTO Unpacker_errors "
-                                     "(version, fingerprint, error) VALUES (?, ?, ?);"));
-
+                                         "(version, fingerprint, error) VALUES (?, ?, ?);"));
+    
     set_key_not_analyzable = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE gpg_keyserver "
-                                     "SET is_unpacked = -1 WHERE version = (?) and fingerprint = unhex(?)"));
-
+                                         "SET is_unpacked = -1 WHERE version = (?) and fingerprint = unhex(?)"));
+    
     insert_issuing_fingerprint = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN "
-                                     "(SELECT * FROM Signature_no_issuing_fp LIMIT ?) as ifp SET Signatures.issuingFingerprint = ifp.fp "
-                                     "WHERE ifp.id = Signatures.id;"));
+                                         "(SELECT * FROM Signature_no_issuing_fp LIMIT ?) as ifp SET Signatures.issuingFingerprint = ifp.fp "
+                                         "WHERE ifp.id = Signatures.id;"));
+}
 
-    insert_pubkey_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+std::pair<std::string, std::string> UNPACKER_DBManager::insert_pubkey_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Pubkey FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(keyId,version,@hexfingerprint,@hexpriFingerprint,pubAlgorithm,creationTime,@vexpirationTime,"
@@ -47,7 +51,7 @@ UNPACKER_DBManager::UNPACKER_DBManager() {
                                      "p = UNHEX(@hexp), q = UNHEX(@hexq), g = UNHEX(@hexg), y = UNHEX(@hexy), "
                                      "expirationTime = nullif(@vexpirationTime, '');");
 
-    insert_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+std::pair<std::string, std::string> UNPACKER_DBManager::insert_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Signatures FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(type,pubAlgorithm,hashAlgorithm,version,issuingKeyId,signedKeyId,"
@@ -63,7 +67,7 @@ UNPACKER_DBManager::UNPACKER_DBManager() {
                                      "signedHash = UNHEX(@hexsignedHash), expirationTime = nullif(@vexpirationTime, ''), "
                                      "keyExpirationTime = nullif(@vkeyExpirationTime, ''), flags = UNHEX(@hexflags);");
 
-    insert_self_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+std::pair<std::string, std::string> UNPACKER_DBManager::insert_self_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE selfSignaturesMetadata FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(type,pubAlgorithm,hashAlgorithm,version,issuingKeyId,@hexissuingFingerprint,"
@@ -72,21 +76,18 @@ UNPACKER_DBManager::UNPACKER_DBManager() {
                                      "preferedSymmetric = UNHEX(@hexpreferedSymmetric), preferedCompression = UNHEX(@hexpreferedCompression), "
                                      "preferedHash = UNHEX(@hexpreferedHash), keyExpirationTime = nullif(@vkeyExpirationTime, '');");
 
-    insert_userAtt_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+std::pair<std::string, std::string> UNPACKER_DBManager::insert_userAtt_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE UserAttribute FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (id,@hexfingerprint,name,encoding,@heximage) "
                                      "SET fingerprint = UNHEX(@hexfingerprint), image = UNHEX(@heximage);");
 
-    insert_unpackerErrors_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+std::pair<std::string, std::string> UNPACKER_DBManager::insert_unpackerErrors_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Unpacker_errors FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (idx,error);");
 
-    insert_unpacked_stmt = make_pair<string, string>(
+std::pair<std::string, std::string> UNPACKER_DBManager::insert_unpacked_stmt = make_pair<string, string>(
                     "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE tmp_unpacker FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
                     "LINES STARTING BY '.' TERMINATED BY '\\n' (version,@hexfingerprint,unpacked) SET fingerprint = UNHEX(@hexfingerprint);");
-
-
-}
 
 UNPACKER_DBManager::~UNPACKER_DBManager(){
     for (auto &it: file_list){
@@ -288,7 +289,7 @@ void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::PUBKEY);
+                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::PUBKEY);
                 }
             }
             break;
@@ -299,7 +300,7 @@ void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::SIGNATURE);
+                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::SIGNATURE);
                 }
             }
             break;
@@ -310,7 +311,7 @@ void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::SELF_SIGNATURE);
+                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::SELF_SIGNATURE);
                 }
             }
             break;
@@ -321,7 +322,7 @@ void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::USER_ATTRIBUTES);
+                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::USER_ATTRIBUTES);
                 }
             }
             break;
@@ -336,7 +337,7 @@ void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_unpacked_stmt FAILED, the key will result NOT UNPACKED in the database! - %s",
                                       e.what());
-                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::UNPACKED);
+                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::UNPACKED);
                 }
             }
             break;
@@ -347,7 +348,7 @@ void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
                                       e.what());
-                    UNPACKER_Utils::put_in_error(f, UNPACKER_Utils::UNPACKER_ERRORS);
+                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::UNPACKER_ERRORS);
                 }
             }
             break;
@@ -430,6 +431,6 @@ void UNPACKER_DBManager::openCSVFiles(){
     for (const auto &it: UNPACKER_Utils::FILENAME){
         UNPACKER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(
                 it.first,
-                ofstream(UNPACKER_Utils::get_file_name(it.first, this_thread::get_id()), ios_base::app)));
+                ofstream(UNPACKER_Utils::get_file_name(settings.unpacker_tmp_folder, it.first, this_thread::get_id()), ios_base::app)));
     }
 }

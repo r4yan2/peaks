@@ -6,6 +6,7 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <map>
+#include "Config.h"
 
 
 namespace ANALYZER_Utils{
@@ -87,10 +88,10 @@ namespace ANALYZER_Utils{
             std::make_pair(REPEATED_R, "_RepeatedR.csv")
     };
 
-    std::string get_file_name(const unsigned int &i, const std::thread::id &ID);
-    int create_folders();
-    void put_in_error(const std::string &f, const unsigned int &i);
-    std::vector<std::string> get_files(const unsigned int &i);
+    std::string get_file_name(const std::string & folder_name, const unsigned int &i, const std::thread::id &ID);
+    int create_folders(const std::string & folder_name);
+    void put_in_error(const std::string & folder_name, const std::string &f, const unsigned int &i);
+    std::vector<std::string> get_files(const std::string & folder_name, const unsigned int &i);
     bool hasEnding (std::string const &fullString, std::string const &ending);
     std::string getCurrentTime();
 }

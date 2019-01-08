@@ -28,7 +28,6 @@ set(GMP_PARCHED_DIR ${LIB_DIRECTORY}/gmp)
 include_directories(${GMP_PARCHED_DIR}/include)
 link_directories(${GMP_PARCHED_DIR}/lib)
 
-find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 
 target_link_libraries(analyzer ${OpenPGP_DIRECTORY}/libOpenPGP.a)
 target_link_libraries(analyzer ${NTL_DIR}/lib/libntl.a)

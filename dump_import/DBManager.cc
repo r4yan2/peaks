@@ -5,7 +5,7 @@
 #include <thread>
 
 #include "DBManager.h"
-#include "../recon_daemon/Recon_settings.h"
+#include <boost/program_options.hpp>
 
 
 using namespace sql;
@@ -13,13 +13,18 @@ using namespace std;
 
 
 // Database connector initialization
-DUMPIMPORT_DBManager::DUMPIMPORT_DBManager() {
-    DUMPIMPORT_DBManager::driver = get_driver_instance();
-    DUMPIMPORT_DBManager::con = shared_ptr<Connection>(driver->connect(recon_settings.db_host, recon_settings.db_user, recon_settings.db_password));
-    // Connect to the MySQL keys database
-    con->setSchema(recon_settings.db_database);
 
-    con->createStatement()->execute("set sql_log_bin = 0;");
+DUMPIMPORT_DBManager::DUMPIMPORT_DBManager(Dumpimport_DBConfig &settings_) {
+    settings = settings_;
+}
+
+void DUMPIMPORT_DBManager::init_database_connection() {
+    DUMPIMPORT_DBManager::driver = get_driver_instance();
+    DUMPIMPORT_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
+    // Connect to the MySQL keys database
+    con->setSchema(settings.db_database);
+
+    //con->createStatement()->execute("set sql_log_bin = 0;");
     con->createStatement()->execute("set foreign_key_checks = 0;");
 
     // Create prepared Statements
@@ -174,7 +179,7 @@ void DUMPIMPORT_DBManager::write_userID_csv(const DBStruct::userID &uid) {
         f << '"' << uid.email << "\",";
         f << "\n";
     }catch (exception &e){
-        syslog(LOG_CRIT, "write_userAttributes_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
+        syslog(LOG_CRIT, "write_userID_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
     }
 }
 
@@ -274,7 +279,7 @@ void DUMPIMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned
                     shared_ptr<Statement>(con->createStatement())->execute(insert_pubkey_stmt.first + f + insert_pubkey_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
-                    DUMP_Utils::put_in_error(f, DUMP_Utils::PUBKEY);
+                    DUMP_Utils::put_in_error(settings.error_folder, f, DUMP_Utils::PUBKEY);
                 }
             }
             break;
@@ -286,7 +291,7 @@ void DUMPIMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    DUMP_Utils::put_in_error(f, DUMP_Utils::SIGNATURE);
+                    DUMP_Utils::put_in_error(settings.error_folder, f, DUMP_Utils::SIGNATURE);
                 }
             }
             break;
@@ -297,7 +302,7 @@ void DUMPIMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    DUMP_Utils::put_in_error(f, DUMP_Utils::SELF_SIGNATURE);
+                    DUMP_Utils::put_in_error(settings.error_folder, f, DUMP_Utils::SELF_SIGNATURE);
                 }
             }
             break;
@@ -308,7 +313,7 @@ void DUMPIMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    DUMP_Utils::put_in_error(f, DUMP_Utils::USERID);
+                    DUMP_Utils::put_in_error(settings.error_folder, f, DUMP_Utils::USERID);
                 }
             }
             break;
@@ -319,7 +324,7 @@ void DUMPIMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    DUMP_Utils::put_in_error(f, DUMP_Utils::USER_ATTRIBUTES);
+                    DUMP_Utils::put_in_error(settings.error_folder, f, DUMP_Utils::USER_ATTRIBUTES);
                 }
             }
             break;
@@ -330,7 +335,7 @@ void DUMPIMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_certificate_stmt FAILED, the key will not have the certificate in the database! - %s",
                                       e.what());
-                    DUMP_Utils::put_in_error(f, DUMP_Utils::CERTIFICATE);
+                    DUMP_Utils::put_in_error(settings.error_folder, f, DUMP_Utils::CERTIFICATE);
                 }
             }
             break;
@@ -341,7 +346,7 @@ void DUMPIMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
                                       e.what());
-                    DUMP_Utils::put_in_error(f, DUMP_Utils::UNPACKER_ERRORS);
+                    DUMP_Utils::put_in_error(settings.error_folder, f, DUMP_Utils::UNPACKER_ERRORS);
                 }
             }
             break;
@@ -352,7 +357,7 @@ void DUMPIMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_brokenKey_stmt FAILED, the broken key will not be in the database! - %s",
                                       e.what());
-                    DUMP_Utils::put_in_error(f, DUMP_Utils::BROKEN_KEY);
+                    DUMP_Utils::put_in_error(settings.error_folder, f, DUMP_Utils::BROKEN_KEY);
                 }
             }
             break;
@@ -444,6 +449,6 @@ void DUMPIMPORT_DBManager::openCSVFiles() {
     for (const auto &it: DUMP_Utils::FILENAME){
         DUMPIMPORT_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(
                 it.first,
-                ofstream(DUMP_Utils::get_file_name(it.first, this_thread::get_id()), ios_base::app)));
+                ofstream(DUMP_Utils::get_file_name(settings.csv_folder, it.first, this_thread::get_id()), ios_base::app)));
     }
 }
