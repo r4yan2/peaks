@@ -94,7 +94,6 @@ void Importer::import(po::variables_map &vm) {
     unsigned int key_per_thread;
     int selection = -1;
     boost::filesystem::path path = vm["default_dump_path"].as<std::string>();
-    boost::filesystem::path csv_path = vm["dumpimport_tmp_folder"].as<std::string>();
 
     if(vm.count("fastimport"))
         selection = 0;
@@ -147,6 +146,8 @@ void Importer::import(po::variables_map &vm) {
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
         vm["db_database"].as<std::string>(),
+        vm["dumpimport_tmp_folder"].as<std::string>(),
+        vm["dumpimport_error_folder"].as<std::string>()
     };
 
     dbm = std::make_shared<DUMPIMPORT_DBManager>(db_settings);

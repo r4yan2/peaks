@@ -15,11 +15,11 @@ using namespace std;
 // Database connector initialization
 
 DUMPIMPORT_DBManager::DUMPIMPORT_DBManager(Dumpimport_DBConfig &settings_) {
+    DUMPIMPORT_DBManager::driver = get_driver_instance();
     settings = settings_;
 }
 
 void DUMPIMPORT_DBManager::init_database_connection() {
-    DUMPIMPORT_DBManager::driver = get_driver_instance();
     DUMPIMPORT_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
     // Connect to the MySQL keys database
     con->setSchema(settings.db_database);
