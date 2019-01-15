@@ -7,8 +7,9 @@ set(CMAKE_CXX_FLAGS "-march=native -Wall -static-libgcc -pthread -lstdc++ -pipe"
 add_definitions(-DGPG_COMPATIBLE)
 add_definitions(-Dmpz_raw_64)
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -O0")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -Ofast -Werror")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g3 -O0")
+set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -Ofast")
 
 set(SOURCE_FILES DBManager.cc Thread_Pool.cc analyzer.cc DBStruct.h Math_Support.cc EC_point.cc ED_point.cc Elliptic_Curve.cc Edward_Curve.cc fastGCD.cc utils.cc Curve_point.h Curve.h)
 
