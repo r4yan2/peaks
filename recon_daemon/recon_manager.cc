@@ -66,15 +66,15 @@ bool Recon_manager::bottom_queue_empty(){
 
 void Recon_manager::send_request(request_entry &request){
     Message* msg;
-    if ((request.node->is_leaf()) || (request.node->get_num_elements() < (int) settings.split_threshold)){
+    if ((request.node.is_leaf()) || (request.node.get_num_elements() < (int) settings.split_threshold)){
         msg = new ReconRequestFull;
         ((ReconRequestFull*) msg)->prefix = request.key;
-        ((ReconRequestFull*) msg)->elements = zset(request.node->elements());
+        ((ReconRequestFull*) msg)->elements = zset(request.node.elements());
     }else{
         msg = new ReconRequestPoly;
         ((ReconRequestPoly*) msg)->prefix = request.key;
-        ((ReconRequestPoly*) msg)->size = request.node->get_num_elements();
-        ((ReconRequestPoly*) msg)->samples = request.node->get_node_svalues();
+        ((ReconRequestPoly*) msg)->size = request.node.get_num_elements();
+        ((ReconRequestPoly*) msg)->samples = request.node.get_node_svalues();
     }
     messages.push_back(msg);
     bottom_queue.push(bottom_entry{.request = request});
@@ -84,19 +84,19 @@ void Recon_manager::handle_reply(Message* msg, request_entry &request){
     switch (msg->type){
         case (Msg_type::SyncFail):
             {
-                if (request.node->is_leaf()){
+                if (request.node.is_leaf()){
                     syslog(LOG_CRIT, "Syncfail at leaf node");
                     delete (SyncFail*) msg;
                     return;
                 }
-                std::vector<pnode_ptr> children = request.node->children();
+                std::vector<Pnode> children = request.node.children();
                 request_entry req;
-                req.key = bitset(children[0]->get_node_key());
+                req.key = bitset(children[0].get_node_key());
                 req.node = children[0];
                 push_request(req);
                 for (size_t i=1; i<children.size(); i++){
                     request_entry req;
-                    req.key = bitset(children[i]->get_node_key());
+                    req.key = bitset(children[i].get_node_key());
                     req.node = children[i];
                     prepend_request(req);
                 }
@@ -112,7 +112,7 @@ void Recon_manager::handle_reply(Message* msg, request_entry &request){
             }
         case (Msg_type::FullElements):
             {
-                std::vector<NTL::ZZ_p> elements = request.node->elements();
+                std::vector<NTL::ZZ_p> elements = request.node.elements();
                 zset local_set = zset(elements);
                 zset local_needs, remote_needs;
                 std::tie(local_needs, remote_needs) = ((FullElements*)msg)->elements.symmetric_difference(local_set);

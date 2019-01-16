@@ -102,7 +102,7 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
             keys.insert(keys.end(), new_keys.begin(), new_keys.end());
         }
     }
-    syslog(LOG_DEBUG, "fetched %d from peer", int(keys.size()));
+    syslog(LOG_DEBUG, "fetched %d keys from peer", int(keys.size()));
     if (settings.dry_run){
         syslog(LOG_WARNING, "DRY RUN, exiting without inserting certificates");
         return;
@@ -183,7 +183,7 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
 
 void Peer::interact_with_client(peertype &remote_peer){
     Recon_manager recon = Recon_manager(cn, msg_config);
-    pnode_ptr root = tree.get_root();
+    Pnode root = tree.get_root();
     bitset newset(0);
     request_entry req = request_entry{.node = root, .key = newset};
     recon.push_request(req);
@@ -240,6 +240,7 @@ void Peer::interact_with_client(peertype &remote_peer){
 }
 
 void Peer::gossip(){
+    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(msg_config.P_SKS_STRING.c_str()));
     for (;;){
         try{
             syslog(LOG_DEBUG, "starting gossip client");
@@ -343,7 +344,7 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
     //we need the Lagrange form of
     //the interpolating polynomial
     if (size_diff > values.size()-1){
-        syslog(LOG_WARNING, "Could not interpolate because size_diff > size of values!");
+        syslog(LOG_DEBUG, "Could not interpolate because size_diff (%d) > size of values(%d)!", (int)size_diff, (int)values.size());
         throw solver_exception();
         }
     int mbar = tree.get_settings().mbar;
@@ -494,9 +495,9 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     std::vector<NTL::ZZ_p> r_samples = req->samples;
     bitset key = req->prefix;
     std::string prefix_str = key.to_string();
-    pnode_ptr node = tree.node(key);
-    std::vector<NTL::ZZ_p> l_samples = node->get_node_svalues();
-    int l_size = node->get_num_elements();
+    Pnode node = tree.node(key);
+    std::vector<NTL::ZZ_p> l_samples = node.get_node_svalues();
+    int l_size = node.get_num_elements();
     std::vector<NTL::ZZ_p> elements;
     std::vector<NTL::ZZ_p> local_elements, remote_elements;
 
@@ -507,11 +508,11 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     catch (std::exception &e){
         if ((strncmp(e.what(),"low_mbar",8)) && 
                     (
-                     (node->is_leaf()) ||
-                     (node->get_num_elements() < tree.get_settings().ptree_thresh_mult * tree.get_settings().mbar)
+                     (node.is_leaf()) ||
+                     (node.get_num_elements() < tree.get_settings().ptree_thresh_mult * tree.get_settings().mbar)
                      )
             ){
-                elements = node->elements();
+                elements = node.elements();
                 Communication newcomm;
                 FullElements* full_elements = new FullElements;
                 full_elements->elements.add(elements); 
@@ -540,8 +541,8 @@ Communication Peer::request_full_handler(ReconRequestFull* req){
     Myset<NTL::ZZ_p> local_set;
     Communication newcomm;
     try{
-        pnode_ptr node = tree.node(req->prefix);
-        local_set.add(node->elements());
+        Pnode node = tree.node(req->prefix);
+        local_set.add(node.elements());
     } catch (std::exception& e){
         newcomm.status = Communication_status::ERROR;
         return newcomm;

@@ -5,22 +5,27 @@ void build(po::variables_map &vm){
     
     std::cout << "Starting ptree builder" << std::endl;
     openlog("peaks_recon_daemon", LOG_PID, LOG_USER);
-    setlogmask (LOG_UPTO (LOG_NOTICE));
+    if (vm.count("debug")){
+        std::cout << "debug output" << std::endl;
+        setlogmask(LOG_UPTO(LOG_DEBUG));
+    }
+    else
+        setlogmask (LOG_UPTO (LOG_INFO));
     syslog(LOG_NOTICE, "Ptree builder is starting up!");
     if (RECON_Utils::create_folders(vm["recon_tmp_folder"].as<std::string>()) != 0){
         std::cout << "Unable to create temporary directories!Exiting..." << std::endl;
         exit(1);
     }
+    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
     Recon_DBConfig db_settings = {
         vm["db_host"].as<std::string>(),
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
         vm["db_database"].as<std::string>(),
-        vm["tmp_folder"].as<std::string>()
+        vm["recon_tmp_folder"].as<std::string>()
     };
 
     std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(db_settings);
-    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
     int entries;
     std::vector<std::string> hashes;
     hashes = dbm->get_all_hash();
@@ -34,14 +39,15 @@ void build(po::variables_map &vm){
         vm["bq"].as<int>(),
         vm["max_ptree_nodes"].as<int>(),
         vm["ptree_thresh_mult"].as<int>(),
-        vm["num_samples"].as<size_t>(),
-        vm["points"].as<std::vector<NTL::ZZ_p>>(),
-        vm["split_threshold"].as<unsigned int>(),
+        vm["num_samples"].as<int>(),
+        Zpoints(vm["num_samples"].as<int>()),
+        vm["split_threshold"].as<int>(),
         vm["join_threshold"].as<int>(),
+        vm["sks_bitstring"].as<int>()
     };
 
-
-    MemTree tree(dbm, ptree_settings);
+    Memtree tree(dbm, ptree_settings);
+    tree.init_root();
     int progress = 0;
     for (auto hash : hashes){
         tree.insert(hash);
@@ -59,6 +65,7 @@ void build(po::variables_map &vm){
     dbm->unlockTables();
     DUMP_Utils::remove_directory_content(vm["recon_tmp_folder"].as<std::string>());
     std::cout << "Inserted " << entries << " entry!" << std::endl; 
+    closelog();
     exit(0);
 }
 
@@ -66,6 +73,15 @@ void build(po::variables_map &vm){
 void recon(po::variables_map &vm){
 
     std::cout << "Starting recon_daemon" << std::endl;
+    openlog("peaks_recon_daemon", LOG_PID, LOG_USER);
+    if (vm.count("debug")){
+        std::cout << "debug output" << std::endl;
+        setlogmask(LOG_UPTO(LOG_DEBUG));
+    }
+    else
+        setlogmask (LOG_UPTO (LOG_INFO));
+
+    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
     const std::vector<NTL::ZZ_p> points = Zpoints(vm["num_samples"].as<int>());
     Recon_DBConfig db_settings = {
         vm["db_host"].as<std::string>(),
@@ -75,15 +91,14 @@ void recon(po::variables_map &vm){
         vm["recon_tmp_folder"].as<std::string>()
     };
     std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(db_settings);
-    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
     Ptree_config ptree_settings = {
         vm["mbar"].as<int>(),
         vm["bq"].as<int>(),
         vm["max_ptree_nodes"].as<int>(),
         vm["ptree_thresh_mult"].as<int>(),
-        vm["num_samples"].as<size_t>(),
-        vm["points"].as<std::vector<NTL::ZZ_p>>(),
-        vm["split_threshold"].as<unsigned int>(),
+        vm["num_samples"].as<int>(),
+        points,
+        vm["split_threshold"].as<int>(),
         vm["join_threshold"].as<int>(),
         vm["sks_bitstring"].as<int>()
     };
@@ -100,16 +115,17 @@ void recon(po::variables_map &vm){
         vm["peaks_version"].as<std::string>(),
         vm["peaks_http_port"].as<int>(),
         vm["peaks_filters"].as<std::string>(),
-        vm["max_read_len"].as<unsigned int>(),
+        vm["max_read_len"].as<int>(),
         vm["async_timeout_sec"].as<int>(),
         vm["async_timeout_usec"].as<int>()
     };
 
+
     Message_config msg_settings = {
-        vm["max_read_len"].as<unsigned int>(),
+        vm["max_read_len"].as<int>(),
         vm["P_SKS_STRING"].as<std::string>(),
         vm["sks_zp_bytes"].as<int>(),
-        vm["max_request_queue_len"].as<unsigned int>(),
+        vm["max_request_queue_len"].as<int>(),
         vm["split_threshold"].as<int>()
     };
 
@@ -117,9 +133,9 @@ void recon(po::variables_map &vm){
         vm["membership_config"].as<std::string>(),
         vm["peaks_recon_port"].as<int>(),
         vm["request_chunk_size"].as<int>(),
-        vm["dry_run"].as<bool>(),
-        vm["ignore_known_bug"].as<bool>(),
-        vm["hashquery_len"].as<bool>(),
+        vm.count("dryrun"),
+        vm["ignore_known_bug"].as<int>(),
+        vm["hashquery_len"].as<int>(),
         vm["max_outstanding_recon_req"].as<int>(),
         vm["gossip_interval"].as<int>(),
         vm["max_recover_size"].as<int>()

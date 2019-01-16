@@ -10,16 +10,14 @@ ReconImporter::ReconImporter(po::variables_map &vm){
         vm["dumpimport_tmp_folder"].as<std::string>(),
         vm["dumpimport_error_folder"].as<std::string>(),
     };
-    Dumpimport_DBConfig db_settings = {
+    db_settings = {
         vm["db_host"].as<std::string>(),
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
         vm["db_database"].as<std::string>(),
+        vm["dumpimport_tmp_folder"].as<std::string>(),
         vm["dumpimport_error_folder"].as<std::string>(),
     };
-    unpack = vm["unpack_on_import"].as<bool>();
-    dbm = make_shared<DUMPIMPORT_DBManager>(db_settings);
-    dbm->init_database_connection();
 }
 
 ReconImporter::~ReconImporter(){}
@@ -45,34 +43,16 @@ vector<string> ReconImporter::get_hashes(const vector<string> &files){
 
 vector<string> ReconImporter::dump_import(vector<string> keys){
 
+    dbm = make_shared<DUMPIMPORT_DBManager>(db_settings);
+    dbm->init_database_connection();
     DUMP_Utils::create_folder(settings.csv_folder);
     DUMP_Utils::create_folder(settings.error_folder);
 
-    Dumpimport::unpack_string_th(dbm, keys);
+    Dumpimport::unpack_string_th(db_settings, keys);
 
     dbm->lockTables();
     vector<string> hashes = get_hashes(DUMP_Utils::get_files(settings.csv_folder, DUMP_Utils::CERTIFICATE));
     dbm->insertCSV(DUMP_Utils::get_files(settings.csv_folder, DUMP_Utils::CERTIFICATE), DUMP_Utils::CERTIFICATE);
-        if (unpack){
-            dbm->insertCSV(DUMP_Utils::get_files(settings.csv_folder, DUMP_Utils::PUBKEY), DUMP_Utils::PUBKEY);
-            dbm->insertCSV(DUMP_Utils::get_files(settings.csv_folder, DUMP_Utils::USERID), DUMP_Utils::USERID);
-            dbm->insertCSV(DUMP_Utils::get_files(settings.csv_folder, DUMP_Utils::USER_ATTRIBUTES), DUMP_Utils::USER_ATTRIBUTES);
-            dbm->insertCSV(DUMP_Utils::get_files(settings.csv_folder, DUMP_Utils::SIGNATURE), DUMP_Utils::SIGNATURE);
-            dbm->insertCSV(DUMP_Utils::get_files(settings.csv_folder, DUMP_Utils::SELF_SIGNATURE), DUMP_Utils::SELF_SIGNATURE);
-            dbm->insertCSV(DUMP_Utils::get_files(settings.csv_folder, DUMP_Utils::UNPACKER_ERRORS), DUMP_Utils::UNPACKER_ERRORS);
-            dbm->insertCSV(DUMP_Utils::get_files(settings.csv_folder, DUMP_Utils::BROKEN_KEY), DUMP_Utils::BROKEN_KEY);
-
-            dbm->UpdateSignatureIssuingFingerprint();
-
-            dbm->UpdateSignatureIssuingUsername();
-
-            dbm->UpdateIsExpired();
-
-            dbm->UpdateIsRevoked();
-
-            dbm->UpdateIsValid();
-        }
-
     dbm->unlockTables();
 
     DUMP_Utils::remove_directory_content(settings.csv_folder);
@@ -141,7 +121,7 @@ void Importer::import(po::variables_map &vm) {
     DUMP_Utils::create_folder(settings.csv_folder);
     DUMP_Utils::create_folder(settings.error_folder);
 
-    Dumpimport_DBConfig db_settings = {
+    db_settings = {
         vm["db_host"].as<std::string>(),
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
@@ -162,7 +142,6 @@ void Importer::import(po::variables_map &vm) {
     }else{
         std::cout << DUMP_Utils::getCurrentTime() << "Not removing temporary csv fileiles as user request." << std::endl;
     }
-
     syslog(LOG_NOTICE, "Dump_import is stopping!");
 
 }
@@ -182,7 +161,7 @@ void Importer::generate_csv(std::vector<std::string> files, boost::filesystem::p
         for (unsigned int j = 0; i < files.size() && j < key_per_thread; j++, i++){
             dump_file_tmp.push_back(files[i]);
         }
-        pool->Add_Job([=] { return Dumpimport::unpack_dump_th(dbm, dump_file_tmp, fastimport); });
+        pool->Add_Job([=] { return Dumpimport::unpack_dump_th(db_settings, dump_file_tmp, fastimport); });
     }
 
     pool->Stop_Filling_UP();

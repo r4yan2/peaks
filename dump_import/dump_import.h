@@ -10,6 +10,7 @@
 class Importer{
     private:
         Dumpimport_settings settings;
+        Dumpimport_DBConfig db_settings;
         std::shared_ptr<DUMPIMPORT_DBManager> dbm;
     public:
         Importer();
@@ -31,6 +32,7 @@ class ReconImporter{
         Dumpimport_settings settings;
         std::shared_ptr<DUMPIMPORT_DBManager> dbm; 
         bool unpack;
+        Dumpimport_DBConfig db_settings;
     public:
 
         ReconImporter(po::variables_map &vm);

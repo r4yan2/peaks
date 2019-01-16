@@ -7,6 +7,7 @@
 #include <boost/filesystem.hpp>
 #include <map>
 #include "Config.h"
+#include <iostream>
 
 namespace DUMP_Utils{
     const unsigned int CERTIFICATE      = 1;

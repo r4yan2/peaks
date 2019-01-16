@@ -22,13 +22,13 @@ struct Ptree_config{
     int ptree_thresh_mult;
 
     /** number of samples used in the linear interpolation algorithm */
-    size_t num_samples;
+    int num_samples;
 
     /** points a #num_samples points which are used to perform linear interpolation */
     std::vector<NTL::ZZ_p> points;
 
     /** threshold at which a node is saturated by elements and needs to be splitted into 2^bq child nodes */
-    unsigned int split_threshold;
+    int split_threshold;
 
     /** threshold at which a node is no longer necessary to exists and it's joine with the parent */
     int join_threshold;
@@ -49,10 +49,10 @@ struct Recon_config{
     int request_chunk_size;
 
     /** if dry run is set recon daemon will only fetch certificates without importing them */
-    bool dry_run;
+    int dry_run;
 
     /** flag used to ignore logging for known bugs */
-    bool ignore_known_bug;
+    int ignore_known_bug;
 
     /** sks_zp_bytes + 1 */
     int hashquery_len;
@@ -84,7 +84,7 @@ struct Connection_config{
     std::string peaks_filters;
 
     /** maximum bytes length of a single message */
-    unsigned int max_read_len;
+    int max_read_len;
 
     /** asyncronous request timeout in sec */
     int async_timeout_sec;
@@ -96,17 +96,17 @@ struct Connection_config{
 struct Message_config{
     
     /** maximum bytes length of a single message */
-    unsigned int max_read_len;
+    int max_read_len;
     /** current finite field choosen by sks */
     std::string P_SKS_STRING;
     /** number of bytes which composes the P_SKS representation */
     int sks_zp_bytes;
     /** max length for the recon request queue */
-    unsigned int max_request_queue_len;
+    int max_request_queue_len;
     /** maximum number of elements recoverable from a single reconing session */
     int max_recover_size;
     /** threshold at which a node is saturated by elements and needs to be splitted into 2^bq child nodes */
-    unsigned int split_threshold;
+    int split_threshold;
 };
 
 struct Recon_DBConfig{
@@ -149,7 +149,7 @@ struct General_config{
     int gossip_interval;
 
     /** maximum bytes length of a single message */
-    unsigned int max_read_len;
+    int max_read_len;
 
     /** max read len will be 1 << max_read_len_shift */
     int max_read_len_shift;
@@ -161,7 +161,7 @@ struct General_config{
     int default_timeout;
 
     /** max length for the recon request queue */
-    unsigned int max_request_queue_len;
+    int max_request_queue_len;
 
     /** maximum chunk of key that can be requested by the peer */
     int request_chunk_size;

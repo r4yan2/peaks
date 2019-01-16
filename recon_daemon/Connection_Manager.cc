@@ -130,7 +130,6 @@ void Connection_Manager::close_connection(){
     sockfd = -1;
 }
 
-
 int Connection_Manager::check_remote_config(){
 
     Peer_config* local_config = new Peer_config;

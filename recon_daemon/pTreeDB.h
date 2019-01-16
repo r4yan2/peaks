@@ -15,116 +15,23 @@
 typedef Bitset bitset;
 
 class Pnode;
+class Ptree;
 class Memnode;
+class Memtree;
 
 typedef std::shared_ptr<Pnode> pnode_ptr;
+//typedef std::shared_ptr<Ptree> ptree_ptr;
+typedef Ptree* ptree_ptr;
+typedef Memtree* memtree_ptr;
 typedef Memnode* memnode_ptr;
-
-/** Holds the current ptree reference.
- * The ptree reference is initialized in main,
- * but since uses the DB to recover nodes,
- * it can be used everywhere, it does not
- * hold any particular data, just the root, and the 
- * refernce to the database manager
- */
-class Ptree{
-private:
-    /** Settings */
-    Ptree_config settings;
-protected: 
-    /** Pointer to the root node */
-    pnode_ptr root;
-
-    /** Pointer to the database manager */
-    std::shared_ptr<RECON_DBManager> dbm;
-  
-public:
-    Ptree();
-
-	/** Constructor for ptree
-     * @param dbp Databse manager pointer, will be passed to created nodes
-     */
-    Ptree(std::shared_ptr<RECON_DBManager> dbp, Ptree_config &settings_);
-    ~Ptree();
- 
-    /** Getter for root node
-     * @return pointer to root node
-     */
-    pnode_ptr get_root();
-    
-    /** Calculate marray for given element, with the default interpolation points
-     * @param z new element of the tree
-     * @return calculated vector
-     */
-    std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z);
-
-    Ptree_config get_settings();
-    /** Calculate marray after deletion of given element
-     * @param z element for which subtraction has to be made
-     * @resulting array to subtract
-     */
-    std::vector<NTL::ZZ_p> delete_element_array(const NTL::ZZ_p &z);
-    
-    /** Create the ptree, by initializing root if a root node cannot be found in database
-     * @return true if this function create a root node, false otherwise
-     */
-    bool create();
-
-    /** search for a specific node in the DB
-     * @param key key of the node to search
-     * @return pointer to fetched node if found
-     */
-    pnode_ptr get_node(const std::string &key);
-
-    /** check if a certain key is in the DB
-     * @param key key to check
-     * @return true if found, false otherwise
-     */
-    bool has_key(const std::string &key);
-
-    /** insert ZZ into the prefix-tree 
-     * @param z new NTL:ZZ_p number to insert in the tree
-     */
-    void insert(const NTL::ZZ_p &z);
-
-    /** insert an hash into the prefix-tree
-     * @param hash md5hash to insert as new element of the tree
-     */
-    void insert(const std::string &hash);
-
-    /** generate a new child for the given parent
-     * @param parent pointer to the parent node (usually this method is called by the parent, so it's a pointer to this, which need to be wrapped into a smart pointer, thus the need to inherit from std::enable_shared_from_this
-     * @param child_index is the index of the child with respect to the other child (max index = 2^mbar)
-     * @return pointer to the new child
-     */
-    pnode_ptr new_child(pnode_ptr parent, int child_index);
-
-    /** search for the nearest parent of the given key, up to the root
-     * @param key key to search in the tree
-     * @return pointer to the found node
-     */
-    pnode_ptr node(bitset &key);
-
-    /** remove a node from the ptree
-     * @param z node to remove
-     */
-    void remove(const NTL::ZZ_p &z);
-    
-    /** remove an hash into the prefix-tree
-     * @param hash md5hash to remove
-     */
-    void remove(const std::string &hash);
-
-    void update(const std::vector<std::string> &hashes);
-};
-
 
 /** Node class, inherit bunch of methods from Ptree and inherit the possibility to share 'this' reference with new nodes
  */
-class Pnode: public Ptree, public std::enable_shared_from_this<Pnode>{
+class Pnode{
     
-private:
-    Ptree_config settings;
+protected:
+    Ptree* tree;
+
     /** node key is the identifier of the node */
     std::string node_key;
 
@@ -144,7 +51,7 @@ public:
     Pnode();
 
     /** like ptree nodes are initialized keeping a reference to the database manager */
-    Pnode(std::shared_ptr<RECON_DBManager> dbp, Ptree_config &settings_);
+    Pnode(Ptree* pointer);
     ~Pnode();
     
     /** setter for node key
@@ -194,10 +101,10 @@ public:
     void clear_node_elements();
     
     /** fetch the children of current node */
-    std::vector<pnode_ptr> children();
+    std::vector<Pnode> children();
 
     /** fetch a specific children of current node */
-    pnode_ptr children(int c_index);
+    Pnode children(int c_index);
 
     /** commit node to DB */
     void commit_node(bool newnode = false);
@@ -239,7 +146,7 @@ public:
     /** get the pointer to the parent node 
      * @return reference to parent node
      */
-    pnode_ptr parent();
+    Pnode parent();
 
     /** remove element from the node(actual remove operation)
      * @param z elem to insert
@@ -259,15 +166,131 @@ public:
     void update_svalues(const std::vector<NTL::ZZ_p> &marray);
 };
 
-/** MemTree is a special pTree kept in mem to speed up build process. */
-class MemTree: public Ptree{
+
+
+
+/** Holds the current ptree reference.
+ * The ptree reference is initialized in main,
+ * but since uses the DB to recover nodes,
+ * it can be used everywhere, it does not
+ * hold any particular data, just the root, and the 
+ * refernce to the database manager
+ */
+class Ptree: public std::enable_shared_from_this<Ptree>{
+private:
+    /** Pointer to the root node */
+    Pnode root;
+protected: 
+
+    /** Pointer to the database manager */
+    std::shared_ptr<RECON_DBManager> dbm;
+  
+    /** Settings */
+    Ptree_config settings;
+public:
+    Ptree();
+
+	/** Constructor for ptree
+     * @param dbp Databse manager pointer, will be passed to created nodes
+     */
+    Ptree(std::shared_ptr<RECON_DBManager> dbp, Ptree_config &settings_);
+    ~Ptree();
+ 
+    int get_mbar();
+    int get_bq();
+    size_t get_num_samples();
+    int get_max_ptree_nodes();
+    int get_ptree_thresh_mult();
+    std::vector<NTL::ZZ_p> get_points();
+    unsigned int get_split_threshold();
+    unsigned int get_join_threshold();
+    int get_sks_bitstring();
+
+    void db_insert(RECON_DBStruct::node &n);
+    void db_update(RECON_DBStruct::node &n);
+    void db_delete(std::string &node_key);
+
+    /** Getter for root node
+     * @return pointer to root node
+     */
+    Pnode get_root();
+    
+    /** Calculate marray for given element, with the default interpolation points
+     * @param z new element of the tree
+     * @return calculated vector
+     */
+    std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z);
+
+    Ptree_config get_settings();
+    /** Calculate marray after deletion of given element
+     * @param z element for which subtraction has to be made
+     * @resulting array to subtract
+     */
+    std::vector<NTL::ZZ_p> delete_element_array(const NTL::ZZ_p &z);
+    
+    /** Create the ptree, by initializing root if a root node cannot be found in database
+     * @return true if this function create a root node, false otherwise
+     */
+    bool create();
+
+    /** search for a specific node in the DB
+     * @param key key of the node to search
+     * @return pointer to fetched node if found
+     */
+    Pnode get_node(const std::string &key);
+
+    /** check if a certain key is in the DB
+     * @param key key to check
+     * @return true if found, false otherwise
+     */
+    bool has_key(const std::string &key);
+
+    /** insert ZZ into the prefix-tree 
+     * @param z new NTL:ZZ_p number to insert in the tree
+     */
+    void insert(const NTL::ZZ_p &z);
+
+    /** insert an hash into the prefix-tree
+     * @param hash md5hash to insert as new element of the tree
+     */
+    void insert(const std::string &hash);
+
+    /** generate a new child for the given parent
+     * @param parent pointer to the parent node (usually this method is called by the parent, so it's a pointer to this, which need to be wrapped into a smart pointer, thus the need to inherit from std::enable_shared_from_this
+     * @param child_index is the index of the child with respect to the other child (max index = 2^mbar)
+     * @return pointer to the new child
+     */
+    Pnode new_child(const std::string &parent_key_string, int child_index);
+
+    /** search for the nearest parent of the given key, up to the root
+     * @param key key to search in the tree
+     * @return pointer to the found node
+     */
+    Pnode node(bitset &key);
+
+    /** remove a node from the ptree
+     * @param z node to remove
+     */
+    void remove(const NTL::ZZ_p &z);
+    
+    /** remove an hash into the prefix-tree
+     * @param hash md5hash to remove
+     */
+    void remove(const std::string &hash);
+
+    void update(const std::vector<std::string> &hashes);
+};
+
+
+/** Memtree is a special pTree kept in mem to speed up build process. */
+class Memtree: public Ptree{
     private:
         memnode_ptr root;
-        Ptree_config settings;
     public:
-        MemTree();
-        MemTree(std::shared_ptr<RECON_DBManager>, Ptree_config &settings_);
-        ~MemTree();
+        Memtree();
+        Memtree(std::shared_ptr<RECON_DBManager>, Ptree_config &settings_);
+        ~Memtree();
+        void init_root();
         memnode_ptr get_node(const std::string &key);
 
 	    /** commit memtree to DB */
@@ -280,13 +303,13 @@ class MemTree: public Ptree{
 };
 
 /** Memenode is a special node which keep a reference to its children */
-class Memnode: public MemTree, public Pnode{
+class Memnode: public Pnode{
     private:
         /** since memnodes are not stored in db each node keep a reference to it's childs */
         std::vector<memnode_ptr> child_vec;
-        Ptree_config settings;
+        memtree_ptr mtree;
     public:
-        Memnode();
+        Memnode(memtree_ptr pointer);
         ~Memnode();
 
         void split(int depth);

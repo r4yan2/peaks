@@ -49,7 +49,7 @@ struct Communication{
 };
 
 struct request_entry{
-    pnode_ptr node;
+    Pnode node;
     bitset key;
 };
 

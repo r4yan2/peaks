@@ -35,7 +35,7 @@ RECON_DBManager::RECON_DBManager(Recon_DBConfig dbsettings) {
             "LINES STARTING BY '.' TERMINATED BY '\\n' (node_key, node_svalues, num_elements, leaf, node_elements) "
             );
 
-	get_removed_hash_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("select * from removed_hash"));
+	get_removed_hash_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("select hash from removed_hash"));
 
 	truncate_removed_hash_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("truncate removed_hash"));
 

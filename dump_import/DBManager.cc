@@ -14,7 +14,7 @@ using namespace std;
 
 // Database connector initialization
 
-DUMPIMPORT_DBManager::DUMPIMPORT_DBManager(Dumpimport_DBConfig &settings_) {
+DUMPIMPORT_DBManager::DUMPIMPORT_DBManager(const Dumpimport_DBConfig &settings_) {
     DUMPIMPORT_DBManager::driver = get_driver_instance();
     settings = settings_;
 }

@@ -17,7 +17,7 @@
 namespace DBStruct = DUMP_DBStruct;
 class DUMPIMPORT_DBManager {
 public:
-    DUMPIMPORT_DBManager(Dumpimport_DBConfig &settings_);
+    DUMPIMPORT_DBManager(const Dumpimport_DBConfig &settings_);
     ~DUMPIMPORT_DBManager();
 
     void init_database_connection();

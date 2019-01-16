@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <boost/program_options.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 #include <exception>
 #include <syslog.h>
 #include <cstring>
@@ -46,7 +47,6 @@ int main(int argc, char* argv[]){
 	    global.add_options()
         ("help,h", "Print this help message")
         ("debug,d", "Turn on debug output")
-        ("log-to-file,f", po::value<std::string>()->default_value(""), "Redirect log to the specified file")
         ("config, c", po::value<std::string>(), "Specify path of the config file (Default is in the same directory of peaks executable)")
         ("command", po::value<std::string>()->required(), "command to execute")
         ("subargs", po::value<std::vector<std::string> >(), "Arguments for command");
@@ -64,7 +64,6 @@ int main(int argc, char* argv[]){
             help();
 
         std::string cmd = vm["command"].as<std::string>();
-
 
         std::vector<std::string> filenames;
         filenames.push_back("peaks_config");
@@ -171,7 +170,7 @@ int main(int argc, char* argv[]){
         help();
     } 
     catch(boost::exception& e){
-        help();
+        std::cout << "Caught exception" << boost::diagnostic_information(e) << std::endl;
     }
 }
 
@@ -184,7 +183,6 @@ void help(){
     std::cout << "Options:" << std::endl;
     std::cout << "  -h, --help \t\tPrint this help message" << std::endl;
     std::cout << "  -d, --debug \t\tTurn on debug output" << std::endl;
-    std::cout << "  -f, --log-to-file \tRedirect log to the specified file" << std::endl;
     std::cout << "  -c, --config \t\tPath to the config file (If not provided it searches in the folder from which the executable is run)" << std::endl;
 
     std::cout << "Commands and args:" << std::endl;
@@ -258,19 +256,20 @@ void parse_config(std::string filename, po::variables_map &vm){
             ("max_request_queue_len", po::value<int>())
             ("request_chunk_size", po::value<int>())
             ("max_outstanding_recon_req", po::value<int>())
-            ("sks_compliant", po::value<int>())
             ("sks_bitstring", po::value<int>())
             ("async_timeout_sec", po::value<int>())
             ("async_timeout_usec", po::value<int>())
-            ("ignore_known_bug", po::value<bool>())
-            ("unpack_on_import", po::value<bool>())
+            ("ignore_known_bug", po::value<int>())
+            ("unpack_on_import", po::value<int>())
+            ("max_unpacker_limit", po::value<int>())
+
+            ("db_user", po::value<std::string>())
             ("db_host", po::value<std::string>())
             ("db_database", po::value<std::string>())
-            ("db_password", po::value<std::string>())
+            ("db_password", po::value<std::string>()->default_value(""))
             ("membership_config", po::value<std::string>())
             ("cppcms_config", po::value<std::string>())
             ("default_dump_path", po::value<std::string>())
-            ("max_unpacker_limit", po::value<int>())
             ("analyzer_tmp_folder", po::value<std::string>())
             ("analyzer_error_folder", po::value<std::string>())
             ("analyzer_gcd_folder", po::value<std::string>())
@@ -287,7 +286,6 @@ void parse_config(std::string filename, po::variables_map &vm){
         vm.insert(std::make_pair("split_threshold", po::variable_value(vm["ptree_thresh_mult"].as<int>() * vm["mbar"].as<int>(), false)));
         vm.insert(std::make_pair("join_threshold", po::variable_value(vm["split_threshold"].as<int>() / 2, false)));
         vm.insert(std::make_pair("max_read_len", po::variable_value(1 << vm["max_read_len_shift"].as<int>(), false)));
-        vm.insert(std::make_pair("points", po::variable_value(Zpoints(vm["num_samples"].as<int>()), false)));
 
     }
     else {
