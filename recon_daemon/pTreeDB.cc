@@ -193,17 +193,9 @@ Pnode Ptree::node(bitset &key){
 
 void Ptree::remove(const NTL::ZZ_p &z){
   bitset bs(z);
-  std::string key = bs.to_string();
-  try{
-    dbm->get_node(key);
-  }catch (...){
-    syslog(LOG_NOTICE, "No node to delete");
-  }
-
   Pnode root = get_root();
   std::vector<NTL::ZZ_p> marray = delete_element_array(z);
   root.remove(z, marray, bs, 0);
-  dbm->delete_node(key);
 }
 
 void Ptree::remove(const std::string &hash){
