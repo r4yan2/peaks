@@ -15,8 +15,102 @@
 
 class RECON_DBManager {
 public:
-    RECON_DBManager(Recon_DBConfig settings);
-    ~RECON_DBManager();
+    /** Constructor
+     * @param settings Settings for the database
+     */
+    RECON_DBManager(const Recon_DBConfig & db_settings);
+
+    /** Default destructor
+     * */
+    virtual ~RECON_DBManager();
+
+    virtual RECON_DBStruct::node get_node(const std::string key) = 0;
+    virtual void insert_node(const RECON_DBStruct::node &n) = 0;
+    virtual void update_node(const RECON_DBStruct::node &n) = 0;
+    virtual void delete_node(const std::string key) = 0;
+    virtual bool check_key(const std::string key) = 0;
+    virtual std::vector<std::string> fetch_removed_elements() = 0;
+    virtual std::vector<std::string> get_all_hash() = 0;
+    virtual void commit_memtree() = 0;
+protected:
+    Recon_DBConfig settings;
+};
+
+class Recon_mysql_DBManager: public RECON_DBManager{
+    public:
+
+    /** Constructor
+     * @param settings Settings for the database
+     */
+    Recon_mysql_DBManager(const Recon_DBConfig & db_settings);
+
+    /** Default destructor
+     * */
+    ~Recon_mysql_DBManager();
+
+
+    /** recover a node from the database
+     * @param key key of the node to recover
+     * @return node struct corresponding to the found node
+     */
+    RECON_DBStruct::node get_node(const std::string key);
+
+    /** insert node into db
+     * @param n node to insert
+     */
+    void insert_node(const RECON_DBStruct::node &n);
+
+    /** update node already present in db
+     * @param n node to update
+     */
+    void update_node(const RECON_DBStruct::node &n);
+
+    /** delete node from db
+     * @param key key of the node to delete
+     */
+    void delete_node(const std::string key);
+
+    /** check if hash is present in db
+     * @param key hash to check
+     * @return bool if found, false otherwise
+     */
+    bool check_key(std::string key);
+
+    /** fetch removed hashes from gpg_keyserver 
+     *  after a successful recon run. Those hashes
+     *  will be removed from the ptree before inserting
+     *  the new one
+     *  @return vector of hashes to remove
+     * */
+    std::vector<std::string> fetch_removed_elements();
+    
+    //empty
+    std::vector<std::string> get_all_hash();
+    void commit_memtree();
+private:
+
+	std::ofstream csv_file;
+    sql::Driver *driver;
+    std::shared_ptr<sql::Connection> con;
+    std::shared_ptr<sql::PreparedStatement> get_pnode_stmt;
+    std::shared_ptr<sql::PreparedStatement> insert_pnode_stmt;
+    std::shared_ptr<sql::PreparedStatement> update_pnode_stmt;
+    std::shared_ptr<sql::PreparedStatement> delete_pnode_stmt;
+    std::shared_ptr<sql::PreparedStatement> get_all_hash_stmt;
+    std::shared_ptr<sql::PreparedStatement> check_key_stmt;
+    std::shared_ptr<sql::PreparedStatement> truncate_removed_hash_stmt;
+    std::shared_ptr<sql::PreparedStatement> get_removed_hash_stmt;
+    std::shared_ptr<sql::ResultSet> result;
+	std::pair<std::string,std::string> insert_ptree_stmt;
+};
+
+class Recon_memory_DBManager: public RECON_DBManager {
+public:
+    Recon_memory_DBManager(const Recon_DBConfig & db_settings);
+    ~Recon_memory_DBManager();
+
+    /** make the connection with the database if there isn't */
+    //void ensure_db_connection();
 
     /** recover a node from the database
      * @param key key of the node to recover
@@ -58,15 +152,13 @@ public:
     /** helper to unlock tables */
     void unlockTables();
 
-	void write_ptree_csv(const RECON_DBStruct::node &pnode);
-	void openCSVFiles();
-	void insertCSV();
-	void closeCSVFiles();
-    std::vector<std::string> fetch_removed_elements();
+    void commit_memtree();
     
+    //empty
+    std::vector<std::string> fetch_removed_elements();
 private:
 
-    Recon_DBConfig settings;
+    std::map< std::string, std::tuple<std::string, int, bool, std::string> > memory_storage;
 	std::ofstream csv_file;
     sql::Driver *driver;
     std::shared_ptr<sql::Connection> con;
@@ -83,4 +175,4 @@ private:
 };
 
 
-#endif //PBUILD_DBMANAGER_H
+#endif

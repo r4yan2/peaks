@@ -7,6 +7,7 @@
 #include <exception>
 #include <sstream>
 #include <string>
+#include <sys/syslog.h>
 
 typedef std::vector<unsigned char> bytestype;
 

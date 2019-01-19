@@ -73,8 +73,10 @@ void Bitset::resize(int new_bitsize){
 }
 
 bool Bitset::test(int bitpos) const{
-    if (bitpos > n_bits)
-        throw std::exception();
+    if (bitpos > n_bits){
+        syslog(LOG_CRIT, "Required to test a bit (%d) outside the bitstring of size %d", bitpos, n_bits);
+        throw std::runtime_error("testing a bit outside the bitstring");
+    }
     int byte_pos = bitpos/8;
     int bit_pos = bitpos%8;
     return ((bytes[byte_pos] & (1 << (8 - bit_pos - 1))) != 0);

@@ -25,7 +25,7 @@ void build(po::variables_map &vm){
         vm["recon_tmp_folder"].as<std::string>()
     };
 
-    std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(db_settings);
+    std::shared_ptr<Recon_memory_DBManager> dbm = std::make_shared<Recon_memory_DBManager>(db_settings);
     int entries;
     std::vector<std::string> hashes;
     hashes = dbm->get_all_hash();
@@ -34,20 +34,21 @@ void build(po::variables_map &vm){
         std::cout << "DB is empty! Aborting..." << std::endl;
         exit(0);
     }
+    std::vector<NTL::ZZ_p> points = RECON_Utils::Zpoints(vm["num_samples"].as<int>());
     Ptree_config ptree_settings = {
         vm["mbar"].as<int>(),
         vm["bq"].as<int>(),
         vm["max_ptree_nodes"].as<int>(),
         vm["ptree_thresh_mult"].as<int>(),
         vm["num_samples"].as<int>(),
-        Zpoints(vm["num_samples"].as<int>()),
+        points,
         vm["split_threshold"].as<int>(),
         vm["join_threshold"].as<int>(),
-        vm["sks_bitstring"].as<int>()
+        vm["sks_bitstring"].as<int>(),
     };
 
-    Memtree tree(dbm, ptree_settings);
-    tree.init_root();
+    Ptree tree(dbm, ptree_settings);
+    tree.create();
     int progress = 0;
     for (auto hash : hashes){
         tree.insert(hash);
@@ -60,10 +61,8 @@ void build(po::variables_map &vm){
 
     std::cout << std::endl;
     std::cout << "Writing resulting ptree to DB!" << std::endl;
-    dbm->lockTables();
-    tree.commit_memtree();
-    dbm->unlockTables();
-    DUMP_Utils::remove_directory_content(vm["recon_tmp_folder"].as<std::string>());
+    dbm->commit_memtree();
+    //DUMP_Utils::remove_directory_content(vm["recon_tmp_folder"].as<std::string>());
     std::cout << "Inserted " << entries << " entry!" << std::endl; 
     closelog();
     exit(0);
@@ -82,7 +81,6 @@ void recon(po::variables_map &vm){
         setlogmask (LOG_UPTO (LOG_INFO));
 
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
-    const std::vector<NTL::ZZ_p> points = Zpoints(vm["num_samples"].as<int>());
     Recon_DBConfig db_settings = {
         vm["db_host"].as<std::string>(),
         vm["db_user"].as<std::string>(),
@@ -90,7 +88,8 @@ void recon(po::variables_map &vm){
         vm["db_database"].as<std::string>(),
         vm["recon_tmp_folder"].as<std::string>()
     };
-    std::shared_ptr<RECON_DBManager> dbm = std::make_shared<RECON_DBManager>(db_settings);
+    std::shared_ptr<Recon_mysql_DBManager> dbm = std::make_shared<Recon_mysql_DBManager>(db_settings);
+    std::vector<NTL::ZZ_p> points = RECON_Utils::Zpoints(vm["num_samples"].as<int>());
     Ptree_config ptree_settings = {
         vm["mbar"].as<int>(),
         vm["bq"].as<int>(),
@@ -100,7 +99,7 @@ void recon(po::variables_map &vm){
         points,
         vm["split_threshold"].as<int>(),
         vm["join_threshold"].as<int>(),
-        vm["sks_bitstring"].as<int>()
+        vm["sks_bitstring"].as<int>(),
     };
 
     Ptree tree(dbm, ptree_settings);
@@ -149,15 +148,5 @@ void recon(po::variables_map &vm){
     else
         peer.start();
     exit(0);
-}
-
-std::vector<NTL::ZZ_p> Zpoints(int num_samples){
-  std::vector<NTL::ZZ_p> points(num_samples);
-  for (int i=0; i<num_samples; i++){
-    int val = ((i + 1) / 2) * ((i % 2 == 0) ? 1 : (-1));
-    NTL::ZZ_p tmp(val);
-    points[i]=tmp;
-  }
-  return points;
 }
 

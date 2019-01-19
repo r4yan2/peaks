@@ -16,20 +16,16 @@ typedef Bitset bitset;
 
 class Pnode;
 class Ptree;
-class Memnode;
-class Memtree;
 
 typedef std::shared_ptr<Pnode> pnode_ptr;
 //typedef std::shared_ptr<Ptree> ptree_ptr;
 typedef Ptree* ptree_ptr;
-typedef Memtree* memtree_ptr;
-typedef Memnode* memnode_ptr;
 
 /** Node class, inherit bunch of methods from Ptree and inherit the possibility to share 'this' reference with new nodes
  */
-class Pnode{
+class Pnode: public std::enable_shared_from_this<Pnode>{
     
-protected:
+private:
     Ptree* tree;
 
     /** node key is the identifier of the node */
@@ -53,6 +49,9 @@ public:
     /** like ptree nodes are initialized keeping a reference to the database manager */
     Pnode(Ptree* pointer);
     ~Pnode();
+    Pnode(const Pnode & n);
+
+    pnode_ptr getReference();
     
     /** setter for node key
      * @param key new_key for the node (this is setted once upon node creating)
@@ -82,29 +81,29 @@ public:
     /** getter for node key
      * @return key as string
      */
-    std::string get_node_key();
+    std::string get_node_key() const;
 
     /** getter for the node svalues
      * @return std vector of node svalues
      */
-    std::vector<NTL::ZZ_p> get_node_svalues();
+    std::vector<NTL::ZZ_p> get_node_svalues() const;
     
     /** get the number of elements under the given node */
-    int get_num_elements();
+    int get_num_elements() const;
 
     /** check if node is leaf */
-    bool is_leaf();
+    bool is_leaf() const;
 
     /** get the elements stored in node */
-    std::vector<NTL::ZZ_p> get_node_elements();
+    std::vector<NTL::ZZ_p> get_node_elements() const;
 
     void clear_node_elements();
     
     /** fetch the children of current node */
-    std::vector<Pnode> children();
+    std::vector<pnode_ptr> children();
 
     /** fetch a specific children of current node */
-    Pnode children(int c_index);
+    pnode_ptr children(int c_index);
 
     /** commit node to DB */
     void commit_node(bool newnode = false);
@@ -146,7 +145,7 @@ public:
     /** get the pointer to the parent node 
      * @return reference to parent node
      */
-    Pnode parent();
+    pnode_ptr parent();
 
     /** remove element from the node(actual remove operation)
      * @param z elem to insert
@@ -167,8 +166,6 @@ public:
 };
 
 
-
-
 /** Holds the current ptree reference.
  * The ptree reference is initialized in main,
  * but since uses the DB to recover nodes,
@@ -176,11 +173,10 @@ public:
  * hold any particular data, just the root, and the 
  * refernce to the database manager
  */
-class Ptree: public std::enable_shared_from_this<Ptree>{
+class Ptree{
 private:
     /** Pointer to the root node */
-    Pnode root;
-protected: 
+    pnode_ptr root;
 
     /** Pointer to the database manager */
     std::shared_ptr<RECON_DBManager> dbm;
@@ -213,7 +209,7 @@ public:
     /** Getter for root node
      * @return pointer to root node
      */
-    Pnode get_root();
+    pnode_ptr get_root();
     
     /** Calculate marray for given element, with the default interpolation points
      * @param z new element of the tree
@@ -237,7 +233,7 @@ public:
      * @param key key of the node to search
      * @return pointer to fetched node if found
      */
-    Pnode get_node(const std::string &key);
+    pnode_ptr get_node(const std::string &key);
 
     /** check if a certain key is in the DB
      * @param key key to check
@@ -260,13 +256,13 @@ public:
      * @param child_index is the index of the child with respect to the other child (max index = 2^mbar)
      * @return pointer to the new child
      */
-    Pnode new_child(const std::string &parent_key_string, int child_index);
+    pnode_ptr new_child(const std::string &parent_key_string, int child_index);
 
     /** search for the nearest parent of the given key, up to the root
      * @param key key to search in the tree
      * @return pointer to the found node
      */
-    Pnode node(bitset &key);
+    pnode_ptr node(bitset &key);
 
     /** remove a node from the ptree
      * @param z node to remove
@@ -279,43 +275,6 @@ public:
     void remove(const std::string &hash);
 
     void update(const std::vector<std::string> &hashes);
-};
-
-
-/** Memtree is a special pTree kept in mem to speed up build process. */
-class Memtree: public Ptree{
-    private:
-        memnode_ptr root;
-    public:
-        Memtree();
-        Memtree(std::shared_ptr<RECON_DBManager>, Ptree_config &settings_);
-        ~Memtree();
-        void init_root();
-        memnode_ptr get_node(const std::string &key);
-
-	    /** commit memtree to DB */
-        void commit_memtree();
-        memnode_ptr get_root();
-        memnode_ptr new_child(memnode_ptr parent, int child_index);
-
-        void insert(const std::string &hash);
-        void insert(const NTL::ZZ_p &p);
-};
-
-/** Memenode is a special node which keep a reference to its children */
-class Memnode: public Pnode{
-    private:
-        /** since memnodes are not stored in db each node keep a reference to it's childs */
-        std::vector<memnode_ptr> child_vec;
-        memtree_ptr mtree;
-    public:
-        Memnode(memtree_ptr pointer);
-        ~Memnode();
-
-        void split(int depth);
-        void insert(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const bitset &bs, int depth);
-        std::vector<memnode_ptr> children();
-        memnode_ptr children(int cindex);
 };
 
 #endif //RECON_PTREEDB_H

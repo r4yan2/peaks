@@ -53,7 +53,7 @@ T pop_front(std::vector<T>& vec)
 }
 
 int create_folders(const std::string &folder_name);
-
+std::vector<NTL::ZZ_p> Zpoints(int num_samples);
 }
 
 #endif

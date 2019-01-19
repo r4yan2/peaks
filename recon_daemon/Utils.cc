@@ -130,5 +130,15 @@ int create_folders(const std::string &folder_name){
         return 0;
 }
 
+std::vector<NTL::ZZ_p> Zpoints(int num_samples){
+  std::vector<NTL::ZZ_p> points(num_samples);
+  for (int i=0; i<num_samples; i++){
+    int val = ((i + 1) / 2) * ((i % 2 == 0) ? 1 : (-1));
+    NTL::ZZ_p tmp(val);
+    points[i]=tmp;
+  }
+  return points;
+}
+
 
 }

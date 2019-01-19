@@ -10,6 +10,7 @@ namespace RECON_DBStruct{
         bool leaf;
         std::string elements;
     };
+
 }
 
 #endif //RECON_DBSTRUCT_H

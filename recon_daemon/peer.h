@@ -49,7 +49,7 @@ struct Communication{
 };
 
 struct request_entry{
-    Pnode node;
+    std::shared_ptr<Pnode> node;
     bitset key;
 };
 

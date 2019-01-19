@@ -183,7 +183,7 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
 
 void Peer::interact_with_client(peertype &remote_peer){
     Recon_manager recon = Recon_manager(cn, msg_config);
-    Pnode root = tree.get_root();
+    std::shared_ptr<Pnode> root = tree.get_root();
     bitset newset(0);
     request_entry req = request_entry{.node = root, .key = newset};
     recon.push_request(req);
@@ -495,9 +495,9 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     std::vector<NTL::ZZ_p> r_samples = req->samples;
     bitset key = req->prefix;
     std::string prefix_str = key.to_string();
-    Pnode node = tree.node(key);
-    std::vector<NTL::ZZ_p> l_samples = node.get_node_svalues();
-    int l_size = node.get_num_elements();
+    std::shared_ptr<Pnode> node = tree.node(key);
+    std::vector<NTL::ZZ_p> l_samples = node->get_node_svalues();
+    int l_size = node->get_num_elements();
     std::vector<NTL::ZZ_p> elements;
     std::vector<NTL::ZZ_p> local_elements, remote_elements;
 
@@ -508,11 +508,11 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     catch (std::exception &e){
         if ((strncmp(e.what(),"low_mbar",8)) && 
                     (
-                     (node.is_leaf()) ||
-                     (node.get_num_elements() < tree.get_settings().ptree_thresh_mult * tree.get_settings().mbar)
+                     (node->is_leaf()) ||
+                     (node->get_num_elements() < tree.get_settings().ptree_thresh_mult * tree.get_settings().mbar)
                      )
             ){
-                elements = node.elements();
+                elements = node->elements();
                 Communication newcomm;
                 FullElements* full_elements = new FullElements;
                 full_elements->elements.add(elements); 
@@ -541,8 +541,8 @@ Communication Peer::request_full_handler(ReconRequestFull* req){
     Myset<NTL::ZZ_p> local_set;
     Communication newcomm;
     try{
-        Pnode node = tree.node(req->prefix);
-        local_set.add(node.elements());
+        std::shared_ptr<Pnode> node = tree.node(req->prefix);
+        local_set.add(node->elements());
     } catch (std::exception& e){
         newcomm.status = Communication_status::ERROR;
         return newcomm;
