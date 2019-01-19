@@ -70,7 +70,10 @@ then
         exit;
     fi
     make -j$cpus
-    make check -j$cpus
+    if [ "$3" == "check" ];
+    then
+        make check -j$cpus
+    fi
     make install
     
     cd $starting_path
@@ -123,7 +126,10 @@ then
         exit;
     fi
     make -j$cpus
-    make check -j$cpus
+    if [ "$3" == "check" ];
+    then
+        make check -j$cpus
+    fi
     make install
 
     cd $starting_path
@@ -163,7 +169,10 @@ then
         exit;
     fi
     make -j$cpus
-    #make test -j4
+    if [ "$3" == "check" ];
+    then
+        make test -j$cpus
+    fi
     make install
 
     cd $starting_path
