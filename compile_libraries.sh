@@ -10,7 +10,7 @@ get="fetch";
 ! __exists fetch && get="curl -OL";
 
 starting_path=$PWD;
-cpus=$((`cat /proc/cpuinfo | grep processor | wc -l` - 1));
+cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
 
 if [ ! -d lib/gmp ];
 then
@@ -169,7 +169,7 @@ then
         exit;
     fi
     make -j$cpus
-    if [ "$3" == "check" ];
+    if [ "$3" == "check" ]
     then
         make test -j$cpus
     fi
