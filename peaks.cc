@@ -68,6 +68,7 @@ int main(int argc, char* argv[]){
         std::vector<std::string> filenames;
         filenames.push_back("peaks_config");
         filenames.push_back("/var/lib/peaks/peaks_config");
+        filenames.push_back("/etc/peaks/peaks_config");
         if (vm.count("config"))
             filenames.insert(filenames.begin(), vm["config"].as<std::string>());
 
@@ -261,7 +262,7 @@ void parse_config(std::string filename, po::variables_map &vm){
             ("async_timeout_usec", po::value<int>())
             ("ignore_known_bug", po::value<int>())
             ("unpack_on_import", po::value<int>())
-            ("max_unpacker_limit", po::value<int>())
+            ("max_unpacker_limit", po::value<unsigned int>())
 
             ("db_user", po::value<std::string>())
             ("db_host", po::value<std::string>())
