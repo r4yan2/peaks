@@ -67,8 +67,26 @@ void Importer::import(po::variables_map &vm) {
 
     std::cout << DUMP_Utils::getCurrentTime() << "Starting unpacker" << std::endl;
 
-    openlog("pgp_dump_import", LOG_PID, LOG_USER);
-    setlogmask (LOG_UPTO (LOG_NOTICE));
+    int log_option;
+    int log_upto;
+
+    if (vm.count("stdout-log")){
+        std::cout << "logging to stdout" << std::endl;
+        log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
+    }
+    else{
+        log_option = LOG_PID;
+    }
+    if (vm.count("debug")){
+        std::cout << "debug output" << std::endl;
+        log_upto = LOG_UPTO(LOG_DEBUG);
+    }
+    else{
+        log_upto = LOG_UPTO(LOG_INFO); 
+    }
+
+    openlog("pgp_dump_import", log_option, LOG_USER);
+    setlogmask(log_upto);
     syslog(LOG_NOTICE, "Dump_import is starting up!");
     unsigned int nThreads = std::thread::hardware_concurrency() / 2 + 1;
     unsigned int key_per_thread;

@@ -4,13 +4,27 @@
 void build(po::variables_map &vm){
     
     std::cout << "Starting ptree builder" << std::endl;
-    openlog("peaks_recon_daemon", LOG_PID, LOG_USER);
+
+    int log_option;
+    int log_upto;
+
+    if (vm.count("stdout-log")){
+        std::cout << "logging to stdout" << std::endl;
+        log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
+    }
+    else{
+        log_option = LOG_PID;
+    }
     if (vm.count("debug")){
         std::cout << "debug output" << std::endl;
-        setlogmask(LOG_UPTO(LOG_DEBUG));
+        log_upto = LOG_UPTO(LOG_DEBUG);
     }
-    else
-        setlogmask (LOG_UPTO (LOG_INFO));
+    else{
+        log_upto = LOG_UPTO(LOG_INFO); 
+    }
+
+    openlog("peaks_recon_daemon", log_option, LOG_USER);
+    setlogmask(log_upto);
     syslog(LOG_NOTICE, "Ptree builder is starting up!");
     if (RECON_Utils::create_folders(vm["recon_tmp_folder"].as<std::string>()) != 0){
         std::cout << "Unable to create temporary directories!Exiting..." << std::endl;
