@@ -66,11 +66,11 @@ int main(int argc, char* argv[]){
         std::string cmd = vm["command"].as<std::string>();
 
         std::vector<std::string> filenames;
+        if (vm.count("config"))
+            filenames.insert(filenames.begin(), vm["config"].as<std::string>());
         filenames.push_back("peaks_config");
         filenames.push_back("/var/lib/peaks/peaks_config");
         filenames.push_back("/etc/peaks/peaks_config");
-        if (vm.count("config"))
-            filenames.insert(filenames.begin(), vm["config"].as<std::string>());
 
         bool parsed_config = false;
         for (auto filename: filenames){
@@ -154,6 +154,7 @@ int main(int argc, char* argv[]){
             recon(vm);
             }
         else{
+                std::cout << "Unrecognized command " << cmd << std::endl;
                 help();
             }
  
