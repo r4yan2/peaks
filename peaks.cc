@@ -47,6 +47,7 @@ int main(int argc, char* argv[]){
 	    global.add_options()
         ("help,h", "Print this help message")
         ("debug,d", "Turn on debug output")
+        ("stdout", "Turn on debug on stdout")
         ("config, c", po::value<std::string>(), "Specify path of the config file (Default is in the same directory of peaks executable)")
         ("command", po::value<std::string>()->required(), "command to execute")
         ("subargs", po::value<std::vector<std::string> >(), "Arguments for command");

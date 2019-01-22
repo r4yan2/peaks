@@ -19,7 +19,7 @@ namespace Unpacker {
         int log_option;
         int log_upto;
 
-        if (vm.count("stdout-log")){
+        if (vm.count("stdout")){
             std::cout << "logging to stdout" << std::endl;
             log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
         }
