@@ -86,13 +86,26 @@ void build(po::variables_map &vm){
 void recon(po::variables_map &vm){
 
     std::cout << "Starting recon_daemon" << std::endl;
-    openlog("peaks_recon_daemon", LOG_PID, LOG_USER);
+    int log_option;
+    int log_upto;
+
+    if (vm.count("stdout")){
+        std::cout << "logging to stdout" << std::endl;
+        log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
+    }
+    else{
+        log_option = LOG_PID;
+    }
     if (vm.count("debug")){
         std::cout << "debug output" << std::endl;
-        setlogmask(LOG_UPTO(LOG_DEBUG));
+        log_upto = LOG_UPTO(LOG_DEBUG);
     }
-    else
-        setlogmask (LOG_UPTO (LOG_INFO));
+    else{
+        log_upto = LOG_UPTO(LOG_INFO); 
+    }
+
+    openlog("peaks_recon_daemon", log_option, LOG_USER);
+    setlogmask(log_upto);
 
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
     Recon_DBConfig db_settings = {
