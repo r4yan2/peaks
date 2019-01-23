@@ -65,6 +65,9 @@ then
     elif [ "$1" == "release" ];
     then
         ./configure --prefix=$starting_path/lib/gmp --disable-static CFLAGS="-Ofast -march=native"
+    elif [ "$1" == "docker" ];
+    then
+        ./configure --prefix=$starting_path/lib/gmp --disable-static CFLAGS="-Ofast"
     else
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
@@ -121,6 +124,9 @@ then
     elif [ "$1" == "release" ]
     then
         ./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on "CXXFLAGS=-O3 -march=native -fopenmp -D_GLIBCXX_PARALLEL" PREFIX=$starting_path/lib/ntl/ GMP_PREFIX=$starting_path/lib/gmp
+    elif [ "$1" == "docker" ]
+    then
+        ./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on "CXXFLAGS=-O3 -fopenmp -D_GLIBCXX_PARALLEL" PREFIX=$starting_path/lib/ntl/ GMP_PREFIX=$starting_path/lib/gmp
     else
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
