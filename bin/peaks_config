@@ -34,8 +34,8 @@ db_user = root
 db_database = gpg_keyserver
 
 # File and folders settings
-membership_config = ./membership
-cppcms_config = ./config.js
+membership_config = /etc/peaks/membership
+cppcms_config = /etc/peaks/config.js
 default_dump_path = /tmp/pgp_dump/
 dumpimport_tmp_folder = /tmp/dump_import/
 dumpimport_error_folder = /tmp/dumpimport_errors/
