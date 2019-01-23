@@ -1,12 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(pks)
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "-march=native -DGPG_COMPATIBLE -static-libgcc -lstdc++ -pipe -Wall")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g3 -O0")
-set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
-
 set(SOURCE_FILES pks.cc db.cc utils.cc encoder/encoder.cc mitpgpskin.cc PacketReader.cc db_key.h content.h)
 
 set(TEMPLATES_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/templates)

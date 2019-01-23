@@ -1,14 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(unpacker)
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "-march=native -DGPG_COMPATIBLE -Wall -static-libgcc -pthread -lstdc++ -pipe")
-add_definitions(-DGPG_COMPATIBLE)
-
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g3 -O0")
-set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
-
 set(SOURCE_FILES Thread_Pool.cc unpacker.cc DBManager.cc Key_Tools.cc DBStruct.h utils.cc)
 
 add_library(unpacker ${SOURCE_FILES})
