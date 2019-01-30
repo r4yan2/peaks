@@ -285,11 +285,7 @@ CREATE TABLE `gpg_keyserver` (
 /*!50003 SET collation_connection  = utf8mb4_general_ci */ ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
-DELIMITER ;;
-/*!50003 CREATE TRIGGER `save_hash` AFTER UPDATE ON `gpg_keyserver` FOR EACH ROW IF (OLD.is_synchronized = 1 and OLD.hash != NEW.hash) THEN
-            INSERT IGNORE INTO removed_hash VALUES(OLD.hash);
-      END IF */;;
-DELIMITER ;
+/*!50003 CREATE TRIGGER `save_hash` AFTER DELETE ON `gpg_keyserver` FOR EACH ROW INSERT IGNORE INTO removed_hash VALUES(OLD.hash) */ ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
