@@ -34,7 +34,7 @@ namespace Unpacker {
             log_upto = LOG_UPTO(LOG_INFO); 
         }
 
-        openlog("pgp_analyzer", log_option, LOG_USER);
+        openlog("pgp_unpacker", log_option, LOG_USER);
         setlogmask(log_upto);
         syslog(LOG_NOTICE, "Unpacker daemon is starting up!");
     
@@ -49,6 +49,8 @@ namespace Unpacker {
     
         if(vm.count("limit"))
             limit = vm["limit"].as<unsigned int>();
+
+        std::cout << "limiting analysis at " << limit << " keys" << std::endl;
     
         if(vm.count("keys"))
             key_per_thread = vm["keys"].as<unsigned int>();
@@ -64,7 +66,7 @@ namespace Unpacker {
             syslog(LOG_WARNING,  "Unable to create temp folder");
             exit(-1);
         }
-        Unpacker_DBConfig db_settings = {
+        const Unpacker_DBConfig db_settings = {
             vm["db_host"].as<std::string>(),
             vm["db_user"].as<std::string>(),
             vm["db_password"].as<std::string>(),
@@ -77,7 +79,7 @@ namespace Unpacker {
         dbm->init_database_connection();
     
         std::vector<UNPACKER_DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
-    
+        
         std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
         std::vector<std::thread> pool_vect(nThreads);
     
@@ -86,13 +88,17 @@ namespace Unpacker {
         }
     
         for (unsigned int i = 0; i < gpg_data.size();){
-            std::vector<PublicKey::Ptr> pks;
+            std::vector<Key::Ptr> pks;
             for (unsigned int j = 0; i < gpg_data.size() && j < key_per_thread; j++, i++){
                 try{
-                    std::stringstream s(gpg_data[i].certificate);
-                    PGP::Ptr pkt(new PGP(s, true));
-                    pkt -> set_type(PGP::PUBLIC_KEY_BLOCK);
-                    pks.push_back(std::make_shared<PublicKey>(PublicKey(*pkt)));
+                    //std::stringstream s(gpg_data[i].certificate);
+                    //PGP::Ptr pkt(new PGP(s)), true));
+                    //PGP::Ptr pkt(new PGP(gpg_data[i].certificate));
+                    //pkt -> set_type(PGP::PUBLIC_KEY_BLOCK);
+                    //pks.push_back(std::make_shared<PublicKey>(PublicKey(*pkt)));
+                    Key::Ptr key = std::make_shared<Key>(gpg_data[i].certificate);
+                    key->set_type(PGP::PUBLIC_KEY_BLOCK);
+                    pks.push_back(key);
                 }catch (std::exception &e){
                     dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
                     syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", e.what());
@@ -101,9 +107,12 @@ namespace Unpacker {
                     dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
                     syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", e.message().c_str());
                     continue;
+                }catch (...){
+                    syslog(LOG_CRIT, "Error during creation of the object PGP::Key");
+                    continue;
                 }
             }
-            pool->Add_Job([=] { return Unpacker::unpack_key_th(dbm, pks); });
+            pool->Add_Job([=] { return Unpacker::unpack_key_th(db_settings, pks); });
         }
     
         pool->Stop_Filling_UP();
@@ -129,7 +138,10 @@ namespace Unpacker {
         return 0;
     }
 
-    void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm, const vector<PublicKey::Ptr> &pks){
+    void unpack_key_th(const Unpacker_DBConfig &db_settings, const vector<Key::Ptr> &pks){
+        
+        std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>(db_settings);
+        dbm->init_database_connection();
         dbm->openCSVFiles();
 
         for (const auto &pk : pks) {
@@ -140,16 +152,21 @@ namespace Unpacker {
                 cout << "Key not analyzed due to not meaningfulness (" << e.what() << "). is_analyzed will be set equals to -1" << endl;
                 dbm->set_as_not_analyzable(pk->version(), pk->fingerprint(), e.what());
                 continue;
+            }catch (error_code &ec){
+                syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", ec.message().c_str());
+                cerr << "Key not unpacked due to not meaningfulness (" << ec.message() << ")." << endl;
+                dbm->set_as_not_analyzable(pk->version(), pk->fingerprint(), ec.message());
+                continue;
+            }catch (...){
+                syslog(LOG_CRIT, "Error during creation of the object PGP::Key");
+                continue;
             }
         }
     }
 
-    void unpack_key( const PublicKey::Ptr &key, const shared_ptr<UNPACKER_DBManager> &dbm){
+    void unpack_key( const Key::Ptr &key, const shared_ptr<UNPACKER_DBManager> &dbm){
 
         Key::pkey pk;
-        if (key->get_packets().empty()){
-            throw logic_error("Key not created correctly");
-        }
         UNPACKER_DBStruct::Unpacker_errors modified = UNPACKER_DBStruct::Unpacker_errors(mpitodec(rawtompi(key->keyid())));
 
         try{
@@ -389,13 +406,16 @@ namespace Unpacker {
         switch (ss.pubAlgorithm){
             case PKA::ID::RSA_SIGN_ONLY:
             case PKA::ID::RSA_ENCRYPT_OR_SIGN:
-                ss.s = mpitoraw(algValues[0]);
+                if (algValues.size() > 0) 
+                    ss.s = mpitoraw(algValues[0]);
                 break;
             case PKA::ID::DSA:
             case PKA::ID::ECDSA:
             case PKA::ID::EdDSA:
-                ss.r = mpitoraw(algValues[0]);
-                ss.s = mpitoraw(algValues[1]);
+                if (algValues.size() > 1){
+                    ss.r = mpitoraw(algValues[0]);
+                    ss.s = mpitoraw(algValues[1]);
+                }
                 break;
             default:
                 syslog(LOG_ERR, "Not valid/implemented algorithm found: %i", ss.hashAlgorithm);
@@ -497,7 +517,7 @@ namespace Unpacker {
 
         PKA::Values algValues = k->get_mpi();
 
-        if (pk.version < 4) {
+        if (pk.version < 4 && algValues.size() > 1) {
             pk.algValue.at(0) = mpitoraw(algValues[1]);
             pk.algValue.at(1) = mpitoraw(algValues[0]);
         } else {
@@ -505,25 +525,33 @@ namespace Unpacker {
                 case PKA::ID::RSA_ENCRYPT_ONLY:
                 case PKA::ID::RSA_ENCRYPT_OR_SIGN:
                 case PKA::ID::RSA_SIGN_ONLY:
-                    pk.algValue.at(0) = mpitoraw(algValues[1]);
-                    pk.algValue.at(1) = mpitoraw(algValues[0]);
+                    if (algValues.size() > 1){
+                        pk.algValue.at(0) = mpitoraw(algValues[1]);
+                        pk.algValue.at(1) = mpitoraw(algValues[0]);
+                    }
                     break;
                 case PKA::ID::ELGAMAL:
-                    pk.algValue.at(2) = mpitoraw(algValues[0]);
-                    pk.algValue.at(4) = mpitoraw(algValues[1]);
-                    pk.algValue.at(5) = mpitoraw(algValues[2]);
+                    if (algValues.size() > 2){
+                        pk.algValue.at(2) = mpitoraw(algValues[0]);
+                        pk.algValue.at(4) = mpitoraw(algValues[1]);
+                        pk.algValue.at(5) = mpitoraw(algValues[2]);
+                    }
                     break;
                 case PKA::ID::DSA:
-                    pk.algValue.at(2) = mpitoraw(algValues[0]);
-                    pk.algValue.at(3) = mpitoraw(algValues[1]);
-                    pk.algValue.at(4) = mpitoraw(algValues[2]);
-                    pk.algValue.at(5) = mpitoraw(algValues[3]);
+                    if (algValues.size() > 3){
+                        pk.algValue.at(2) = mpitoraw(algValues[0]);
+                        pk.algValue.at(3) = mpitoraw(algValues[1]);
+                        pk.algValue.at(4) = mpitoraw(algValues[2]);
+                        pk.algValue.at(5) = mpitoraw(algValues[3]);
+                    }
                     break;
                 case PKA::ID::ECDSA:
                 case PKA::ID::EdDSA:
                 case PKA::ID::ECDH:
-                    pk.algValue.at(2) = mpitoraw(algValues[0]);
-                    pk.curve = hexlify(k->get_curve());
+                    if (algValues.size() > 1){
+                        pk.algValue.at(2) = mpitoraw(algValues[0]);
+                        pk.curve = hexlify(k->get_curve());
+                    }
                     break;
                 default:
                     syslog(LOG_WARNING, "Algorithm type (%i) for pubkey not found.", pk.pubAlgorithm);
@@ -546,7 +574,9 @@ namespace Unpacker {
                     break;
                 }
                 default:
-                    syslog(LOG_WARNING, "Not valid user attribute subpacket tag found: %d", a->get_type());
+                    Subpacket::Tag17::SubWrong::Ptr swt17 = static_pointer_cast<Subpacket::Tag17::SubWrong>(a);
+                    ua_struct.image = swt17 -> raw();
+                    syslog(LOG_WARNING, "Not valid user attribute subpacket tag found: %d, saving anyway with encoding = 0", a->get_type());
                     break;
             }
         }

@@ -23,7 +23,7 @@ class UNPACKER_DBManager {
 
 
 public:
-    UNPACKER_DBManager(Unpacker_DBConfig &settings);
+    UNPACKER_DBManager(const Unpacker_DBConfig &settings);
     ~UNPACKER_DBManager();
 
     void init_database_connection();
@@ -37,7 +37,7 @@ public:
     void write_signature_csv(const UNPACKER_DBStruct::signatures &ss);
     void write_self_signature_csv(const UNPACKER_DBStruct::signatures &ss);
     void write_unpackerErrors_csv(const UNPACKER_DBStruct::Unpacker_errors &mod);
-    void write_unpacked_csv(const OpenPGP::PublicKey::Ptr &key, const UNPACKER_DBStruct::Unpacker_errors &mod);
+    void write_unpacked_csv(const OpenPGP::Key::Ptr &key, const UNPACKER_DBStruct::Unpacker_errors &mod);
 
     void insertCSV(const std::vector<std::string> &files, const unsigned int &table);
 

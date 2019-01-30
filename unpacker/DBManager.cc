@@ -11,7 +11,7 @@ using namespace sql;
 using namespace std;
 
 // Database connector initialization
-UNPACKER_DBManager::UNPACKER_DBManager(Unpacker_DBConfig &un_settings){
+UNPACKER_DBManager::UNPACKER_DBManager(const Unpacker_DBConfig &un_settings){
     settings = un_settings;
 };
 
@@ -154,7 +154,7 @@ void UNPACKER_DBManager::set_as_not_analyzable(const int &version, const string 
     }
 }
 
-void UNPACKER_DBManager::write_unpacked_csv(const OpenPGP::PublicKey::Ptr &key, const UNPACKER_DBStruct::Unpacker_errors &mod){
+void UNPACKER_DBManager::write_unpacked_csv(const OpenPGP::Key::Ptr &key, const UNPACKER_DBStruct::Unpacker_errors &mod){
     try{
         ostream &f = file_list.at(UNPACKER_Utils::UNPACKED);
         f << '.' << '"' << to_string(key->version()) << "\",";
