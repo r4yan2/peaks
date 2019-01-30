@@ -123,6 +123,7 @@ namespace Unpacker {
         }
     
         dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::PUBKEY), UNPACKER_Utils::PUBKEY);
+        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::USERID), UNPACKER_Utils::USERID);
         dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::USER_ATTRIBUTES), UNPACKER_Utils::USER_ATTRIBUTES);
         dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::SIGNATURE), UNPACKER_Utils::SIGNATURE);
         dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::SELF_SIGNATURE), UNPACKER_Utils::SELF_SIGNATURE);
@@ -204,6 +205,7 @@ namespace Unpacker {
 
         Packet::Key::Ptr primaryKey = static_pointer_cast<Packet::Key>(pk.key);
         vector<UNPACKER_DBStruct::pubkey> unpackedPubkeys;
+        vector<UNPACKER_DBStruct::userID> unpackedUserID;
         vector<UNPACKER_DBStruct::userAtt> unpackedUserAttributes;
         vector<UNPACKER_DBStruct::signatures> unpackedSignatures; // contains also self-signatures
 
@@ -217,6 +219,15 @@ namespace Unpacker {
         for (auto i = pk.keySigs.begin(); i != pk.keySigs.end(); i++){
             try{
                 unpackedSignatures.push_back(get_signature_data(i, primaryKey));
+            }catch (exception &e){
+                modified.modified = true;
+                modified.comments.push_back("Unpacking jumped due to: " + string(e.what()));
+            }
+        }
+
+        for (const auto &u: pk.uid_list){
+            try {
+                unpackedUserID.push_back(get_userID_data(u, primaryKey));
             }catch (exception &e){
                 modified.modified = true;
                 modified.comments.push_back("Unpacking jumped due to: " + string(e.what()));
@@ -283,6 +294,9 @@ namespace Unpacker {
                 }
             }
             dbm->write_pubkey_csv(p);
+        }
+        for (auto &u: unpackedUserID){
+            dbm->write_userID_csv(u);
         }
         for (auto &u: unpackedUserAttributes){
             dbm->write_userAttributes_csv(u);
@@ -561,6 +575,40 @@ namespace Unpacker {
 
         return pk;
     }
+
+    UNPACKER_DBStruct::userID get_userID_data(const Packet::Tag::Ptr &user_pkt, const Packet::Key::Ptr &key) {
+        Packet::Tag13::Ptr t13 = dynamic_pointer_cast<Packet::Tag13>(user_pkt);
+        //boost::regex pattern("[\\w_.+-]+@[\\w.-]+\\.[\\w.-]+");
+        //boost::smatch result;
+        // get Email
+        string user = t13->get_contents();
+        string email = "";
+
+        /*
+        if (user.size() < 5000 && boost::regex_search(user, result, pattern)){
+            email = result[0];
+        }
+        */
+        /*
+        std::regex mail_regex(
+                "<(?:(?:[^<>()\\[\\].,;:\\s@\"]+(?:\\.[^<>()\\[\\].,;:\\s@\"]+)*)|\".+\")@(?:(?:[^<>()‌​\\[\\].,;:\\s@\"]+\\.)+[^<>()\\[\\].,;:\\s@\"]{2,})>");
+        // get Email
+        string user = t13->get_contents();
+        string email = "";
+        std::cmatch match;
+
+        if (user.size() < 5000 && std::regex_search(user.c_str(), match, mail_regex)){
+            email = string(match[0].first + 1, match[0].first + strlen(match[0].first) - 1);
+		}
+        */
+        return UNPACKER_DBStruct::userID {
+                .ownerkeyID = mpitodec(rawtompi(key->get_keyid())),
+                .fingerprint = key->get_fingerprint(),
+                .name = ascii2radix64(user),
+                .email = ascii2radix64(email)
+        };
+    }
+
 
     void get_userAttributes_data(const Packet::Tag::Ptr &p, UNPACKER_DBStruct::userAtt &ua_struct) {
         Packet::Tag17::Ptr t17 = dynamic_pointer_cast<Packet::Tag17>(p);

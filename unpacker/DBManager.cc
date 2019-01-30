@@ -67,6 +67,11 @@ std::pair<std::string, std::string> UNPACKER_DBManager::insert_signature_stmt = 
                                      "signedHash = UNHEX(@hexsignedHash), expirationTime = nullif(@vexpirationTime, ''), "
                                      "keyExpirationTime = nullif(@vkeyExpirationTime, ''), flags = UNHEX(@hexflags);");
 
+std::pair<std::string, std::string> UNPACKER_DBManager::insert_userID_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+                                     "' IGNORE INTO TABLE UserID FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
+                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (ownerkeyID,@hexfingerprint,name,email) "
+                                     "SET fingerprint = UNHEX(@hexfingerprint);");
+
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_self_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE selfSignaturesMetadata FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
@@ -190,6 +195,20 @@ void UNPACKER_DBManager::write_pubkey_csv(const UNPACKER_DBStruct::pubkey &pubke
     }
 }
 
+void UNPACKER_DBManager::write_userID_csv(const UNPACKER_DBStruct::userID &uid) {
+    try{
+        ostream &f = file_list.at(UNPACKER_Utils::USERID);
+        f << '.' << '"' << uid.ownerkeyID << "\",";
+        f << '"' << hexlify(uid.fingerprint) << "\",";
+        f << '"' << uid.name << "\",";
+        f << '"' << uid.email << "\",";
+        f << "\n";
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_userID_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
+    }
+}
+
+
 void UNPACKER_DBManager::write_userAttributes_csv(const UNPACKER_DBStruct::userAtt &ua) {
     try{
         ostream &f = file_list.at(UNPACKER_Utils::USER_ATTRIBUTES);
@@ -312,6 +331,17 @@ void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                     syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                       e.what());
                     UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::SELF_SIGNATURE);
+                }
+            }
+            break;
+        case UNPACKER_Utils::USERID:
+            for (const auto &f: files){
+                try{
+                    shared_ptr<Statement>(con->createStatement())->execute(insert_userID_stmt.first + f + insert_userID_stmt.second);
+                }catch (exception &e){
+                    syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                                      e.what());
+                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::USERID);
                 }
             }
             break;

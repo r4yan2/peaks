@@ -27,6 +27,7 @@ namespace Unpacker {
     void unpack_key(const OpenPGP::Key::Ptr &key, const std::shared_ptr<UNPACKER_DBManager> &dbm);
     UNPACKER_DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey);
     UNPACKER_DBStruct::pubkey get_publicKey_data(const OpenPGP::Packet::Tag::Ptr &p, const OpenPGP::Packet::Key::Ptr &priKey);
+    UNPACKER_DBStruct::userID get_userID_data(const OpenPGP::Packet::Tag::Ptr &user_pkt, const OpenPGP::Packet::Key::Ptr &key);
     void get_userAttributes_data(const OpenPGP::Packet::Tag::Ptr &p, UNPACKER_DBStruct::userAtt &ua_struct);
 
     void get_tag2_subpackets_data(const std::vector<OpenPGP::Subpacket::Tag2::Sub::Ptr> &subps, UNPACKER_DBStruct::signatures *ss);

@@ -17,6 +17,7 @@ class UNPACKER_DBManager {
     static std::pair<std::string, std::string> insert_pubkey_stmt, 
         insert_signature_stmt, 
         insert_self_signature_stmt, 
+        insert_userID_stmt,
         insert_userAtt_stmt, 
         insert_unpackerErrors_stmt, 
         insert_unpacked_stmt;
@@ -33,6 +34,7 @@ public:
     bool existSignature(const UNPACKER_DBStruct::signatures &s);
 
     void write_pubkey_csv(const UNPACKER_DBStruct::pubkey &pubkey);
+    void write_userID_csv(const UNPACKER_DBStruct::userID &uid);
     void write_userAttributes_csv(const UNPACKER_DBStruct::userAtt &ua);
     void write_signature_csv(const UNPACKER_DBStruct::signatures &ss);
     void write_self_signature_csv(const UNPACKER_DBStruct::signatures &ss);

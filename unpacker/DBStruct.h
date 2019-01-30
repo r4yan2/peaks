@@ -21,6 +21,13 @@ namespace UNPACKER_DBStruct{
         std::string curve = "";
     };
 
+    struct userID{
+        std::string ownerkeyID = "";
+        std::string fingerprint = "";
+        std::string name = "";
+        std::string email = "";
+    };
+
     struct signatures{
         unsigned int type = 0;
         unsigned int pubAlgorithm = 0;

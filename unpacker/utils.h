@@ -20,6 +20,7 @@ namespace UNPACKER_Utils{
     const unsigned int SELF_SIGNATURE   = 4;
     const unsigned int USER_ATTRIBUTES  = 5;
     const unsigned int UNPACKER_ERRORS  = 6;
+    const unsigned int USERID           = 7;
 
     const std::map<const unsigned int, std::string> FILENAME{
             std::make_pair(UNPACKED, "_Unpacked.csv"),
@@ -27,7 +28,8 @@ namespace UNPACKER_Utils{
             std::make_pair(SIGNATURE, "_Signatures.csv"),
             std::make_pair(SELF_SIGNATURE, "_SelfSignatures.csv"),
             std::make_pair(USER_ATTRIBUTES, "_UserAtt.csv"),
-            std::make_pair(UNPACKER_ERRORS, "_UnpackerErrors.csv")
+            std::make_pair(UNPACKER_ERRORS, "_UnpackerErrors.csv"),
+            std::make_pair(USERID, "_UserID.csv")
     };
 
     std::string get_file_name(const std::string &folder_name, const unsigned int &i, const std::thread::id &ID);
