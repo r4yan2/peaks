@@ -289,7 +289,8 @@ void UNPACKER_DBManager::write_unpackerErrors_csv(const UNPACKER_DBStruct::Unpac
     try{
         ostream &f = file_list.at(UNPACKER_Utils::UNPACKER_ERRORS);
         for (const auto &c: mod.comments){
-            f << '.' << '"' << mod.keyId << "\",";
+            f << '.' << '"' << mod.version << "\",";
+            f << '"' << hexlify(mod.fingerprint) << "\"";
             f << '"' << c << "\",";
             f << "\n";
         }

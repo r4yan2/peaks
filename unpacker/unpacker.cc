@@ -168,9 +168,11 @@ namespace Unpacker {
     void unpack_key( const Key::Ptr &key, const shared_ptr<UNPACKER_DBManager> &dbm){
 
         Key::pkey pk;
-        UNPACKER_DBStruct::Unpacker_errors modified = UNPACKER_DBStruct::Unpacker_errors(mpitodec(rawtompi(key->keyid())));
+        UNPACKER_DBStruct::Unpacker_errors modified;
 
         try{
+            modified.version = key->version();
+            modified.fingerprint = key->fingerprint();
             key->meaningful();
             pk = key->get_pkey();
             Key_Tools::makePKMeaningful(pk, modified);

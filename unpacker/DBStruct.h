@@ -80,11 +80,10 @@ namespace UNPACKER_DBStruct{
     };
 
     struct Unpacker_errors {
+        int version = 0;
+        std::string fingerprint = "";
         bool modified = false;
-        const std::string keyId{};
         std::vector<std::string> comments = {};
-
-        explicit Unpacker_errors(std::string kId) : keyId(kId){}
     };
 }
 
