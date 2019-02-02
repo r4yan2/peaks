@@ -108,8 +108,8 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
         return;
     }
     std::vector<std::string> hashes = di.dump_import(keys);
-    if (hashes.size() != elements.size() and not settings.ignore_known_bug){
-        syslog(LOG_WARNING, "number of recovered keys does not match number of hashes recovered! This is caused by a known bug in peaks, sorry...");
+    if (hashes.size() != elements.size()){
+        syslog(LOG_WARNING, "number of recovered keys does not match number of hashes recovered!");
     }
     /*
     for (auto hash: elements)
