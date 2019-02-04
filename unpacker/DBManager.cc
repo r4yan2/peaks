@@ -88,7 +88,7 @@ std::pair<std::string, std::string> UNPACKER_DBManager::insert_userAtt_stmt = ma
 
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_unpackerErrors_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Unpacker_errors FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
-                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (idx,error);");
+                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (version, @hexfingerprint, error) SET fingerprint = UNHEX(@hexfingerprint);");
 
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_unpacked_stmt = make_pair<string, string>(
                     "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE tmp_unpacker FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
