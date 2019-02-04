@@ -19,6 +19,8 @@
 -- Current Database: `gpg_keyserver`
 --
 
+SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));
+
 CREATE DATABASE /*!32312 IF NOT EXISTS*/ `gpg_keyserver` /*!40100 DEFAULT CHARACTER SET utf8 */;
 
 USE `gpg_keyserver`;
