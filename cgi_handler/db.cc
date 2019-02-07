@@ -42,7 +42,7 @@ DBManager::DBManager(const Cgi_DBConfig &cgi_settings) {
                                        "gpg_keyserver WHERE LPAD(CONV(ID,16,10),16,0) LIKE (?);"));
 
     longid_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT certificate FROM "
-                                       "gpg_keyserver WHERE ID = CONV((?)), 16,10;"));
+                                       "gpg_keyserver WHERE ID = CONV((?),16,10);"));
     fprint_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT certificate FROM "
                                        "gpg_keyserver WHERE fingerprint = unhex(?) UNION "
                                        "SELECT certificate FROM gpg_keyserver JOIN Pubkey ON "
