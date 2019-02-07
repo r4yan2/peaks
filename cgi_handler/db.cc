@@ -38,11 +38,11 @@ DBManager::DBManager(const Cgi_DBConfig &cgi_settings) {
                                        "SELECT certificate, ID DIV POW(2,32) FROM gpg_keyserver "
                                        "WHERE version = 4) AS SHORTID "
                                        "WHERE ID = (?);"));*/
+    shortid_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT certificate FROM "
+                                       "gpg_keyserver WHERE LPAD(CONV(ID,10,16),16,0) LIKE (?);"));
+
     longid_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT certificate FROM "
-                                       "gpg_keyserver WHERE LPAD(CONV(ID,10,16),16,0) LIKE (?) UNION "
-                                       "SELECT certificate FROM gpg_keyserver JOIN Pubkey ON "
-                                       "gpg_keyserver.fingerprint = Pubkey.priFingerprint WHERE "
-                                       "LPAD(CONV(Pubkey.keyId,10,16),16,0) LIKE (?);"));
+                                       "gpg_keyserver WHERE ID = CONV((?)), 10,16;"));
     fprint_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT certificate FROM "
                                        "gpg_keyserver WHERE fingerprint = unhex(?) UNION "
                                        "SELECT certificate FROM gpg_keyserver JOIN Pubkey ON "
@@ -138,8 +138,7 @@ int DBManager::searchKey(string key, istream*& blob){
 istream* DBManager::shortIDQuery(const string &keyID) {
     // Get the 32 MSBs of the key IDs
 
-    longid_stmt->setString(1, "%" + keyID);
-    longid_stmt->setString(2, "%" + keyID);
+    shortid_stmt->setString(1, "%" + keyID);
     result = shared_ptr<ResultSet>(longid_stmt->executeQuery());
     if (result->next()) {
         return result->getBlob("certificate");
@@ -152,7 +151,6 @@ istream* DBManager::longIDQuery(const string &keyID) {
     // Perform the query on the full key IDs
 
     longid_stmt->setString(1, keyID);
-    longid_stmt->setString(2, keyID);
     result = shared_ptr<ResultSet>(longid_stmt->executeQuery());
     if (result->next()) {
         return result->getBlob("certificate");

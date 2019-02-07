@@ -401,8 +401,28 @@ void serve(po::variables_map &vm, po::parsed_options &parsed){
         vm["db_password"].as<std::string>(),
         vm["db_database"].as<std::string>(),
     };
-    openlog("peaks", LOG_PID, LOG_USER);
-    setlogmask (LOG_UPTO (LOG_NOTICE));
+
+    int log_option;
+    int log_upto;
+
+    if (vm.count("stdout")){
+        std::cout << "logging to stdout" << std::endl;
+        log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
+    }
+    else{
+        log_option = LOG_PID;
+    }
+    if (vm.count("debug")){
+        std::cout << "debug output" << std::endl;
+        log_upto = LOG_UPTO(LOG_DEBUG);
+    }
+    else{
+        log_upto = LOG_UPTO(LOG_INFO); 
+    }
+
+    openlog("peaks_serve", log_option, LOG_USER);
+    setlogmask(log_upto);
+ 
     syslog(LOG_NOTICE, "peaks server is starting up!");
     try {
         cppcms::service srv(opts.size(), &new_argv[0]);
