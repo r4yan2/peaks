@@ -44,9 +44,7 @@ DBManager::DBManager(const Cgi_DBConfig &cgi_settings) {
     longid_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT certificate FROM "
                                        "gpg_keyserver WHERE ID = CONV((?),16,10);"));
     fprint_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT certificate FROM "
-                                       "gpg_keyserver WHERE fingerprint = unhex(?) UNION "
-                                       "SELECT certificate FROM gpg_keyserver JOIN Pubkey ON "
-                                       "gpg_keyserver.fingerprint = Pubkey.priFingerprint WHERE Pubkey.fingerprint = unhex(?);"));
+                                       "gpg_keyserver WHERE fingerprint = unhex(?);"));
     index_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT nLength, pLength, pubAlgorithm, creationTime, "
                                        "kID, name FROM ("
                                        "SELECT length(p.n)*8 as nLength, length(p.p)*8 as pLength, p.pubAlgorithm, "
@@ -57,7 +55,7 @@ DBManager::DBManager(const Cgi_DBConfig &cgi_settings) {
                                        "0 as creationTime, FROM_BASE64(name) as name "
                                        "FROM UserID WHERE UPPER(CONVERT(FROM_BASE64(name) USING latin1)) LIKE ?) "
                                        "AS keys_list GROUP BY kID"));
-    insert_gpg_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT INTO gpg_keyserver "
+    insert_gpg_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("REPLACE INTO gpg_keyserver "
                                        "VALUES (?, ?, ?, ?, ?, 0, 0, ?);"));
     update_gpg_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE gpg_keyserver SET "
                                        "certificate = (?), is_unpacked = 0, is_synchronized = 0, hash = (?) WHERE fingerprint = unhex(?) "
@@ -162,7 +160,6 @@ istream* DBManager::longIDQuery(const string &keyID) {
 istream* DBManager::fingerprintQuery(const string &fp) {
     // Query on the fingerprints
     fprint_stmt->setString(1, fp);
-    fprint_stmt->setString(2, fp);
     result = shared_ptr<ResultSet>(fprint_stmt->executeQuery());
     if (result->next()) {
         return result->getBlob("certificate");
@@ -215,6 +212,7 @@ forward_list<DB_Key*> *DBManager::indexQuery(string key) {
     index_stmt->setString(1, searchString);
     index_stmt->setString(2, searchString);
     result = shared_ptr<ResultSet>(index_stmt->executeQuery());
+    syslog(LOG_DEBUG, "Found %lu results!", result->rowsCount());
     while (result->next()) {
         int algoNum = result->getInt(3);
         char algoChar = 'c';

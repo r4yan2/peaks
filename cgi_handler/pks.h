@@ -28,6 +28,9 @@ public:
         dispatcher().assign("/hashquery", &Pks::hashquery, this);
         mapper().assign("hashquery", "/hashquery");
 
+        dispatcher().assign("/add", &Pks::add, this);
+        mapper().assign("add", "/add");
+
         dispatcher().assign("", &Pks::homepage, this);
         mapper().assign("");
 
@@ -40,6 +43,7 @@ public:
     void lookup();
     void homepage();
     void hashquery();
+    void add();
 
 private:
     DBManager* dbm;

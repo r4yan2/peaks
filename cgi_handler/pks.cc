@@ -88,21 +88,32 @@ void Pks::hashquery(){
     }
 }
 
+
+void Pks::add(){
+    if (request().request_method()=="POST"){
+        syslog(LOG_DEBUG, "SUBMIT");
+        const string keytext = request().post("keytext");
+        post(keytext);
+
+    }else{
+        response().status(cppcms::http::response::not_implemented);
+    }
+}
+
 void Pks::homepage() {
     content::homepage c;
     if(request().request_method()=="POST") {
         c.submit.load(context());
         c.remove.load(context());
         if(c.submit.submit.value()) {
-            cout << "SUBMIT" << endl;
+            syslog(LOG_DEBUG, "SUBMIT");
             string temp = c.submit.keytext.value();
             temp.erase(std::remove(temp.begin(), temp.end(), '\r'), temp.end());
             post(temp);
         } else if(c.submit.reset.value()) {
-            cout << "RESET" << endl;
+            syslog(LOG_DEBUG, "RESET");
         } else if(c.remove.submit.value()) {
-            cout << "REMOVE" << endl;
-            cout << c.remove.search.value() << endl;
+            syslog(LOG_DEBUG, "REMOVE %s", c.remove.search.value().c_str());
             // [TODO] Implement key remove (kek)
             // [TODO] Fix that when remove is pressed, reset is triggered
         }
@@ -130,7 +141,7 @@ void Pks::post(const string& arm){
             default:
                 cerr << ec.message() << endl;
                 response().status(cppcms::http::response::internal_server_error);
-                response().out() << "Error dunring the upload of the key. Please contact the administrator.";
+                response().out() << "Error during the upload of the key. Please contact the administrator.";
                 syslog(LOG_CRIT, "GENERIC ERROR: (%s) during upload of key", ec.message().c_str());
                 break;
         }
@@ -138,19 +149,19 @@ void Pks::post(const string& arm){
     }catch (runtime_error &e){
         cout << e.what() << endl;
         response().status(cppcms::http::response::internal_server_error);
-        response().out() << "Error dunring the upload of the key. Please contact the administrator.";
+        response().out() << "Error during the upload of the key. Please contact the administrator.";
         syslog(LOG_ERR, "Error (%s) during upload of key", e.what());
         dbm->insert_broken_key(pr::get_ascii_arm(arm), e.what());
     }catch (logic_error &e){
         cerr << e.what() << endl;
         response().status(cppcms::http::response::internal_server_error);
-        response().out() << "Error dunring the upload of the key. Please contact the administrator.";
+        response().out() << "Error during the upload of the key. Please contact the administrator.";
         syslog(LOG_CRIT, "LOGIC ERROR: (%s) during upload of key", e.what());
         dbm->insert_broken_key(pr::get_ascii_arm(arm), e.what());
     }catch (exception &e){
         cerr << e.what() << endl;
         response().status(cppcms::http::response::internal_server_error);
-        response().out() << "Error dunring the upload of the key. Please contact the administrator.";
+        response().out() << "Error during the upload of the key. Please contact the administrator.";
         syslog(LOG_CRIT, "GENERIC ERROR: (%s) during upload of key", e.what());
         dbm->insert_broken_key(pr::get_ascii_arm(arm), e.what());
     }

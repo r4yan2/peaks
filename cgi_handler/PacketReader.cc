@@ -114,11 +114,12 @@ void pr::readPublicKeyPacket(const string &arm, peaks::DBManager *dbm){
     }
 
     cout << "Submitting data" << endl;
-    if (exist) {
-        dbm->update_gpg_keyserver(gk);
-    } else {
-        dbm->insert_gpg_keyserver(gk);
-    }
+    dbm->insert_gpg_keyserver(gk);
+    //if (exist) {
+    //    dbm->update_gpg_keyserver(gk);
+    //} else {
+    //    dbm->insert_gpg_keyserver(gk);
+    //}
 
     for (auto &uid: uids){
         dbm->insert_user_id(uid);
@@ -128,10 +129,8 @@ void pr::readPublicKeyPacket(const string &arm, peaks::DBManager *dbm){
 
 bool pr::manageMerge(PublicKey::Ptr key, istream *query){
     cout << "Key already in the database, proceeding with merge" << endl;
-    string tempArmored;
-    text_encoder::radix64 r64;
-    r64.encode(*query, tempArmored);
-    const Key::Ptr oldKey = make_shared<Key>(Key(tempArmored)); // [TODO] try to create from blob
+    std::string content{ std::istreambuf_iterator<char>(*query), std::istreambuf_iterator<char>() };
+    const Key::Ptr oldKey = make_shared<Key>(content);
     try{
         key->merge(oldKey);
     }catch (error_code &ec){
