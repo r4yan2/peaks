@@ -94,4 +94,19 @@ namespace UNPACKER_Utils{
         }
     }
 
+    void remove_directory_content(const std::string &foldername)
+    {
+        // These are data types defined in the "dirent" header
+        DIR *theFolder = opendir(foldername.c_str());
+        struct dirent *next_file;
+        char filepath[512];
+    
+        while ( (next_file = readdir(theFolder)) != NULL )
+        {
+            // build the path for each file in the folder
+            sprintf(filepath, "%s/%s", foldername.c_str(), next_file->d_name);
+            remove(filepath);
+        }
+        closedir(theFolder);
+    }
 }

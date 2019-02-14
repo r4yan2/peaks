@@ -68,9 +68,8 @@ private:
         get_signature_by_index, 
         set_key_not_analyzable,
         insert_error_comments,
-        insert_issuing_fingerprint;
-
-
+        insert_issuing_fingerprint,
+        set_unpacking_status_stmt;
 
 
 };

@@ -38,7 +38,7 @@ namespace UNPACKER_Utils{
     std::vector<std::string> get_files(const std::string & folder_name, const unsigned int &i);
     bool hasEnding (std::string const &fullString, std::string const &ending);
     std::string getCurrentTime();
-
+    void remove_directory_content(const std::string &foldername);
 /*
     vector<std::string> listFileEndingWith(std::string end);
 */

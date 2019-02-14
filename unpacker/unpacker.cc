@@ -61,6 +61,8 @@ namespace Unpacker {
             syslog(LOG_WARNING,  "Unable to create temp folder");
             exit(-1);
         }
+
+        UNPACKER_Utils::remove_directory_content(vm["unpacker_tmp_folder"].as<std::string>());
     
         if (UNPACKER_Utils::create_folders(vm["unpacker_error_folder"].as<std::string>()) == -1){
             syslog(LOG_WARNING,  "Unable to create temp folder");

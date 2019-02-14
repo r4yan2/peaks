@@ -36,6 +36,8 @@ void UNPACKER_DBManager::init_database_connection(){
     
     set_key_not_analyzable = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE gpg_keyserver "
                                          "SET is_unpacked = -1 WHERE version = (?) and fingerprint = unhex(?)"));
+
+    set_unpacking_status_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE gpg_keyserver SET is_unpacked = 3 WHERE version = (?) and fingerprint = (?)"));
     
     insert_issuing_fingerprint = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN "
                                          "(SELECT * FROM Signature_no_issuing_fp LIMIT ?) as ifp SET Signatures.issuingFingerprint = ifp.fp "
@@ -111,6 +113,9 @@ vector<UNPACKER_DBStruct::gpg_keyserver_data> UNPACKER_DBManager::get_certificat
                 .certificate = result->getString("certificate")
         };
         certificates.push_back(tmp_field);
+        set_unpacking_status_stmt->setInt(1, tmp_field.version);
+        set_unpacking_status_stmt->setString(2, tmp_field.fingerprint);
+        set_unpacking_status_stmt->executeQuery();
     }
     return certificates;
 }
