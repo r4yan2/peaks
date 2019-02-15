@@ -48,12 +48,12 @@ DBManager::DBManager(const Cgi_DBConfig &cgi_settings) {
     index_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT nLength, pLength, pubAlgorithm, creationTime, "
                                        "kID, name FROM ("
                                        "SELECT length(p.n)*8 as nLength, length(p.p)*8 as pLength, p.pubAlgorithm, "
-                                       "hex(p.keyID) as kID, p.creationTime, FROM_BASE64(u.name) as name "
+                                       "hex(p.keyID) as kID, p.creationTime, u.name as name "
                                        "FROM Pubkey AS p INNER JOIN UserID as u ON p.fingerprint = u.fingerprint "
-                                       "WHERE UPPER(CONVERT(FROM_BASE64(u.name) USING latin1)) LIKE ? UNION ALL "
+                                       "WHERE u.name LIKE ? UNION ALL "
                                        "SELECT 0 as nLength, 0 as pLength, 'NaN' as pubAlgorithm, hex(ownerkeyID) as kID, "
-                                       "0 as creationTime, FROM_BASE64(name) as name "
-                                       "FROM UserID WHERE UPPER(CONVERT(FROM_BASE64(name) USING latin1)) LIKE ?) "
+                                       "0 as creationTime, name "
+                                       "FROM UserID WHERE name LIKE ?) "
                                        "AS keys_list GROUP BY kID"));
     insert_gpg_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("REPLACE INTO gpg_keyserver "
                                        "VALUES (?, ?, ?, ?, ?, 0, 0, ?);"));

@@ -47,7 +47,7 @@ void DUMPIMPORT_DBManager::init_database_connection() {
                                      "expirationTime = nullif(@vexpirationTime, '');");
 
     insert_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-                                     "' IGNORE INTO TABLE Signatures FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
+                                     "' IGNORE INTO TABLE Signatures CHARACTER SET latin1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(type,pubAlgorithm,hashAlgorithm,version,issuingKeyId,signedKeyId,"
                                      "@hexissuingFingerprint,@hexsignedFingerprint,@vsignedUsername,@vissuingUsername,"
@@ -63,7 +63,7 @@ void DUMPIMPORT_DBManager::init_database_connection() {
                                      "keyExpirationTime = nullif(@vkeyExpirationTime, ''), flags = UNHEX(@hexflags);");
 
     insert_self_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-                                     "' IGNORE INTO TABLE selfSignaturesMetadata FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
+                                     "' IGNORE INTO TABLE selfSignaturesMetadata CHARACTER SET latin1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(type,pubAlgorithm,hashAlgorithm,version,issuingKeyId,@hexissuingFingerprint,"
                                      "@hexpreferedHash,@hexpreferedCompression,@hexpreferedSymmetric,trustLevel,@vkeyExpirationTime,"
@@ -72,7 +72,7 @@ void DUMPIMPORT_DBManager::init_database_connection() {
                                      "preferedHash = UNHEX(@hexpreferedHash), keyExpirationTime = nullif(@vkeyExpirationTime, '');");
 
     insert_userID_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-                                     "' IGNORE INTO TABLE UserID FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
+                                     "' IGNORE INTO TABLE UserID CHARACTER SET latin1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (ownerkeyID,@hexfingerprint,name,email) "
                                      "SET fingerprint = UNHEX(@hexfingerprint);");
 
