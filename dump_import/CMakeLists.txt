@@ -3,7 +3,7 @@ project(dump_import)
 
 set(SOURCE_FILES dump_import.cc DBManager.cc Thread_Pool.cc unpacker.cc DBStruct.h utils.cc Key_Tools.cc)
 add_library(dump_import ${SOURCE_FILES})
-find_package(Boost REQUIRED system filesystem regex)
+find_package(Boost REQUIRED system filesystem)
 
 target_link_libraries(dump_import ${OpenPGP_DIRECTORY}/libOpenPGP.a)
 target_link_libraries(dump_import gmp)

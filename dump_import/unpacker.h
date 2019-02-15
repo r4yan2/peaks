@@ -15,8 +15,6 @@
 #include <common/errors.h>
 #include <thread>
 #include <cmath>
-#include <boost/regex.hpp>
-#include <regex>
 #include "Key_Tools.h"
 #include <boost/program_options.hpp>
 #include <stdio.h>

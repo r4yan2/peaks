@@ -220,13 +220,11 @@ CREATE TABLE `UserID` (
   `ownerkeyID` bigint(20) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
   `name` varchar(750) NOT NULL,
-  `email` varchar(500) DEFAULT NULL,
   `is_analyze` tinyint(4) DEFAULT NULL,
   `bindingAuthentic` tinyint(4) NOT NULL,
   PRIMARY KEY (`fingerprint`,`name`(200)) USING BTREE,
   KEY `ownerkeyID` (`ownerkeyID`,`fingerprint`),
-  KEY `name` (`name`(200)),
-  KEY `email` (`email`(191))
+  KEY `name` (`name`(200))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -244,19 +242,6 @@ CREATE TABLE `broken_keys` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=11366 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Temporary table structure for view `emailDomain`
---
-
-DROP TABLE IF EXISTS `emailDomain`;
-/*!50001 DROP VIEW IF EXISTS `emailDomain`*/;
-SET @saved_cs_client     = @@character_set_client;
-SET character_set_client = utf8;
-/*!50001 CREATE VIEW `emailDomain` AS SELECT 
- 1 AS `domain`,
- 1 AS `fingerprint`*/;
-SET character_set_client = @saved_cs_client;
 
 --
 -- Table structure for table `gpg_keyserver`
@@ -405,22 +390,6 @@ USE `gpg_keyserver`;
 /*!50001 SET character_set_results     = utf8 */;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE VIEW `Signature_no_issuing_fp` AS (select `Signatures`.`id` AS `id`,`Pubkey`.`fingerprint` AS `fp` from (`Signatures` join `Pubkey` on((`Signatures`.`issuingKeyId` = `Pubkey`.`keyId`))) where isnull(`Signatures`.`issuingFingerprint`)) */;
-/*!50001 SET character_set_client      = @saved_cs_client */;
-/*!50001 SET character_set_results     = @saved_cs_results */;
-/*!50001 SET collation_connection      = @saved_col_connection */;
-
---
--- Final view structure for view `emailDomain`
---
-
-/*!50001 DROP VIEW IF EXISTS `emailDomain`*/;
-/*!50001 SET @saved_cs_client          = @@character_set_client */;
-/*!50001 SET @saved_cs_results         = @@character_set_results */;
-/*!50001 SET @saved_col_connection     = @@collation_connection */;
-/*!50001 SET character_set_client      = utf8 */;
-/*!50001 SET character_set_results     = utf8 */;
-/*!50001 SET collation_connection      = utf8_general_ci */;
-/*!50001 CREATE VIEW `emailDomain` AS select substr(from_base64(`UserID`.`email`),(locate('@',from_base64(`UserID`.`email`)) + 1),((char_length(from_base64(`UserID`.`email`)) - locate('>',reverse(from_base64(`UserID`.`email`)))) - locate('>',from_base64(`UserID`.`email`)))) AS `domain`,`UserID`.`fingerprint` AS `fingerprint` from `UserID` where (`UserID`.`email` <> '') */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;

@@ -71,7 +71,7 @@ std::pair<std::string, std::string> UNPACKER_DBManager::insert_signature_stmt = 
 
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_userID_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE UserID CHARACTER SET latin1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
-                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (ownerkeyID,@hexfingerprint,name,email) "
+                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (ownerkeyID,@hexfingerprint,name) "
                                      "SET fingerprint = UNHEX(@hexfingerprint);");
 
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_self_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
@@ -206,7 +206,6 @@ void UNPACKER_DBManager::write_userID_csv(const UNPACKER_DBStruct::userID &uid) 
         f << '.' << '"' << uid.ownerkeyID << "\",";
         f << '"' << hexlify(uid.fingerprint) << "\",";
         f << '"' << uid.name << "\",";
-        f << '"' << uid.email << "\",";
         f << "\n";
     }catch (exception &e){
         syslog(LOG_CRIT, "write_userID_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());

@@ -7,7 +7,6 @@
 	* System
 	* Filesystem
 	* Program Options
-    * Regex
 * cppcms
     * pcre development files
     * zlib development files

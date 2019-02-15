@@ -615,34 +615,11 @@ namespace Dumpimport {
 
     DBStruct::userID get_userID_data(const Packet::Tag::Ptr &user_pkt, const Packet::Key::Ptr &key) {
         Packet::Tag13::Ptr t13 = dynamic_pointer_cast<Packet::Tag13>(user_pkt);
-        boost::regex pattern("[\\w_.+-]+@[a-zA-Z0-9.-]+[a-zA-Z]+");
-        boost::smatch result;
-        // get Email
         string user = t13->get_contents();
-        string email = "";
-
-        /*
-        if (user.size() < 5000 && boost::regex_search(user, result, pattern)){
-            email = result[0];
-        }
-        */
-        /*
-        std::regex mail_regex(
-                "<(?:(?:[^<>()\\[\\].,;:\\s@\"]+(?:\\.[^<>()\\[\\].,;:\\s@\"]+)*)|\".+\")@(?:(?:[^<>()‌​\\[\\].,;:\\s@\"]+\\.)+[^<>()\\[\\].,;:\\s@\"]{2,})>");
-        // get Email
-        string user = t13->get_contents();
-        string email = "";
-        std::cmatch match;
-
-        if (user.size() < 5000 && std::regex_search(user.c_str(), match, mail_regex)){
-            email = string(match[0].first + 1, match[0].first + strlen(match[0].first) - 1);
-		}
-        */
         return DBStruct::userID {
                 .ownerkeyID = mpitodec(rawtompi(key->get_keyid())),
                 .fingerprint = key->get_fingerprint(),
                 .name = user,
-                .email = email
         };
     }
 
