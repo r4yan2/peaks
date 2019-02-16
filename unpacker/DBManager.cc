@@ -84,7 +84,7 @@ std::pair<std::string, std::string> UNPACKER_DBManager::insert_self_signature_st
                                      "preferedHash = UNHEX(@hexpreferedHash), keyExpirationTime = nullif(@vkeyExpirationTime, '');");
 
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_userAtt_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-                                     "' IGNORE INTO TABLE UserAttribute FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
+                                     "' IGNORE INTO TABLE UserAttribute CHARACTER SET latin1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (id,@hexfingerprint,name,encoding,@heximage) "
                                      "SET fingerprint = UNHEX(@hexfingerprint), image = UNHEX(@heximage);");
 
@@ -355,7 +355,7 @@ void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned i
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_userAtt_stmt.first + f + insert_userAtt_stmt.second);
                 }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                    syslog(LOG_CRIT, "insert_userAtt_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
                                       e.what());
                     UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::USER_ATTRIBUTES);
                 }

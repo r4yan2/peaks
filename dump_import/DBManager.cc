@@ -77,7 +77,7 @@ void DUMPIMPORT_DBManager::init_database_connection() {
                                      "SET fingerprint = UNHEX(@hexfingerprint);");
 
     insert_userAtt_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-                                     "' IGNORE INTO TABLE UserAttribute FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
+                                     "' IGNORE INTO TABLE UserAttribute CHARACTER SET latin1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (id,@hexfingerprint,name,encoding,@heximage) "
                                      "SET fingerprint = UNHEX(@hexfingerprint), image = UNHEX(@heximage);");
 
