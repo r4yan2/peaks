@@ -61,7 +61,7 @@ DBManager::DBManager(const Cgi_DBConfig &cgi_settings) {
                                        "certificate = (?), is_unpacked = 0, is_synchronized = 0, hash = (?) WHERE fingerprint = unhex(?) "
                                        "and version = (?);"));
     insert_uid_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT INTO UserID "
-                                       "VALUES (?, ?, ?, ?, 0, 0);"));
+                                       "VALUES (?, ?, ?, 0, 0);"));
 
     insert_brokenKey_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT INTO broken_keys (certificate, log) "
                                        "VALUES (?, ?)"));
