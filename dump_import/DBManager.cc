@@ -47,7 +47,7 @@ void DUMPIMPORT_DBManager::init_database_connection() {
                                      "expirationTime = nullif(@vexpirationTime, '');");
 
     insert_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-                                     "' IGNORE INTO TABLE Signatures CHARACTER SET latin1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
+                                     "' IGNORE INTO TABLE Signatures FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(type,pubAlgorithm,hashAlgorithm,version,issuingKeyId,signedKeyId,"
                                      "@hexissuingFingerprint,@hexsignedFingerprint,@vsignedUsername,@vissuingUsername,"
@@ -56,30 +56,30 @@ void DUMPIMPORT_DBManager::init_database_connection() {
                                      "revocationCode,revocationReason,revocationSigId,isRevocable,"
                                      "isExportable,isExpired,isRevocation) "
                                      "SET issuingFingerprint = UNHEX(nullif(@hexissuingFingerprint, '')), "
-                                     "signedUsername = nullif(@vsignedUsername, ''), sign_Uatt_id = nullif(@vsign_Uatt_id, ''), "
+                                     "signedUsername = nullif(FROM_BASE64(@vsignedUsername), ''), sign_Uatt_id = nullif(@vsign_Uatt_id, ''), "
                                      "signedFingerprint = UNHEX(@hexsignedFingerprint), r = UNHEX(@hexr), regex = nullif(@vregex, ''), "
-                                     "s = UNHEX(@hexs), hashHeader = UNHEX(@hexhashHeader), issuingUsername = nullif(@vissuingUsername, ''), "
+                                     "s = UNHEX(@hexs), hashHeader = UNHEX(@hexhashHeader), issuingUsername = nullif(FROM_BASE64(@vissuingUsername), ''), "
                                      "signedHash = UNHEX(@hexsignedHash), expirationTime = nullif(@vexpirationTime, ''), "
                                      "keyExpirationTime = nullif(@vkeyExpirationTime, ''), flags = UNHEX(@hexflags);");
 
     insert_self_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-                                     "' IGNORE INTO TABLE selfSignaturesMetadata CHARACTER SET latin1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
+                                     "' IGNORE INTO TABLE selfSignaturesMetadata FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(type,pubAlgorithm,hashAlgorithm,version,issuingKeyId,@hexissuingFingerprint,"
                                      "@hexpreferedHash,@hexpreferedCompression,@hexpreferedSymmetric,trustLevel,@vkeyExpirationTime,"
-                                     "isPrimaryUserId,signedUserId) SET issuingFingerprint = UNHEX(@hexissuingFingerprint), "
+                                     "isPrimaryUserId,@base64signedUserId) SET issuingFingerprint = UNHEX(@hexissuingFingerprint), "
                                      "preferedSymmetric = UNHEX(@hexpreferedSymmetric), preferedCompression = UNHEX(@hexpreferedCompression), "
-                                     "preferedHash = UNHEX(@hexpreferedHash), keyExpirationTime = nullif(@vkeyExpirationTime, '');");
+                                     "preferedHash = UNHEX(@hexpreferedHash), keyExpirationTime = nullif(@vkeyExpirationTime, signedUserID = FROM_BASE64(@base64signedUserID) '');");
 
     insert_userID_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-                                     "' IGNORE INTO TABLE UserID CHARACTER SET latin1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
-                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (ownerkeyID,@hexfingerprint,name) "
-                                     "SET fingerprint = UNHEX(@hexfingerprint);");
+                                     "' IGNORE INTO TABLE UserID FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
+                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (ownerkeyID,@hexfingerprint,@base64name,email) "
+                                     "SET fingerprint = UNHEX(@hexfingerprint), name = FROM_BASE64(name);");
 
     insert_userAtt_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-                                     "' IGNORE INTO TABLE UserAttribute CHARACTER SET latin1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
-                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (id,@hexfingerprint,name,encoding,@heximage) "
-                                     "SET fingerprint = UNHEX(@hexfingerprint), image = UNHEX(@heximage);");
+                                     "' IGNORE INTO TABLE UserAttribute FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
+                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (id,@hexfingerprint,@base64name,encoding,@heximage) "
+                                     "SET fingerprint = UNHEX(@hexfingerprint), name = FROM_BASE64(name), image = UNHEX(@heximage);");
 
     insert_unpackerErrors_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Unpacker_errors FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "

@@ -288,7 +288,7 @@ namespace Dumpimport {
                 DBStruct::userAtt ua_struct{
                         .id = std::distance(pk.uid_userAtt.begin(), it) + 1,
                         .fingerprint = primaryKey->get_fingerprint(),
-                        .name = dynamic_pointer_cast<Packet::Tag13>(it->first)->get_contents()
+                        .name = ascii2radix64(dynamic_pointer_cast<Packet::Tag13>(it->first)->get_contents())
                 };
                 get_userAttributes_data(it->second, ua_struct);
                 unpackedUserAtt.push_back(ua_struct);
@@ -367,7 +367,7 @@ namespace Dumpimport {
             ss.signedFingerprint = priKey->get_fingerprint();
             if (user->get_tag() == Packet::USER_ID){
                 Packet::Tag13::Ptr u = dynamic_pointer_cast<Packet::Tag13>(user);
-                ss.signedUsername = u -> get_contents();
+                ss.signedUsername = ascii2radix64(u -> get_contents());
             }else{
                 //ss.signedUsername = ascii2radix64("User Attribute");
                 ss.uatt_id = uatt_id;
@@ -619,7 +619,7 @@ namespace Dumpimport {
         return DBStruct::userID {
                 .ownerkeyID = mpitodec(rawtompi(key->get_keyid())),
                 .fingerprint = key->get_fingerprint(),
-                .name = user,
+                .name = ascii2radix64(user),
         };
     }
 
@@ -710,7 +710,7 @@ namespace Dumpimport {
                 }
                 case Subpacket::Tag2::SIGNERS_USER_ID: {
                     Subpacket::Tag2::Sub28::Ptr s28 = dynamic_pointer_cast<Subpacket::Tag2::Sub28>(p);
-                    ss->issuingUsername = s28->get_signer();
+                    ss->issuingUsername = ascii2radix64(s28->get_signer());
                     break;
                 }
                 case Subpacket::Tag2::REASON_FOR_REVOCATION: {
