@@ -7,6 +7,7 @@
 #include <syslog.h>
 #include <cstring>
 #include <thread>
+#include <csignal>
 
 #include "cgi_handler/pks.h"
 #include "recon_daemon/recon_daemon.h"
@@ -26,6 +27,11 @@ void help();
  */
 void parse_config(std::string filename, po::variables_map &vm);
 
+/** signal handler when SIGINT or SIGTERM are catched
+ */
+void signalHandler( int signum );
+
+
 /** \mainpage Peaks Keyserver Documentation
  *
  * \section intro_sec Introduction
@@ -39,6 +45,8 @@ void parse_config(std::string filename, po::variables_map &vm);
  * \subsection step1 Step 1: Read the installation guide on Github
  *
  */
+        
+bool quitting = false;
 
 int main(int argc, char* argv[]){
 
@@ -87,6 +95,8 @@ int main(int argc, char* argv[]){
 
         if (!(parsed_config))
             exit(0);
+
+        std::signal(SIGINT, signalHandler);
         
         if (cmd == "serve"){
             serve(vm, parsed);
@@ -123,8 +133,10 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(unpack_desc).run(), vm);
-			while(true){
+			while(!(quitting)){
             	Unpacker::unpacker(vm);
+                if (quitting)
+                    break;
         		std::this_thread::sleep_for(std::chrono::seconds{vm["gossip_interval"].as<int>()});
 			}
         }
@@ -137,8 +149,10 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(analyzer_desc).run(), vm);
-			while(true){
+			while(!(quitting)){
             	analyzer(vm);
+                if (quitting)
+                    break;
         		std::this_thread::sleep_for(std::chrono::seconds{vm["gossip_interval"].as<int>()});
 			}
 
@@ -297,3 +311,7 @@ void parse_config(std::string filename, po::variables_map &vm){
 }
 
 
+void signalHandler(int signum) {
+
+    quitting = true;
+}
