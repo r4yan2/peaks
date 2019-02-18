@@ -140,8 +140,8 @@ bool UNPACKER_DBManager::existSignature(const UNPACKER_DBStruct::signatures &s){
 
 void UNPACKER_DBManager::set_as_not_analyzable(const int &version, const string &fingerprint, const string &comment) {
     try{
-        insert_error_comments->setBigInt(1, fingerprint);
-        insert_error_comments->setInt(2, version);
+        insert_error_comments->setInt(1, version);
+        insert_error_comments->setBigInt(2, fingerprint);
         insert_error_comments->setString(3, comment);
         insert_error_comments->executeQuery();
     }catch (exception &e){

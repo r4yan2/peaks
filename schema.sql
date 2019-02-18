@@ -181,12 +181,10 @@ DROP TABLE IF EXISTS `Unpacker_errors`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `Unpacker_errors` (
-  `idx` int(11) NOT NULL AUTO_INCREMENT,
   `version` tinyint(3) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
   `error` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  PRIMARY KEY (`idx`),
-  KEY `external key` (`version`,`fingerprint`) USING BTREE
+  PRIMARY KEY (`version`,`fingerprint`)
 ) ENGINE=InnoDB AUTO_INCREMENT=327309 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

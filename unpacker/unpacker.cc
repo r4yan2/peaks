@@ -91,22 +91,49 @@ namespace Unpacker {
         for (unsigned int i = 0; i < gpg_data.size();){
             std::vector<Key::Ptr> pks;
             for (unsigned int j = 0; i < gpg_data.size() && j < key_per_thread; j++, i++){
+                Key::Ptr key;
                 try{
                     //std::stringstream s(gpg_data[i].certificate);
                     //PGP::Ptr pkt(new PGP(s)), true));
                     //PGP::Ptr pkt(new PGP(gpg_data[i].certificate));
                     //pkt -> set_type(PGP::PUBLIC_KEY_BLOCK);
                     //pks.push_back(std::make_shared<PublicKey>(PublicKey(*pkt)));
-                    Key::Ptr key = std::make_shared<Key>(gpg_data[i].certificate);
+                    key = std::make_shared<Key>(gpg_data[i].certificate);
                     key->set_type(PGP::PUBLIC_KEY_BLOCK);
+                    key->meaningful();
                     pks.push_back(key);
+                }catch (std::error_code &ec){
+                    switch (ec.value()) {
+                        case static_cast<int>(KeyErrc::NotExistingVersion):
+                        case static_cast<int>(KeyErrc::BadKey):
+                        case static_cast<int>(KeyErrc::NotAPublicKey):
+                        case static_cast<int>(KeyErrc::NotASecretKey):
+                            break;
+                        case static_cast<int>(KeyErrc::NotEnoughPackets): {
+                            if (key->get_packets().empty()) {
+                                break;
+                            }
+                        }
+                        case static_cast<int>(KeyErrc::FirstPacketWrong):
+                        case static_cast<int>(KeyErrc::SignAfterPrimary):
+                        case static_cast<int>(KeyErrc::AtLeastOneUID):
+                        case static_cast<int>(KeyErrc::WrongSignature):
+                        case static_cast<int>(KeyErrc::NoSubkeyFound):
+                        case static_cast<int>(KeyErrc::Ver3Subkey):
+                        case static_cast<int>(KeyErrc::NoSubkeyBinding):
+                        case static_cast<int>(KeyErrc::NotAllPacketsAnalyzed):
+                            pks.push_back(key);
+                            continue;
+                        default:
+                            break;
+                    }
+
+                    dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
+                    syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", ec.message().c_str());
+                    continue;
                 }catch (std::exception &e){
                     dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
                     syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", e.what());
-                    continue;
-                }catch (std::error_code &e){
-                    dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
-                    syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", e.message().c_str());
                     continue;
                 }catch (...){
                     syslog(LOG_CRIT, "Error during creation of the object PGP::Key");
