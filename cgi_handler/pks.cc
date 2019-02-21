@@ -279,7 +279,7 @@ void Pks::vindex(const string& id) {
                                              "<td><b>uid</b></td>"
                                              "<td colspan=\"8\" class=\"uid\"><span>%s</span></td>"
                                              "</tr>",
-                                             Utils::htmlEscape(radix642ascii(uid.name)).c_str());
+                                             Utils::htmlEscape(uid.name).c_str());
         page_template += getSignList(uid.signatures);
         for (const auto &uatt: uid.user_attributes){
             page_template += Utils::stringFormat("<tr style=\"height: 10px !important;\">"
@@ -351,7 +351,7 @@ string Pks::getSignList(const forward_list<signature> &signatures){
                 Utils::htmlEscape(sign.exp_time).c_str(),
                 Utils::htmlEscape(sign.key_exp_time).c_str(),
                 Utils::htmlEscape(sign.issuingKeyID).c_str(),
-                Utils::htmlEscape(radix642ascii(sign.issuingUID)).c_str(),
+                Utils::htmlEscape(sign.issuingUID).c_str(),
                 getVulnList(sign.vulnerabilities).c_str());
     }
     return page_template;
