@@ -135,6 +135,7 @@ int DBManager::searchKey(string key, istream*& blob){
 }
 
 istream* DBManager::shortIDQuery(const string &keyID) {
+    ensure_connection();
     // Get the 32 MSBs of the key IDs
 
     shortid_stmt->setString(1, "%" + keyID);
@@ -147,6 +148,7 @@ istream* DBManager::shortIDQuery(const string &keyID) {
 }
 
 istream* DBManager::longIDQuery(const string &keyID) {
+    ensure_connection();
     // Perform the query on the full key IDs
 
     longid_stmt->setString(1, keyID);
@@ -159,6 +161,7 @@ istream* DBManager::longIDQuery(const string &keyID) {
 }
 
 istream* DBManager::fingerprintQuery(const string &fp) {
+    ensure_connection();
     // Query on the fingerprints
     fprint_stmt->setString(1, fp);
     result = shared_ptr<ResultSet>(fprint_stmt->executeQuery());
@@ -170,6 +173,7 @@ istream* DBManager::fingerprintQuery(const string &fp) {
 }
 
 peaks::full_key DBManager::vindexQuery(string id) {
+    ensure_connection();
     peaks::full_key res;
     shared_ptr<ResultSet> key_result;
     switch (id.length()) {
@@ -206,6 +210,7 @@ peaks::full_key DBManager::vindexQuery(string id) {
 }
 
 forward_list<DB_Key*> *DBManager::indexQuery(string key) {
+    ensure_connection();
     forward_list<DB_Key*> *keyList = new forward_list<DB_Key*>();
     //key = OpenPGP::ascii2radix64(key);
     transform(key.begin(), key.end(), key.begin(), ::toupper);
@@ -254,6 +259,7 @@ forward_list<DB_Key*> *DBManager::indexQuery(string key) {
 }
 
 void DBManager::insert_gpg_keyserver(const gpg_keyserver_data &gk) {
+    ensure_connection();
     try {
         insert_gpg_stmt->setInt(1, gk.version);
         insert_gpg_stmt->setBigInt(2, gk.ID);
@@ -272,6 +278,7 @@ void DBManager::insert_gpg_keyserver(const gpg_keyserver_data &gk) {
 }
 
 void DBManager::update_gpg_keyserver(const gpg_keyserver_data &gk) {
+    ensure_connection();
     try {
         update_gpg_stmt->setBlob(1, new istringstream(gk.certificate));
         update_gpg_stmt->setString(2, gk.hash);
@@ -284,6 +291,7 @@ void DBManager::update_gpg_keyserver(const gpg_keyserver_data &gk) {
 }
 
 void DBManager::insert_user_id(const userID_data &uid) {
+    ensure_connection();
     try {
         insert_uid_stmt->setBigInt(1, uid.ownerkeyID);
         insert_uid_stmt->setString(2, uid.fingerprint);
@@ -300,6 +308,7 @@ void DBManager::insert_user_id(const userID_data &uid) {
 }
 
 void DBManager::insert_broken_key(const string &cert, const string &comment) {
+    ensure_connection();
     try {
         insert_brokenKey_stmt->setBlob(1, new istringstream(cert));
         insert_brokenKey_stmt->setString(2, comment);
@@ -352,6 +361,7 @@ key DBManager::get_key_info(const std::shared_ptr<sql::ResultSet> &key_result) {
 }
 
 std::forward_list<signature> DBManager::get_signatures(const std::string &signedFingerprint, const std::string &signedUsername, const int &ua_id) {
+    ensure_connection();
     std::forward_list<signature> signatures;
     vindex_signatures_stmt->setString(1, signedFingerprint);
     vindex_signatures_stmt->setString(2, signedUsername);
@@ -438,6 +448,7 @@ std::forward_list<signature> DBManager::get_signatures(const std::string &signed
 }
 
 std::forward_list<ua> DBManager::get_userAtt(const uid &tmp_uid) {
+    ensure_connection();
     forward_list<ua> ua_list;
     vindex_uatt_stmt->setString(1, tmp_uid.fingerprint);
     vindex_uatt_stmt->setString(2, tmp_uid.name);
@@ -451,6 +462,7 @@ std::forward_list<ua> DBManager::get_userAtt(const uid &tmp_uid) {
 }
 
 std::forward_list<uid> DBManager::get_users(const std::string &id) {
+    ensure_connection();
     forward_list<uid> uid_list;
     vindex_uid_fp_stmt->setString(1, id);
     shared_ptr<ResultSet> uid_result = shared_ptr<ResultSet>(vindex_uid_fp_stmt->executeQuery());
@@ -466,6 +478,7 @@ std::forward_list<uid> DBManager::get_users(const std::string &id) {
 }
 
 std::forward_list<std::string> DBManager::get_key_vuln(const unsigned int &version, const std::string &fingerprint) {
+    ensure_connection();
     forward_list<string> vulns;
     vindex_key_vuln_stmt->setInt(1, version);
     vindex_key_vuln_stmt->setString(2, fingerprint);
@@ -477,6 +490,7 @@ std::forward_list<std::string> DBManager::get_key_vuln(const unsigned int &versi
 }
 
 std::forward_list<std::string> DBManager::get_sign_vuln(const unsigned int &sign_id) {
+    ensure_connection();
     forward_list<string> vulns;
     vindex_sign_vuln_stmt->setInt(1, sign_id);
     shared_ptr<ResultSet> vuln_result = shared_ptr<ResultSet>(vindex_sign_vuln_stmt->executeQuery());
@@ -487,6 +501,7 @@ std::forward_list<std::string> DBManager::get_sign_vuln(const unsigned int &sign
 }
 
 string DBManager::get_key_by_hash(const string &hash) {
+    ensure_connection();
     string out = "";
     try{
         get_by_hash_stmt->setString(1, hash);
