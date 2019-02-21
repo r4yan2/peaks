@@ -36,6 +36,7 @@ class DBManager {
 public:
     DBManager(const Cgi_DBConfig &db_settings);
     ~DBManager();
+	void ensure_connection();
     int searchKey(std::string key, std::istream*& result);
     std::istream* shortIDQuery(const std::string &keyID);
     std::istream* longIDQuery(const std::string &keyID);
@@ -51,6 +52,7 @@ public:
     std::string get_key_by_hash(const std::string &hash);
 
 private:
+	Cgi_DBConfig settings;
     sql::Driver *driver;
     std::shared_ptr<sql::Connection> con;
     std::shared_ptr<sql::PreparedStatement> shortid_stmt, longid_stmt, fprint_stmt, index_stmt, insert_gpg_stmt,

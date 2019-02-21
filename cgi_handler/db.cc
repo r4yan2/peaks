@@ -26,17 +26,19 @@ using namespace std;
 
 // Database connector initialization
 DBManager::DBManager(const Cgi_DBConfig &cgi_settings) {
-    DBManager::driver = get_driver_instance();
-    DBManager::con = shared_ptr<Connection>(driver->connect(cgi_settings.db_host, cgi_settings.db_user, cgi_settings.db_password));
-    // Connect to the MySQL keys database
-    con->setSchema(cgi_settings.db_database);
-    // Create prepared Statements
-    /*shortid_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT certificate FROM ("
-                                       "SELECT certificate, ID FROM gpg_keyserver "
-                                       "WHERE version = 3 UNION ALL "
-                                       "SELECT certificate, ID DIV POW(2,32) FROM gpg_keyserver "
-                                       "WHERE version = 4) AS SHORTID "
-                                       "WHERE ID = (?);"));*/
+    settings = cgi_settings;
+    con = NULL;
+    ensure_connection();
+}
+
+void DBManager::ensure_connection(){
+    bool connected = con != NULL && (con->isValid() || con->reconnect());
+    if (connected)
+        return;
+    
+    driver = get_driver_instance();
+    con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
+    con->setSchema(settings.db_database);
     shortid_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT certificate FROM "
                                        "gpg_keyserver WHERE LPAD(CONV(ID,16,10),16,0) LIKE (?);"));
 
