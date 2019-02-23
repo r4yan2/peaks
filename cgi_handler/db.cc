@@ -32,7 +32,7 @@ DBManager::DBManager(const Cgi_DBConfig &cgi_settings) {
 }
 
 void DBManager::ensure_connection(){
-    bool connected = con != NULL && (con->isValid() || con->reconnect());
+    bool connected = con != NULL && con->isValid(); //(con->isValid() || con->reconnect());
     if (connected)
         return;
     
