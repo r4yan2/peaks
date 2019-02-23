@@ -51,10 +51,10 @@ void DBManager::ensure_connection(){
                                        "SELECT length(p.n)*8 as nLength, length(p.p)*8 as pLength, p.pubAlgorithm, "
                                        "hex(p.keyID) as kID, p.creationTime, u.name as name "
                                        "FROM Pubkey AS p INNER JOIN UserID as u ON p.fingerprint = u.fingerprint "
-                                       "WHERE u.name LIKE ? UNION ALL "
+                                       "WHERE MATCH(u.name) AGAINST (? IN NATURAL LANGUAGE MODE) UNION ALL "
                                        "SELECT 0 as nLength, 0 as pLength, 'NaN' as pubAlgorithm, hex(ownerkeyID) as kID, "
                                        "0 as creationTime, name "
-                                       "FROM UserID WHERE name LIKE ?) "
+                                       "FROM UserID WHERE MATCH(name) AGAINST (? IN NATURAL LANGUAGE MODE)) "
                                        "AS keys_list GROUP BY kID"));
     insert_gpg_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("REPLACE INTO gpg_keyserver "
                                        "VALUES (?, ?, ?, ?, ?, 0, 0, ?);"));
@@ -214,7 +214,7 @@ forward_list<DB_Key*> *DBManager::indexQuery(string key) {
     forward_list<DB_Key*> *keyList = new forward_list<DB_Key*>();
     //key = OpenPGP::ascii2radix64(key);
     transform(key.begin(), key.end(), key.begin(), ::toupper);
-    string searchString = "%" + key + "%";
+    string searchString = key;
     index_stmt->setString(1, searchString);
     index_stmt->setString(2, searchString);
     result = shared_ptr<ResultSet>(index_stmt->executeQuery());

@@ -222,7 +222,7 @@ CREATE TABLE `UserID` (
   `bindingAuthentic` tinyint(4) NOT NULL,
   PRIMARY KEY (`fingerprint`,`name`(200)) USING BTREE,
   KEY `ownerkeyID` (`ownerkeyID`,`fingerprint`),
-  KEY `name` (`name`(200))
+  FULLTEXT (`name`))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
