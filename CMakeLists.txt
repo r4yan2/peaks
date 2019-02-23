@@ -8,7 +8,7 @@ set(CMAKE_CXX_FLAGS "-DGPG_COMPATIBLE -Wall -pthread -static-libgcc -lstdc++ -pi
 add_definitions(-DGPG_COMPATIBLE)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -march=native -g3 -O0")
-set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -march=native -pg")
+set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -march=native -Ofast")
 set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -march=x86-64 -mtune=generic -O3")
 
@@ -38,8 +38,6 @@ add_subdirectory(recon_daemon)
 add_subdirectory(unpacker)
 add_subdirectory(analyzer)
 
-SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} "/home/ray/Projects/peaks/lib/boost/include")
-SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "/home/ray/Projects/peaks/lib/boost/lib")
 
 find_package(Boost REQUIRED program_options)
 
