@@ -90,6 +90,12 @@ Also is necessary to change the following config value to use the integrated web
 SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));
 ```
 
+Optionally is also possible to disable MySQL logging to speed up bulk insert queries
+
+```sql
+SET global general_log = 0;
+```
+
 ### Initializing
 
 To initialize the database use the following commands:
