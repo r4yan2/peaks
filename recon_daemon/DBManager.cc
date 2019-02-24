@@ -12,9 +12,13 @@ using namespace std;
 
 RECON_DBManager::RECON_DBManager( const Recon_DBConfig & db_settings ){
     settings = db_settings;
+    driver = NULL;
 }
 
-RECON_DBManager::~RECON_DBManager(){}
+RECON_DBManager::~RECON_DBManager(){
+    if (driver != NULL)
+        driver->threadEnd();
+}
 
 std::vector<std::string> Recon_memory_DBManager::fetch_removed_elements(){
     throw std::runtime_error("Cannot fetch removed elements from memory database manager");
@@ -29,7 +33,9 @@ void Recon_mysql_DBManager::commit_memtree(){
     throw std::runtime_error("Cannot commit whole tree in mysql database manager");
 };
 
-Recon_mysql_DBManager::Recon_mysql_DBManager(const Recon_DBConfig & dbsettings): RECON_DBManager(dbsettings) {
+Recon_mysql_DBManager::Recon_mysql_DBManager(const Recon_DBConfig & dbsettings): RECON_DBManager(dbsettings) {}
+
+void Recon_mysql_DBManager::init_database_connection(){
     Recon_mysql_DBManager::driver = get_driver_instance();
     Recon_mysql_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
     // Connect to the MySQL keys database
@@ -58,9 +64,7 @@ Recon_mysql_DBManager::Recon_mysql_DBManager(const Recon_DBConfig & dbsettings):
 
 }
 
-Recon_mysql_DBManager::~Recon_mysql_DBManager(){
-    driver->threadEnd();
-};
+Recon_mysql_DBManager::~Recon_mysql_DBManager(){}
 
 void Recon_mysql_DBManager::insert_node(const RECON_DBStruct::node &n){
   try{
@@ -139,7 +143,10 @@ std::vector<std::string> Recon_mysql_DBManager::fetch_removed_elements(){
     return hashes;
 }
 
-Recon_memory_DBManager::Recon_memory_DBManager(const Recon_DBConfig & dbsettings) : RECON_DBManager(dbsettings) {
+Recon_memory_DBManager::Recon_memory_DBManager(const Recon_DBConfig & dbsettings) : RECON_DBManager(dbsettings) {}
+Recon_memory_DBManager::~Recon_memory_DBManager(){}
+
+void Recon_memory_DBManager::init_database_connection(){
 
     Recon_memory_DBManager::driver = get_driver_instance();
     Recon_memory_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
@@ -158,10 +165,6 @@ Recon_memory_DBManager::Recon_memory_DBManager(const Recon_DBConfig & dbsettings
             );
 
 }
-
-Recon_memory_DBManager::~Recon_memory_DBManager(){
-    driver->threadEnd();
-};
 
 void Recon_memory_DBManager::lockTables(){
     try{
@@ -215,6 +218,7 @@ std::vector<std::string> Recon_memory_DBManager::get_all_hash(){
 }
 
 void Recon_memory_DBManager::delete_node(const std::string k){
+    syslog(LOG_DEBUG, "deleting node %s from memory DB", k);
   try{
         memory_storage.erase(k);
   } catch (exception &e){

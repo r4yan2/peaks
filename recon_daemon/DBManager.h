@@ -22,8 +22,9 @@ public:
 
     /** Default destructor
      * */
-    virtual ~RECON_DBManager();
+    ~RECON_DBManager();
 
+    virtual void init_database_connection() = 0;
     virtual RECON_DBStruct::node get_node(const std::string key) = 0;
     virtual void insert_node(const RECON_DBStruct::node &n) = 0;
     virtual void update_node(const RECON_DBStruct::node &n) = 0;
@@ -34,6 +35,10 @@ public:
     virtual void commit_memtree() = 0;
 protected:
     Recon_DBConfig settings;
+	std::ofstream csv_file;
+    sql::Driver *driver;
+    std::shared_ptr<sql::Connection> con;
+    std::shared_ptr<sql::ResultSet> result;
 };
 
 class Recon_mysql_DBManager: public RECON_DBManager{
@@ -48,6 +53,10 @@ class Recon_mysql_DBManager: public RECON_DBManager{
      * */
     ~Recon_mysql_DBManager();
 
+    /** Init the effective connection with the database
+     * and initialize queries
+     */
+    void init_database_connection();
 
     /** recover a node from the database
      * @param key key of the node to recover
@@ -89,9 +98,6 @@ class Recon_mysql_DBManager: public RECON_DBManager{
     void commit_memtree();
 private:
 
-	std::ofstream csv_file;
-    sql::Driver *driver;
-    std::shared_ptr<sql::Connection> con;
     std::shared_ptr<sql::PreparedStatement> get_pnode_stmt;
     std::shared_ptr<sql::PreparedStatement> insert_pnode_stmt;
     std::shared_ptr<sql::PreparedStatement> update_pnode_stmt;
@@ -100,7 +106,6 @@ private:
     std::shared_ptr<sql::PreparedStatement> check_key_stmt;
     std::shared_ptr<sql::PreparedStatement> truncate_removed_hash_stmt;
     std::shared_ptr<sql::PreparedStatement> get_removed_hash_stmt;
-    std::shared_ptr<sql::ResultSet> result;
 	std::pair<std::string,std::string> insert_ptree_stmt;
 };
 
@@ -110,7 +115,7 @@ public:
     ~Recon_memory_DBManager();
 
     /** make the connection with the database if there isn't */
-    //void ensure_db_connection();
+    void init_database_connection();
 
     /** recover a node from the database
      * @param key key of the node to recover
@@ -159,9 +164,6 @@ public:
 private:
 
     std::map< std::string, std::tuple<std::string, int, bool, std::string> > memory_storage;
-	std::ofstream csv_file;
-    sql::Driver *driver;
-    std::shared_ptr<sql::Connection> con;
     std::shared_ptr<sql::PreparedStatement> get_pnode_stmt;
     std::shared_ptr<sql::PreparedStatement> insert_pnode_stmt;
     std::shared_ptr<sql::PreparedStatement> update_pnode_stmt;

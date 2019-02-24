@@ -40,6 +40,7 @@ void build(po::variables_map &vm){
     };
 
     std::shared_ptr<Recon_memory_DBManager> dbm = std::make_shared<Recon_memory_DBManager>(db_settings);
+    dbm->init_database_connection();
     int entries;
     std::vector<std::string> hashes;
     hashes = dbm->get_all_hash();
@@ -116,6 +117,7 @@ void recon(po::variables_map &vm){
         vm["recon_tmp_folder"].as<std::string>()
     };
     std::shared_ptr<Recon_mysql_DBManager> dbm = std::make_shared<Recon_mysql_DBManager>(db_settings);
+    dbm->init_database_connection();
     std::vector<NTL::ZZ_p> points = RECON_Utils::Zpoints(vm["num_samples"].as<int>());
     Ptree_config ptree_settings = {
         vm["mbar"].as<int>(),
