@@ -9,6 +9,7 @@
 #include "db_key.h"
 #include "utils.h"
 #include "Config.h"
+#include <boost/algorithm/string.hpp>
 
 namespace peaks {
 
