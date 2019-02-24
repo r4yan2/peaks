@@ -113,9 +113,6 @@ vector<UNPACKER_DBStruct::gpg_keyserver_data> UNPACKER_DBManager::get_certificat
                 .certificate = result->getString("certificate")
         };
         certificates.push_back(tmp_field);
-        set_unpacking_status_stmt->setInt(1, tmp_field.version);
-        set_unpacking_status_stmt->setString(2, tmp_field.fingerprint);
-        set_unpacking_status_stmt->executeQuery();
     }
     return certificates;
 }
