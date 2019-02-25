@@ -19,8 +19,6 @@
 -- Current Database: `gpg_keyserver`
 --
 
-SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));
-
 CREATE DATABASE /*!32312 IF NOT EXISTS*/ `gpg_keyserver` /*!40100 DEFAULT CHARACTER SET utf8 */;
 
 USE `gpg_keyserver`;
@@ -222,7 +220,7 @@ CREATE TABLE `UserID` (
   `bindingAuthentic` tinyint(4) NOT NULL,
   PRIMARY KEY (`fingerprint`,`name`(200)) USING BTREE,
   KEY `ownerkeyID` (`ownerkeyID`,`fingerprint`),
-  FULLTEXT (`name`))
+  FULLTEXT (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
