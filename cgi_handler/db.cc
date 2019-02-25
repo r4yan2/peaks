@@ -67,7 +67,15 @@ void DBManager::ensure_connection(){
     insert_brokenKey_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT INTO broken_keys (certificate, log) "
                                        "VALUES (?, ?)"));
 
-    vindex_prikey_id_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT hex(keyId) as keyId, creationTime, "
+    vindex_prikey_full_id_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT hex(keyId) as keyId, creationTime, "
+                                       "is_analyzed, length(n)*8 as length_n, length(p)*8 as length_p, pubAlgorithm, version, "
+                                       "fingerprint FROM Pubkey WHERE keyId = CAST(CONV((?),16,10) AS UNSIGNED INTEGER) and priFingerprint IS NULL "
+                                       "UNION "
+                                       "SELECT hex(keyId) as keyId, creationTime, is_analyzed, length(n)*8 as length_n, "
+                                       "length(p)*8 as length_p, pubAlgorithm, version, fingerprint FROM Pubkey WHERE "
+                                       "fingerprint = (SELECT priFingerprint FROM Pubkey WHERE keyId = CAST(CONV((?),16,10) AS UNSIGNED INTEGER));"));
+
+    vindex_prikey_short_id_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT hex(keyId) as keyId, creationTime, "
                                        "is_analyzed, length(n)*8 as length_n, length(p)*8 as length_p, pubAlgorithm, version, "
                                        "fingerprint FROM Pubkey WHERE hex(keyId) LIKE (?) and priFingerprint IS NULL "
                                        "UNION "
@@ -178,10 +186,14 @@ peaks::full_key DBManager::vindexQuery(string id) {
     shared_ptr<ResultSet> key_result;
     switch (id.length()) {
         case 8 : // 32-bit key ID
+            vindex_prikey_short_id_stmt->setString(1, "%" + id);
+            vindex_prikey_short_id_stmt->setString(2, "%" + id);
+            key_result = shared_ptr<ResultSet>(vindex_prikey_short_id_stmt->executeQuery());
+            break;
         case 16 : // 64-bit key ID
-            vindex_prikey_id_stmt->setString(1, "%" + id);
-            vindex_prikey_id_stmt->setString(2, "%" + id);
-            key_result = shared_ptr<ResultSet>(vindex_prikey_id_stmt->executeQuery());
+            vindex_prikey_full_id_stmt->setString(1, id);
+            vindex_prikey_full_id_stmt->setString(2, id);
+            key_result = shared_ptr<ResultSet>(vindex_prikey_full_id_stmt->executeQuery());
             break;
         case 32 : // Fingerprint v3 query
             id = id + "00000000"; // Prepend eight 0s

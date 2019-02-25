@@ -57,7 +57,7 @@ private:
     sql::Driver *driver;
     std::shared_ptr<sql::Connection> con;
     std::shared_ptr<sql::PreparedStatement> shortid_stmt, longid_stmt, fprint_stmt, index_stmt, insert_gpg_stmt,
-            update_gpg_stmt, insert_uid_stmt, insert_brokenKey_stmt, vindex_prikey_id_stmt,
+            update_gpg_stmt, insert_uid_stmt, insert_brokenKey_stmt, vindex_prikey_full_id_stmt, vindex_prikey_short_id_stmt,
             vindex_prikey_fp_stmt, vindex_uid_fp_stmt, vindex_signatures_stmt, vindex_uatt_stmt,
             vindex_subkey_fp_stmt, vindex_key_vuln_stmt, vindex_sign_vuln_stmt, get_by_hash_stmt;
     std::shared_ptr<sql::ResultSet> result;
