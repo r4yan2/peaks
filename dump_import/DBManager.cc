@@ -74,12 +74,12 @@ void DUMPIMPORT_DBManager::init_database_connection() {
     insert_userID_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE UserID FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (ownerkeyID,@hexfingerprint,@base64name,email) "
-                                     "SET fingerprint = UNHEX(@hexfingerprint), name = FROM_BASE64(name);");
+                                     "SET fingerprint = UNHEX(@hexfingerprint), name = FROM_BASE64(@base64name);");
 
     insert_userAtt_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE UserAttribute FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (id,@hexfingerprint,@base64name,encoding,@heximage) "
-                                     "SET fingerprint = UNHEX(@hexfingerprint), name = FROM_BASE64(name), image = UNHEX(@heximage);");
+                                     "SET fingerprint = UNHEX(@hexfingerprint), name = FROM_BASE64(@base64name), image = UNHEX(@heximage);");
 
     insert_unpackerErrors_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Unpacker_errors FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
