@@ -81,12 +81,14 @@ namespace Unpacker {
     
         std::vector<UNPACKER_DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
         
-        std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
+        std::shared_ptr<Unpacker_Thread_Pool> pool = std::make_shared<Unpacker_Thread_Pool>();
         std::vector<std::thread> pool_vect(nThreads);
     
         for (unsigned int i = 0; i < nThreads; i++){
             pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
         }
+
+        std::vector<std::shared_ptr<Job>> unpacking_jobs;
     
         for (unsigned int i = 0; i < gpg_data.size();){
             std::vector<Key::Ptr> pks;
@@ -140,23 +142,22 @@ namespace Unpacker {
                     continue;
                 }
             }
-            pool->Add_Job([=] { return Unpacker::unpack_key_th(db_settings, pks); });
+            unpacking_jobs.push_back(std::make_shared<Job>([=] {Unpacker::unpack_key_th(db_settings, pks); }));
+            pool->Add_Job(unpacking_jobs.back());
         }
-    
+
+        for (unsigned int i = UNPACKER_Utils::UNPACKED; i <= UNPACKER_Utils::USERID; i++){
+            std::shared_ptr<Job> j = std::make_shared<Job>([=] { (std::make_shared<UNPACKER_DBManager>(dbm))->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, i), i); }, unpacking_jobs);
+            pool->Add_Job(j);
+        }
+
         pool->Stop_Filling_UP();
     
         for (auto &th: pool_vect){
             while (!th.joinable()){}
             th.join();
         }
-    
-        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::PUBKEY), UNPACKER_Utils::PUBKEY);
-        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::USERID), UNPACKER_Utils::USERID);
-        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::USER_ATTRIBUTES), UNPACKER_Utils::USER_ATTRIBUTES);
-        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::SIGNATURE), UNPACKER_Utils::SIGNATURE);
-        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::SELF_SIGNATURE), UNPACKER_Utils::SELF_SIGNATURE);
-        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::UNPACKED), UNPACKER_Utils::UNPACKED);
-        dbm->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, UNPACKER_Utils::UNPACKER_ERRORS), UNPACKER_Utils::UNPACKER_ERRORS);
+
         dbm->UpdateSignatureIssuingFingerprint(limit);
         dbm->UpdateSignatureIssuingUsername();
         dbm->UpdateIsExpired();

@@ -10,10 +10,18 @@
 using namespace sql;
 using namespace std;
 
-// Database connector initialization
 UNPACKER_DBManager::UNPACKER_DBManager(const Unpacker_DBConfig &un_settings){
     settings = un_settings;
 };
+
+UNPACKER_DBManager::UNPACKER_DBManager(const std::shared_ptr<UNPACKER_DBManager> & dbm){
+    settings = dbm->get_settings();
+    init_database_connection();
+}
+
+Unpacker_DBConfig UNPACKER_DBManager::get_settings(){
+    return settings;
+}
 
 void UNPACKER_DBManager::init_database_connection(){
     UNPACKER_DBManager::driver = get_driver_instance();
@@ -95,6 +103,7 @@ std::pair<std::string, std::string> UNPACKER_DBManager::insert_unpackerErrors_st
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_unpacked_stmt = make_pair<string, string>(
                     "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE tmp_unpacker FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
                     "LINES STARTING BY '.' TERMINATED BY '\\n' (version,@hexfingerprint,unpacked) SET fingerprint = UNHEX(@hexfingerprint);");
+
 
 UNPACKER_DBManager::~UNPACKER_DBManager(){
     for (auto &it: file_list){
