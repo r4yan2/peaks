@@ -12,7 +12,10 @@
 #include "Recon_settings.h"
 #include <fstream>
 
-
+/** RECON_DBManager class is responsible to
+ * manage the connection to the database. The base class is 
+ * a virtual one, from which the specific connector inherit
+ */
 class RECON_DBManager {
 public:
     /** Constructor
@@ -34,13 +37,28 @@ public:
     virtual std::vector<std::string> get_all_hash() = 0;
     virtual void commit_memtree() = 0;
 protected:
+    /**
+     * store the config which will be used for the actual database connection
+     */
     Recon_DBConfig settings;
+
+    /**
+     * store a pointer to the csv file which will be needed to 
+     * output a csv before use the bulk load
+     */
 	std::ofstream csv_file;
+
+    /**
+     * pointer to mysql driver
+     */
     sql::Driver *driver;
     std::shared_ptr<sql::Connection> con;
     std::shared_ptr<sql::ResultSet> result;
 };
 
+/**
+ * Actual class for the MySQL database connector
+ */
 class Recon_mysql_DBManager: public RECON_DBManager{
     public:
 
@@ -98,14 +116,53 @@ class Recon_mysql_DBManager: public RECON_DBManager{
     void commit_memtree();
 private:
 
+    /**
+     * prepared statement for retrieving a particular node
+     */
     std::shared_ptr<sql::PreparedStatement> get_pnode_stmt;
+
+    /**
+     * prepared statement to insert a new node into the database
+     */
     std::shared_ptr<sql::PreparedStatement> insert_pnode_stmt;
+
+    /**
+     * prepared statement to update an existing node
+     */
     std::shared_ptr<sql::PreparedStatement> update_pnode_stmt;
+
+    /**
+     * prepared statement to delete an existing node
+     */
     std::shared_ptr<sql::PreparedStatement> delete_pnode_stmt;
+
+    /**
+     * prepared statement to fetch all hashes from the certificates
+     * table
+     */
     std::shared_ptr<sql::PreparedStatement> get_all_hash_stmt;
+
+    /**
+     * prepared statement to check if a given hash is
+     * present into the certificates table
+     */
     std::shared_ptr<sql::PreparedStatement> check_key_stmt;
+
+    /**
+     * prepared statement to truncate the table after retrieving 
+     * the values
+     */
     std::shared_ptr<sql::PreparedStatement> truncate_removed_hash_stmt;
+
+    /**
+     * prepared statement to get all the hash to remove from the ptree
+     */
     std::shared_ptr<sql::PreparedStatement> get_removed_hash_stmt;
+
+    /**
+     * sql query to bulk load from csv the data which will populate
+     * the ptree table
+     */
 	std::pair<std::string,std::string> insert_ptree_stmt;
 };
 
@@ -157,6 +214,7 @@ public:
     /** helper to unlock tables */
     void unlockTables();
 
+    /** write the memtree to database */
     void commit_memtree();
     
     //empty
@@ -164,14 +222,8 @@ public:
 private:
 
     std::map< std::string, std::tuple<std::string, int, bool, std::string> > memory_storage;
-    std::shared_ptr<sql::PreparedStatement> get_pnode_stmt;
-    std::shared_ptr<sql::PreparedStatement> insert_pnode_stmt;
-    std::shared_ptr<sql::PreparedStatement> update_pnode_stmt;
-    std::shared_ptr<sql::PreparedStatement> delete_pnode_stmt;
     std::shared_ptr<sql::PreparedStatement> get_all_hash_stmt;
     std::shared_ptr<sql::PreparedStatement> check_key_stmt;
-    std::shared_ptr<sql::PreparedStatement> truncate_removed_hash_stmt;
-    std::shared_ptr<sql::PreparedStatement> get_removed_hash_stmt;
 	std::pair<std::string,std::string> insert_ptree_stmt;
 };
 

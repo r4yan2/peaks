@@ -14,6 +14,11 @@
 
 namespace po = boost::program_options;
 
+/**
+ *  main method to launch the server part
+ *  @param vm map of configuration options
+ *  @param parsed original command line parsed
+ */
 void serve(po::variables_map &vm, po::parsed_options &parsed);
 namespace peaks {
 
@@ -40,9 +45,21 @@ public:
         delete dbm;
     }
 
+    /**
+     * method assigned to reply to the lookup query
+     */
     void lookup();
+    /**
+     * method displaying the homepage
+     */
     void homepage();
+    /**
+     * method assigned to reply to the hashquery
+     */
     void hashquery();
+    /**
+     * method assigned to collect key from the client
+     */
     void add();
 
 private:

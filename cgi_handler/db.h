@@ -17,6 +17,10 @@ const int SUCCESS = 0;
 const int ERROR = -1;
 const int KEY_NOT_FOUND = -2;
 
+
+/**
+ * helper struct to store the values coming from the database
+ */
 struct gpg_keyserver_data{
     int version;
     std::string ID;
@@ -26,6 +30,9 @@ struct gpg_keyserver_data{
     std::string hash;
 };
 
+/**
+ * helper struct to store the values coming from the database
+ */
 struct userID_data{
     std::string ownerkeyID;
     std::string fingerprint;
@@ -36,16 +43,83 @@ struct userID_data{
 class DBManager {
 public:
     DBManager(const Cgi_DBConfig &db_settings);
+    /**
+     * default destructor
+     */
     ~DBManager();
+
+	/**
+	 * ensure that the database connection is up
+	 * and is case is down restart it
+	 */
 	void ensure_connection();
+
+	/**
+	 * search functionality based on key length
+	 * 8 -> shortIDQuery
+	 * 16 -> longIDQuery
+	 * 32 -> Fingerprint Query (v3)
+	 * 40 -> Fingerprint Query (v4)
+	 * @param key query string
+	 * @param result pointer in which store the final result
+	 * @return success status
+	 */
     int searchKey(std::string key, std::istream*& result);
+
+	/**
+	 * Query the database searching for certificates with id
+	 * ending in <keyID>
+	 * @param keyID id to search
+	 * @return std::istream* pointer to the certificate blob
+	 */
     std::istream* shortIDQuery(const std::string &keyID);
+
+	/**
+	 * Query the database searching for certificates with id
+	 * equal to <keyID>
+	 * @param keyID id to search
+	 * @return std::istream* pointer to the certificate blob
+	 */
     std::istream* longIDQuery(const std::string &keyID);
+	/**
+	 * Query the database searching for certificates with
+	 * fingerprint equal to <fp>
+	 * @param fp fingerprint to search
+	 * @return std::istream* pointer to the certificate blob
+	 */
     std::istream* fingerprintQuery(const std::string &fp);
+
+	/**
+	 * normal index query entrypoint
+	 * @param key query string
+	 * @return list of keys found
+	 */
     std::forward_list<DB_Key*> *indexQuery(std::string key);
+
+	/**
+	 * Updating certificate table in the database
+	 * with the content of the updated certificate
+	 * @param gk new certificate data
+	 */
     void update_gpg_keyserver(const gpg_keyserver_data &gk);
+	/**
+	 * Insert into the certificate table in the database
+	 * the content of the new certificate
+	 * @param gk new certificate data
+	 */
     void insert_gpg_keyserver(const gpg_keyserver_data &gk);
+	/**
+	 * Updating UserID table in the database
+	 * with the new userID data
+	 * @param uid new data
+	 */
     void insert_user_id(const userID_data &uid);
+
+	/** 
+	 * Verbose index query entrypoint
+	 * @param id Key ID to search
+	 * @return key material if found
+	 */
     peaks::full_key vindexQuery(std::string id);
 
     void insert_broken_key(const std::string &cert, const std::string &comment);
