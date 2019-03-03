@@ -35,7 +35,7 @@ CREATE TABLE `KeyStatus` (
   `fingerprint` binary(20) NOT NULL,
   `vulnerabilityCode` tinyint(4) NOT NULL,
   `vulnerabilityDescription` varchar(250) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`version`,`fingerprint`,`vulnerabilityCode`)
+  PRIMARY KEY (`fingerprint`,`version`,`vulnerabilityCode`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -64,17 +64,15 @@ CREATE TABLE `Pubkey` (
   `curveOID` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_analyzed` tinyint(4) NOT NULL DEFAULT '0',
   `sccIndex` int(10) unsigned DEFAULT NULL,
-  PRIMARY KEY (`version`,`fingerprint`),
+  PRIMARY KEY (`fingerprint`, `version`),
   KEY `n` (`n`(200)),
   KEY `p` (`p`(200)),
   KEY `q` (`q`(200)),
   KEY `y` (`y`(200)),
   KEY `sccIndex` (`sccIndex`),
   KEY `keyId` (`keyId`,`fingerprint`) USING BTREE,
-  KEY `fingerprint` (`fingerprint`),
-  KEY `Pubkey_cert` (`version`,`PriFingerprint`),
-  KEY `is_analyzed` (`is_analyzed`),
-  KEY `is_analyzed_2` (`is_analyzed`)
+  KEY `Pubkey_cert` (`PriFingerprint`, `version`),
+  KEY `is_analyzed` (`is_analyzed`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -150,11 +148,8 @@ CREATE TABLE `Signatures` (
   UNIQUE KEY `r_2` (`r`(200),`s`(200)) USING BTREE,
   KEY `type` (`type`),
   KEY `hashAlgorithm` (`hashAlgorithm`),
-  KEY `issuingKeyId` (`issuingKeyId`),
-  KEY `signedKeyId` (`signedKeyId`),
   KEY `issuingFingerprint` (`issuingFingerprint`),
   KEY `signedFingerprint` (`signedFingerprint`),
-  KEY `r` (`r`(200)),
   KEY `s` (`s`(200)),
   KEY `Unique_index` (`issuingKeyId`,`signedKeyId`,`signedUsername`(255),`creationTime`) USING BTREE,
   KEY `version` (`version`),
@@ -181,8 +176,7 @@ DROP TABLE IF EXISTS `Unpacker_errors`;
 CREATE TABLE `Unpacker_errors` (
   `version` tinyint(3) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
-  `error` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  PRIMARY KEY (`version`,`fingerprint`)
+  `error` text COLLATE utf8mb4_unicode_ci NOT NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=327309 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -200,8 +194,7 @@ CREATE TABLE `UserAttribute` (
   `encoding` int(11) DEFAULT NULL,
   `image` longblob,
   PRIMARY KEY (`id`,`fingerprint`,`name`(200)),
-  UNIQUE KEY `fingerprint` (`fingerprint`(10),`name`(200),`image`(60)) USING BTREE,
-  KEY `userID` (`fingerprint`,`name`(200))
+  UNIQUE KEY `fingerprint` (`fingerprint`,`name`(200),`image`(60)) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -255,7 +248,7 @@ CREATE TABLE `gpg_keyserver` (
   `is_unpacked` tinyint(4) NOT NULL DEFAULT '0',
   `is_synchronized` tinyint(4) NOT NULL DEFAULT '0',
   `error_code` int(11) NOT NULL DEFAULT '0',
-  PRIMARY KEY (`version`,`fingerprint`),
+  PRIMARY KEY (`fingerprint`, `version`),
   KEY `ID` (`ID`,`fingerprint`) USING BTREE,
   KEY `HASH` (`hash` ASC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
