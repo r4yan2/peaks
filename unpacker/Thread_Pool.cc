@@ -11,8 +11,9 @@ void Unpacker_Thread_Pool::Infinite_loop_function() {
 
     while (true) {
         std::shared_ptr<Job> job = Request_Job();
-        if (job == nullptr)
+        if (job == nullptr){
             break;
+        }
         job->execute();
     }
 };
@@ -48,6 +49,7 @@ std::shared_ptr<Job> Unpacker_Thread_Pool::Request_Job(){
         for (auto & j: queue){
             if (!j->free())
                 continue;
+            all_done = false;
             bool dep_ok = true;
             for (auto & jp: j->get_dependencies())
                 if (!jp->done())
@@ -59,7 +61,7 @@ std::shared_ptr<Job> Unpacker_Thread_Pool::Request_Job(){
         }
         if (all_done && !filling_up)
             return nullptr;
-        condition.wait(lock);
+        condition.wait_for(lock, std::chrono::seconds{TIMEOUT});
     }
 }
 

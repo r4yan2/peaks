@@ -51,11 +51,6 @@ namespace Unpacker {
 
         std::cout << "limiting analysis at " << limit << " keys" << std::endl;
     
-        if(vm.count("keys"))
-            key_per_thread = vm["keys"].as<unsigned int>();
-        else
-            key_per_thread = 1 + ((limit - 1)/nThreads); 
-     
         if(UNPACKER_Utils::create_folders(vm["unpacker_tmp_folder"].as<std::string>()) == -1){
             syslog(LOG_WARNING,  "Unable to create temp folder");
             exit(-1);
@@ -80,6 +75,14 @@ namespace Unpacker {
         dbm->init_database_connection();
     
         std::vector<UNPACKER_DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
+        limit = gpg_data.size();
+
+        if(vm.count("keys"))
+            key_per_thread = vm["keys"].as<unsigned int>();
+        else
+            key_per_thread = 1 + ((limit - 1)/nThreads); 
+     
+        std::cout << "key per thread: " << key_per_thread << std::endl;
         
         std::shared_ptr<Unpacker_Thread_Pool> pool = std::make_shared<Unpacker_Thread_Pool>();
         std::vector<std::thread> pool_vect(nThreads);
