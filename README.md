@@ -83,6 +83,9 @@ To have a smooth ride, it's avised to perform some optimization to the database.
 * innodb_buffer_pool_size (make up to 50% of total RAM)
 * innodb_log_file_size (make 1/4 of *buffer_pool_size*)
 * innodb_log_buffer_size (possibly closer to *log_file_size*)
+* innodb_doublewrite = 0
+* innodb_support_xa = 0
+* innodb_flush_log_at_trx_commit = 0
 
 Also is necessary to change the following config value to use the integrated web server
 
@@ -94,6 +97,7 @@ Optionally is also possible to disable MySQL logging to speed up bulk insert que
 
 ```sql
 SET global general_log = 0;
+
 ```
 
 ### Initializing
