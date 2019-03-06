@@ -55,6 +55,18 @@ namespace UNPACKER_Utils{
         }
     }
 
+    int get_files_number(const std::string & folder_name){
+        int count=0;
+        directory_iterator end_itr;
+        for (directory_iterator itr(folder_name); itr != end_itr; ++itr)
+        {
+            if (is_regular_file(itr->path())) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
     vector<string> get_files(const std::string &folder_name, const unsigned int &i){
         directory_iterator end_itr;
         vector<string> file_list;

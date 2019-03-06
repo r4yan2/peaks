@@ -36,6 +36,12 @@ namespace UNPACKER_Utils{
     int create_folders(const std::string &folder_name);
     void put_in_error(const std::string & folder_name, const std::string &f, const unsigned int &i);
     std::vector<std::string> get_files(const std::string & folder_name, const unsigned int &i);
+
+    /** @brief return files contained in folder
+     * @param folder_name folder in which count files
+     * @return number of files in folder
+     */
+    int get_files_number(const std::string & folder_name);
     bool hasEnding (std::string const &fullString, std::string const &ending);
     std::string getCurrentTime();
     void remove_directory_content(const std::string &foldername);

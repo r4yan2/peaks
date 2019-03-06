@@ -106,10 +106,10 @@ public:
     /** @brief Bulk-insert CSV into the database
      * Insert multiple csv into the respective table 
      * of the database via LOAD DATA INFILE operation
-     * @param files csv to insert in the database
+     * @param f filename of the csv to insert in the database
      * @param table target table 
      */
-    void insertCSV(const std::vector<std::string> &files, const unsigned int &table);
+    void insertCSV(const std::string &f, const unsigned int &table);
 
     void set_as_not_analyzable(const int &version, const std::string &fingerprint, const std::string &comment);
 

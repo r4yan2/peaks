@@ -310,87 +310,73 @@ void UNPACKER_DBManager::write_unpackerErrors_csv(const UNPACKER_DBStruct::Unpac
     }
 }
 
-void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned int &table){
+void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
     switch (table){
         case UNPACKER_Utils::PUBKEY:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_pubkey_stmt.first + f + insert_pubkey_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s",
-                                      e.what());
-                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::PUBKEY);
-                }
+            try{
+                shared_ptr<Statement>(con->createStatement())->execute(insert_pubkey_stmt.first + f + insert_pubkey_stmt.second);
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s",
+                                  e.what());
+                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::PUBKEY);
             }
             break;
         case UNPACKER_Utils::SIGNATURE:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_signature_stmt.first + f + insert_signature_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
-                                      e.what());
-                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::SIGNATURE);
-                }
+            try{
+                shared_ptr<Statement>(con->createStatement())->execute(insert_signature_stmt.first + f + insert_signature_stmt.second);
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
+                                  e.what());
+                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::SIGNATURE);
             }
             break;
         case UNPACKER_Utils::SELF_SIGNATURE:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_self_signature_stmt.first + f + insert_self_signature_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
-                                      e.what());
-                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::SELF_SIGNATURE);
-                }
+            try{
+                shared_ptr<Statement>(con->createStatement())->execute(insert_self_signature_stmt.first + f + insert_self_signature_stmt.second);
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
+                                  e.what());
+                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::SELF_SIGNATURE);
             }
             break;
         case UNPACKER_Utils::USERID:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_userID_stmt.first + f + insert_userID_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
-                                      e.what());
-                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::USERID);
-                }
+            try{
+                shared_ptr<Statement>(con->createStatement())->execute(insert_userID_stmt.first + f + insert_userID_stmt.second);
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                                  e.what());
+                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::USERID);
             }
             break;
         case UNPACKER_Utils::USER_ATTRIBUTES:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_userAtt_stmt.first + f + insert_userAtt_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_userAtt_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
-                                      e.what());
-                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::USER_ATTRIBUTES);
-                }
+            try{
+                shared_ptr<Statement>(con->createStatement())->execute(insert_userAtt_stmt.first + f + insert_userAtt_stmt.second);
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_userAtt_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                                  e.what());
+                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::USER_ATTRIBUTES);
             }
             break;
         case UNPACKER_Utils::UNPACKED:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute("CREATE TEMPORARY TABLE tmp_unpacker (version tinyint, fingerprint binary(20), unpacked tinyint);");
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_unpacked_stmt.first + f + insert_unpacked_stmt.second);
-                    shared_ptr<Statement>(con->createStatement())->execute("UPDATE gpg_keyserver INNER JOIN tmp_unpacker ON tmp_unpacker.version = gpg_keyserver.version AND "
-                                                            "tmp_unpacker.fingerprint = gpg_keyserver.fingerprint SET gpg_keyserver.is_unpacked = tmp_unpacker.unpacked;");
-                    shared_ptr<Statement>(con->createStatement())->execute("DROP TEMPORARY TABLE tmp_unpacker;");
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_unpacked_stmt FAILED, the key will result NOT UNPACKED in the database! - %s",
-                                      e.what());
-                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::UNPACKED);
-                }
+            try{
+                shared_ptr<Statement>(con->createStatement())->execute("CREATE TEMPORARY TABLE tmp_unpacker (version tinyint, fingerprint binary(20), unpacked tinyint);");
+                shared_ptr<Statement>(con->createStatement())->execute(insert_unpacked_stmt.first + f + insert_unpacked_stmt.second);
+                shared_ptr<Statement>(con->createStatement())->execute("UPDATE gpg_keyserver INNER JOIN tmp_unpacker ON tmp_unpacker.version = gpg_keyserver.version AND "
+                                                        "tmp_unpacker.fingerprint = gpg_keyserver.fingerprint SET gpg_keyserver.is_unpacked = tmp_unpacker.unpacked;");
+                shared_ptr<Statement>(con->createStatement())->execute("DROP TEMPORARY TABLE tmp_unpacker;");
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_unpacked_stmt FAILED, the key will result NOT UNPACKED in the database! - %s",
+                                  e.what());
+                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::UNPACKED);
             }
             break;
         case UNPACKER_Utils::UNPACKER_ERRORS:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
-                                      e.what());
-                    UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::UNPACKER_ERRORS);
-                }
+            try{
+                shared_ptr<Statement>(con->createStatement())->execute(insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second);
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
+                                  e.what());
+                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::UNPACKER_ERRORS);
             }
             break;
         default:
@@ -398,12 +384,10 @@ void UNPACKER_DBManager::insertCSV(const vector<string> &files, const unsigned i
     }
 
     // Delete inserted file
-    for (const auto &f: files){
-        try{
-            remove(f.c_str());
-        }catch (exception &e){
-            syslog(LOG_CRIT, "File deleting FAILED, the following file MUST be deleted manually: %s. Error: %s", f.c_str(), e.what());
-        }
+    try{
+        remove(f.c_str());
+    }catch (exception &e){
+        syslog(LOG_CRIT, "File deleting FAILED, the following file MUST be deleted manually: %s. Error: %s", f.c_str(), e.what());
     }
 }
 

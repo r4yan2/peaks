@@ -149,9 +149,17 @@ namespace Unpacker {
             pool->Add_Job(unpacking_jobs.back());
         }
 
+        int files_number = 0;
+        while (files_number < UNPACKER_Utils::USERID * nThreads){
+            this_thread::sleep_for(std::chrono::seconds{1});
+            files_number = UNPACKER_Utils::get_files_number(db_settings.unpacker_tmp_folder);
+        }
+
         for (unsigned int i = UNPACKER_Utils::UNPACKED; i <= UNPACKER_Utils::USERID; i++){
-            std::shared_ptr<Job> j = std::make_shared<Job>([=] { (std::make_shared<UNPACKER_DBManager>(dbm))->insertCSV(UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, i), i); }, unpacking_jobs);
-            pool->Add_Job(j);
+            for (const std::string & filename: UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, i)){
+                std::shared_ptr<Job> j = std::make_shared<Job>([=] { (std::make_shared<UNPACKER_DBManager>(dbm))->insertCSV(filename, i); }, unpacking_jobs);
+                pool->Add_Job(j);
+            }
         }
 
         pool->Stop_Filling_UP();
