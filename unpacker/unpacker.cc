@@ -59,7 +59,7 @@ namespace Unpacker {
         UNPACKER_Utils::remove_directory_content(vm["unpacker_tmp_folder"].as<std::string>());
     
         if (UNPACKER_Utils::create_folders(vm["unpacker_error_folder"].as<std::string>()) == -1){
-            syslog(LOG_WARNING,  "Unable to create temp folder");
+            syslog(LOG_WARNING,  "Unable to create error folder");
             exit(-1);
         }
         const Unpacker_DBConfig db_settings = {
@@ -72,7 +72,7 @@ namespace Unpacker {
         };
 
         std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>(db_settings);
-        dbm->init_database_connection();
+        dbm->ensure_database_connection();
     
         std::vector<UNPACKER_DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
         limit = gpg_data.size();
@@ -169,6 +169,7 @@ namespace Unpacker {
             th.join();
         }
 
+        dbm->ensure_database_connection();
         dbm->UpdateSignatureIssuingFingerprint(limit);
         dbm->UpdateSignatureIssuingUsername();
         dbm->UpdateIsExpired();
@@ -182,7 +183,7 @@ namespace Unpacker {
     void unpack_key_th(const Unpacker_DBConfig &db_settings, const vector<Key::Ptr> &pks){
         
         std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>(db_settings);
-        dbm->init_database_connection();
+        dbm->ensure_database_connection();
         dbm->openCSVFiles();
 
         for (const auto &pk : pks) {

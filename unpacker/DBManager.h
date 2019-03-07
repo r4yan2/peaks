@@ -59,7 +59,10 @@ public:
      * in this method. It will also load all the relevant
      * prepared statement
      */
-    void init_database_connection();
+    void ensure_database_connection();
+
+    /** @brief Ready CSV files for writing tmp data
+     */
     void openCSVFiles();
 
     /** @brief Recover the certificates to unpack

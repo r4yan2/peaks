@@ -16,14 +16,19 @@ UNPACKER_DBManager::UNPACKER_DBManager(const Unpacker_DBConfig &un_settings){
 
 UNPACKER_DBManager::UNPACKER_DBManager(const std::shared_ptr<UNPACKER_DBManager> & dbm){
     settings = dbm->get_settings();
-    init_database_connection();
+    con = NULL;
+    ensure_database_connection();
 }
 
 Unpacker_DBConfig UNPACKER_DBManager::get_settings(){
     return settings;
 }
 
-void UNPACKER_DBManager::init_database_connection(){
+void UNPACKER_DBManager::ensure_database_connection(){
+    bool connected = con != NULL && con->isValid(); //(con->isValid() || con->reconnect());
+    if (connected)
+        return;
+
     UNPACKER_DBManager::driver = get_driver_instance();
     UNPACKER_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
     // Connect to the MySQL keys database
