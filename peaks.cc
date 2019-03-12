@@ -40,10 +40,6 @@ void signalHandler( int signum );
  * to be fully functional, compatible with other keyservers,
  * easy to deploy and mantain and with a low resource footprint.
  *
- * \section install_sec Installation
- *
- * \subsection step1 Step 1: Read the installation guide on Github
- *
  */
         
 bool quitting = false;
