@@ -52,9 +52,19 @@ void UNPACKER_DBManager::ensure_database_connection(){
 
     set_unpacking_status_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE gpg_keyserver SET is_unpacked = 3 WHERE version = (?) and fingerprint = (?)"));
     
-    insert_issuing_fingerprint = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN "
+    update_issuing_fingerprint = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN "
                                          "(SELECT * FROM Signature_no_issuing_fp LIMIT ?) as ifp SET Signatures.issuingFingerprint = ifp.fp "
                                          "WHERE ifp.id = Signatures.id;"));
+    update_issuing_username = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN key_primary_userID on "
+              "issuingFingerprint = fingerprint SET issuingUsername = name WHERE issuingUsername IS NULL;"));
+    update_expired = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures SET isExpired = 1 WHERE expirationTime < NOW();"));
+    update_valid = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 or isRevoked = 1;"));
+    update_revoked_1 = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
+                  "signedFingerprint, signedUsername FROM Signatures WHERE isRevocation = 1;"));
+    update_revoked_2 = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures set isRevoked = 1, isValid = -1 where isRevoked = 0 "
+                  "and isRevocation = 0 and (issuingKeyId, signedFingerprint, signedUsername) in (select * from revocationSignatures);"));
+    commit = shared_ptr<PreparedStatement>(con->prepareStatement("COMMIT;"));
+
 }
 
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_pubkey_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
@@ -398,9 +408,9 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
 
 void UNPACKER_DBManager::UpdateSignatureIssuingFingerprint(const unsigned long &l) {
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        insert_issuing_fingerprint->setUInt64(1, l);
-        insert_issuing_fingerprint->execute();
+        commit->execute();
+        update_issuing_fingerprint->setUInt64(1, l);
+        update_issuing_fingerprint->execute();
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
                           e.what());
@@ -409,37 +419,30 @@ void UNPACKER_DBManager::UpdateSignatureIssuingFingerprint(const unsigned long &
 
 void UNPACKER_DBManager::UpdateSignatureIssuingUsername() {
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN key_primary_userID on "
-              "issuingFingerprint = fingerprint SET issuingUsername = name WHERE issuingUsername IS NULL;");
-        /*shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN Pubkey on "
-              "Signatures.issuingFingerprint = Pubkey.fingerprint INNER JOIN key_primary_userID on "
-              "Pubkey.PriFingerprint = key_primary_userID.fingerprint SET issuingUsername = name WHERE issuingUsername = \"\";");*/
+        commit->execute();
+        update_issuing_username->execute();
     }catch (exception &e){
-        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
+        syslog(LOG_CRIT, "update_signature_issuing_username FAILED, the issuingUsername of the signature will not be inserted! - %s",
                           e.what());
     }
 }
 
 void UNPACKER_DBManager::UpdateIsExpired() {
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures SET isExpired = 1 WHERE expirationTime < NOW();");
+        commit->execute();
+        update_expired->execute();
     }catch (exception &e){
-        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
+        syslog(LOG_CRIT, "update_expired_stmt FAILED, the Signatures are not up to date checked for expiration! - %s",
                           e.what());
     }
 }
 
 void UNPACKER_DBManager::UpdateIsRevoked() {
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        shared_ptr<Statement>(con->createStatement())->execute("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
-                  "signedFingerprint, signedUsername FROM Signatures WHERE isRevocation = 1;");
-        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures set isRevoked = 1 where isRevoked = 0 "
-                  "and isRevocation = 0 and (issuingKeyId, signedFingerprint, signedUsername) in (select * from revocationSignatures);");
+        commit->execute();
+        update_revoked_2->execute();
     }catch (exception &e){
-        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
+        syslog(LOG_CRIT, "update_revoked FAILED, the revocation effect on Signatures will be not up to date! - %s",
                           e.what());
     }
 }
@@ -447,11 +450,10 @@ void UNPACKER_DBManager::UpdateIsRevoked() {
 
 void UNPACKER_DBManager::UpdateIsValid() {
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 "
-                                                                       "or isRevoked = 1;");
+        commit->execute();
+        update_valid->execute();
     }catch (exception &e){
-        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
+        syslog(LOG_CRIT, "update_valid FAILED, the validity of Signatures will be not up to date! - %s",
                           e.what());
     }
 }

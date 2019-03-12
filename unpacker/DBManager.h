@@ -151,7 +151,13 @@ private:
         get_signature_by_index, 
         set_key_not_analyzable,
         insert_error_comments,
-        insert_issuing_fingerprint,
+        update_issuing_fingerprint,
+        update_issuing_username,
+        update_expired,
+        update_revoked_1,
+        update_revoked_2,
+        update_valid,
+        commit,
         set_unpacking_status_stmt;
 
 

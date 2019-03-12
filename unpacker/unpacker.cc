@@ -170,11 +170,7 @@ namespace Unpacker {
         }
 
         dbm->ensure_database_connection();
-        dbm->UpdateSignatureIssuingFingerprint(limit);
-        dbm->UpdateSignatureIssuingUsername();
-        dbm->UpdateIsExpired();
         dbm->UpdateIsRevoked();
-        dbm->UpdateIsValid();
     
         syslog(LOG_NOTICE, "Unpacker daemon is stopping!");
         return 0;
