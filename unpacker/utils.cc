@@ -31,6 +31,25 @@ namespace UNPACKER_Utils{
         }
     }
 
+    /*
+    void sort_csv(const std::string & filename){
+        ifstream icsv(filename);
+        map<pair<string, string>, string> content;
+        string line;
+        
+        while (getline(icsv,line)){
+            vector<string> vec
+            boost::algorithm::split(vec, line, boost::is_any_of(','));
+            map.insert(make_pair(vec.begin(), vec.begin()+1), line);
+        }
+        icsv.close();
+
+        ofstream ocsv(filename);
+        for (auto const & x : content){
+            ocsv << x.second
+        }
+        
+    */
     void put_in_error(const std::string &folder_name, const string &f, const unsigned int &i){
         try{
             std::ofstream error_file;
@@ -121,4 +140,25 @@ namespace UNPACKER_Utils{
         }
         closedir(theFolder);
     }
+
+    std::vector<std::string> dirlisting(const std::string &foldername)
+    {
+        DIR *theFolder = opendir(foldername.c_str());
+        struct dirent *next_file;
+        char filepath[512];
+        std::vector<std::string> files;
+    
+        while ( (next_file = readdir(theFolder)) != NULL )
+        {
+            //skipping folders
+            if (next_file->d_type == DT_DIR)
+                continue;
+            // build the path for each file in the folder
+            sprintf(filepath, "%s/%s", foldername.c_str(), next_file->d_name);
+            files.push_back(std::string(filepath));
+        }
+        closedir(theFolder);
+        return files;
+    }
+
 }

@@ -56,8 +56,6 @@ namespace Unpacker {
             exit(-1);
         }
 
-        UNPACKER_Utils::remove_directory_content(vm["unpacker_tmp_folder"].as<std::string>());
-    
         if (UNPACKER_Utils::create_folders(vm["unpacker_error_folder"].as<std::string>()) == -1){
             syslog(LOG_WARNING,  "Unable to create error folder");
             exit(-1);
@@ -73,9 +71,24 @@ namespace Unpacker {
 
         std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>(db_settings);
         dbm->ensure_database_connection();
+        
+        std::vector<std::string> error_files = UNPACKER_Utils::dirlisting(vm["unpacker_error_folder"].as<std::string>());
+        if (error_files.size() > 0){
+            std::cout << "Found files in unpacker error folder, proceding to error recovery" << std::endl;
+            std::cout << "List of files to recover:" << std::endl;
+            for (auto &f: error_files)
+            {
+                std::cout << "\t" << f << std::endl;
+                dbm->insertCSV(f);
+            }
+        }
+    
     
         std::vector<UNPACKER_DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
         limit = gpg_data.size();
+
+        if (limit == 0)
+            return limit;
 
         if(vm.count("keys"))
             key_per_thread = vm["keys"].as<unsigned int>();
@@ -170,10 +183,12 @@ namespace Unpacker {
         }
 
         dbm->ensure_database_connection();
+        dbm->UpdateSignatureIssuingFingerprint();
+        //dbm->UpdateSignatureIssuingUsername();
         dbm->UpdateIsRevoked();
     
         syslog(LOG_NOTICE, "Unpacker daemon is stopping!");
-        return 0;
+        return limit;
     }
 
     void unpack_key_th(const Unpacker_DBConfig &db_settings, const vector<Key::Ptr> &pks){

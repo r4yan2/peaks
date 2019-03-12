@@ -52,11 +52,8 @@ void UNPACKER_DBManager::ensure_database_connection(){
 
     set_unpacking_status_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE gpg_keyserver SET is_unpacked = 3 WHERE version = (?) and fingerprint = (?)"));
     
-    update_issuing_fingerprint = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN "
-                                         "(SELECT * FROM Signature_no_issuing_fp LIMIT ?) as ifp SET Signatures.issuingFingerprint = ifp.fp "
-                                         "WHERE ifp.id = Signatures.id;"));
-    update_issuing_username = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN key_primary_userID on "
-              "issuingFingerprint = fingerprint SET issuingUsername = name WHERE issuingUsername IS NULL;"));
+    update_issuing_fingerprint = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN Pubkey on issuingKeyId = KeyId SET issuingFingerprint = fingerprint where isnull(issuingFingerprint) and issuingKeyId = KeyId;"));
+    update_issuing_username = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN UserID on issuingFingerprint = fingerprint SET issuingUsername = name where isnull(issuingUsername) and issuingFingerprint = fingerprint;"));
     update_expired = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures SET isExpired = 1 WHERE expirationTime < NOW();"));
     update_valid = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 or isRevoked = 1;"));
     update_revoked_1 = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
@@ -119,6 +116,9 @@ std::pair<std::string, std::string> UNPACKER_DBManager::insert_unpacked_stmt = m
                     "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE tmp_unpacker FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
                     "LINES STARTING BY '.' TERMINATED BY '\\n' (version,@hexfingerprint,unpacked) SET fingerprint = UNHEX(@hexfingerprint);");
 
+std::string UNPACKER_DBManager::create_unpacker_tmp_table = "CREATE TEMPORARY TABLE tmp_unpacker (version tinyint, fingerprint binary(20), unpacked tinyint);";
+std::string UNPACKER_DBManager::update_gpg_keyserver = "UPDATE gpg_keyserver INNER JOIN tmp_unpacker ON tmp_unpacker.version = gpg_keyserver.version AND tmp_unpacker.fingerprint = gpg_keyserver.fingerprint SET gpg_keyserver.is_unpacked = tmp_unpacker.unpacked;";
+std::string UNPACKER_DBManager::drop_unpacker_tmp_table = "DROP TEMPORARY TABLE tmp_unpacker;";
 
 UNPACKER_DBManager::~UNPACKER_DBManager(){
     for (auto &it: file_list){
@@ -325,91 +325,103 @@ void UNPACKER_DBManager::write_unpackerErrors_csv(const UNPACKER_DBStruct::Unpac
     }
 }
 
-void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
-    switch (table){
-        case UNPACKER_Utils::PUBKEY:
-            try{
-                shared_ptr<Statement>(con->createStatement())->execute(insert_pubkey_stmt.first + f + insert_pubkey_stmt.second);
-            }catch (exception &e){
-                syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s",
-                                  e.what());
-                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::PUBKEY);
-            }
-            break;
-        case UNPACKER_Utils::SIGNATURE:
-            try{
-                shared_ptr<Statement>(con->createStatement())->execute(insert_signature_stmt.first + f + insert_signature_stmt.second);
-            }catch (exception &e){
-                syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
-                                  e.what());
-                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::SIGNATURE);
-            }
-            break;
-        case UNPACKER_Utils::SELF_SIGNATURE:
-            try{
-                shared_ptr<Statement>(con->createStatement())->execute(insert_self_signature_stmt.first + f + insert_self_signature_stmt.second);
-            }catch (exception &e){
-                syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
-                                  e.what());
-                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::SELF_SIGNATURE);
-            }
-            break;
-        case UNPACKER_Utils::USERID:
-            try{
-                shared_ptr<Statement>(con->createStatement())->execute(insert_userID_stmt.first + f + insert_userID_stmt.second);
-            }catch (exception &e){
-                syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
-                                  e.what());
-                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::USERID);
-            }
-            break;
-        case UNPACKER_Utils::USER_ATTRIBUTES:
-            try{
-                shared_ptr<Statement>(con->createStatement())->execute(insert_userAtt_stmt.first + f + insert_userAtt_stmt.second);
-            }catch (exception &e){
-                syslog(LOG_CRIT, "insert_userAtt_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
-                                  e.what());
-                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::USER_ATTRIBUTES);
-            }
-            break;
-        case UNPACKER_Utils::UNPACKED:
-            try{
-                shared_ptr<Statement>(con->createStatement())->execute("CREATE TEMPORARY TABLE tmp_unpacker (version tinyint, fingerprint binary(20), unpacked tinyint);");
-                shared_ptr<Statement>(con->createStatement())->execute(insert_unpacked_stmt.first + f + insert_unpacked_stmt.second);
-                shared_ptr<Statement>(con->createStatement())->execute("UPDATE gpg_keyserver INNER JOIN tmp_unpacker ON tmp_unpacker.version = gpg_keyserver.version AND "
-                                                        "tmp_unpacker.fingerprint = gpg_keyserver.fingerprint SET gpg_keyserver.is_unpacked = tmp_unpacker.unpacked;");
-                shared_ptr<Statement>(con->createStatement())->execute("DROP TEMPORARY TABLE tmp_unpacker;");
-            }catch (exception &e){
-                syslog(LOG_CRIT, "insert_unpacked_stmt FAILED, the key will result NOT UNPACKED in the database! - %s",
-                                  e.what());
-                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::UNPACKED);
-            }
-            break;
-        case UNPACKER_Utils::UNPACKER_ERRORS:
-            try{
-                shared_ptr<Statement>(con->createStatement())->execute(insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second);
-            }catch (exception &e){
-                syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
-                                  e.what());
-                UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::UNPACKER_ERRORS);
-            }
-            break;
-        default:
-            throw runtime_error("Table not recognized");
-    }
-
-    // Delete inserted file
-    try{
-        remove(f.c_str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "File deleting FAILED, the following file MUST be deleted manually: %s. Error: %s", f.c_str(), e.what());
+void UNPACKER_DBManager::insertCSV(const string &f){
+    std::vector<std::string> fullpath, filename;
+    boost::split(fullpath, f, boost::is_any_of("/"));
+    for (auto const &x: UNPACKER_Utils::FILENAME){
+        if (UNPACKER_Utils::hasEnding(fullpath.back(), x.second)){
+            return insertCSV(f, x.first);
+        }
     }
 }
 
-void UNPACKER_DBManager::UpdateSignatureIssuingFingerprint(const unsigned long &l) {
+void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
+    unsigned int backoff = 1;
+    unsigned int num_retries = 0;
+    shared_ptr<Statement> query(con->createStatement());
+    std::string statement;
+    switch (table){
+        case UNPACKER_Utils::PUBKEY:
+            statement = insert_pubkey_stmt.first + f + insert_pubkey_stmt.second;
+            break;
+        case UNPACKER_Utils::SIGNATURE:
+            statement = insert_signature_stmt.first + f + insert_signature_stmt.second;
+            break;
+        case UNPACKER_Utils::SELF_SIGNATURE:
+            statement = insert_self_signature_stmt.first + f + insert_self_signature_stmt.second;
+            break;
+        case UNPACKER_Utils::USERID:
+            statement = insert_userID_stmt.first + f + insert_userID_stmt.second;
+            break;
+        case UNPACKER_Utils::USER_ATTRIBUTES:
+            statement = insert_userAtt_stmt.first + f + insert_userAtt_stmt.second;
+            break;
+        case UNPACKER_Utils::UNPACKED:
+            query->execute(create_unpacker_tmp_table);
+            statement = insert_unpacked_stmt.first + f + insert_unpacked_stmt.second;
+            break;
+        case UNPACKER_Utils::UNPACKER_ERRORS:
+            statement = insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second;
+            break;
+    }
+
+    do{
+        try{
+            query->execute(statement);
+            if (table == UNPACKER_Utils::UNPACKED){
+                query->execute(update_gpg_keyserver);
+            }
+            backoff = 0;
+        }catch(exception &e){
+            num_retries += 1;
+            unsigned int sleep_seconds = (backoff << num_retries) * 60 ;
+            switch (table){
+                case UNPACKER_Utils::PUBKEY:
+                        syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s",
+                                          e.what());
+                        break;
+                case UNPACKER_Utils::SIGNATURE:
+                        syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
+                                          e.what());
+                        break;
+                case UNPACKER_Utils::SELF_SIGNATURE:
+                        syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
+                                          e.what());
+                        break;
+                case UNPACKER_Utils::USERID:
+                        syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                                          e.what());
+                        break;
+                case UNPACKER_Utils::USER_ATTRIBUTES:
+                        syslog(LOG_CRIT, "insert_userAtt_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                                          e.what());
+                        break;
+                case UNPACKER_Utils::UNPACKED:
+                        syslog(LOG_CRIT, "insert_unpacked_stmt FAILED, the key will result NOT UNPACKED in the database! - %s",
+                                          e.what());
+                        query->execute(drop_unpacker_tmp_table);
+                        break;
+                case UNPACKER_Utils::UNPACKER_ERRORS:
+                        syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
+                                          e.what());
+                        break;
+            }
+            this_thread::sleep_for(std::chrono::seconds{sleep_seconds});
+        }
+    } while (backoff > 0 && num_retries < 5);
+    if (backoff > 0){
+        UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::UNPACKER_ERRORS);
+    }
     try{
-        commit->execute();
-        update_issuing_fingerprint->setUInt64(1, l);
+        remove(f.c_str());
+    } catch (std::exception &e){
+        syslog(LOG_CRIT, "File deleting FAILED, the following file MUST be deleted manually: %s. Error: %s", f.c_str(), e.what());
+
+    }
+}
+
+void UNPACKER_DBManager::UpdateSignatureIssuingFingerprint() {
+    try{
         update_issuing_fingerprint->execute();
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
@@ -419,7 +431,6 @@ void UNPACKER_DBManager::UpdateSignatureIssuingFingerprint(const unsigned long &
 
 void UNPACKER_DBManager::UpdateSignatureIssuingUsername() {
     try{
-        commit->execute();
         update_issuing_username->execute();
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_username FAILED, the issuingUsername of the signature will not be inserted! - %s",

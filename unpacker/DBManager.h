@@ -12,6 +12,7 @@
 #include "DBStruct.h"
 #include "utils.h"
 #include "Config.h"
+#include <boost/algorithm/string.hpp>
 
 
 /** @brief Class manging the database
@@ -20,7 +21,8 @@
  * keys after all operations
  */
 class UNPACKER_DBManager {
-    static std::pair<std::string, std::string> insert_pubkey_stmt, 
+    static std::pair<std::string, std::string> 
+        insert_pubkey_stmt, 
         insert_signature_stmt, 
         insert_self_signature_stmt, 
         insert_userID_stmt,
@@ -28,7 +30,10 @@ class UNPACKER_DBManager {
         insert_unpackerErrors_stmt, 
         insert_unpacked_stmt;
 
-
+    static std::string 
+        create_unpacker_tmp_table,
+        update_gpg_keyserver,
+        drop_unpacker_tmp_table;
 public:
     /** @brief Database connector constructor
      * init the databasse connector with the settings that
@@ -114,13 +119,22 @@ public:
      */
     void insertCSV(const std::string &f, const unsigned int &table);
 
+    /** @brief Parse filename and made correct call to insertCSV
+     * @param f filename to parse
+     */
+    void insertCSV(const std::string &f);
+
+    /** @brief In case of error mark the certificate not analyzable
+     * @param version version of the certificate (primary key)
+     * @param fingerprint fingerprint of the certificate (primary key)
+     * @param comment reason for the error
+     */
     void set_as_not_analyzable(const int &version, const std::string &fingerprint, const std::string &comment);
 
     /** @brief Updates issuing fingerprint 
      * Update issuing signatures fingerprint in the signatures table
-     * @param l limit of the query
      */
-    void UpdateSignatureIssuingFingerprint(const unsigned long &l);
+    void UpdateSignatureIssuingFingerprint();
 
     /** @brief Scan the databsae for expired keys
      */

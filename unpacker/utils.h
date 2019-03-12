@@ -15,8 +15,8 @@ namespace UNPACKER_Utils{
     const unsigned int KEY_PER_THREAD_DEFAULT = 2500;
 
     const unsigned int UNPACKED         = 1;
-    const unsigned int PUBKEY           = 2;
-    const unsigned int SIGNATURE        = 3;
+    const unsigned int PUBKEY           = 3;
+    const unsigned int SIGNATURE        = 2;
     const unsigned int SELF_SIGNATURE   = 4;
     const unsigned int USER_ATTRIBUTES  = 5;
     const unsigned int UNPACKER_ERRORS  = 6;
@@ -79,9 +79,12 @@ namespace UNPACKER_Utils{
      * @param foldername name of the folder to empty
      */
     void remove_directory_content(const std::string &foldername);
-/*
-    vector<std::string> listFileEndingWith(std::string end);
-*/
+
+    /** @brief list all files in the given folder
+     * @param foldername folder on which perform the operation
+     * @return vector of strings representing the content of the folder
+     */
+    std::vector<std::string> dirlisting(const std::string & foldername);
 }
 
 #endif //UNPACKER_Utils_H

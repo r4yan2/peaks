@@ -372,14 +372,14 @@ USE `gpg_keyserver`;
 
 DELIMITER ;;
 
-CREATE TRIGGER update_issuing_fingerprint
-AFTER INSERT ON Pubkey
-FOR EACH ROW
-BEGIN
-UPDATE Signatures
-SET issuingFingerprint = new.fingerprint
-WHERE issuingKeyId = new.KeyId and isnull(issuingFingerprint);
-END;;
+-- CREATE TRIGGER update_issuing_fingerprint
+-- AFTER INSERT ON Pubkey
+-- FOR EACH ROW
+-- BEGIN
+-- UPDATE Signatures
+-- SET issuingFingerprint = new.fingerprint
+-- WHERE issuingKeyId = new.KeyId and isnull(issuingFingerprint);
+-- END;;
 
 CREATE TRIGGER update_issuing_username
 AFTER INSERT ON UserID
