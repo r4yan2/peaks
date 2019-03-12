@@ -148,8 +148,8 @@ Now will follow a list of the configuration options that could be modified from 
 
 |Name|Default Value|Brief Explanation|Should be changed?|
 |----|-----------------|-------------|------------------|
-|mbar|                 |            5|                NO|
-|bq  |                 |2            | NO               |
+|mbar|      5|Parameter for the linear interpolation|                NO|
+|bq  |       2|Regulate the fanout of the prefix-tree| NO               |
 |max_ptree_nodes|      |1000|NO|
 |pthree_thresh_mult|10|NO|
 |P_SKS_STRING|5305128895516023225051275203|finite field used by SKS|NO|
