@@ -82,7 +82,11 @@ namespace Unpacker {
                 dbm->insertCSV(f);
             }
         }
-    
+        
+        if (vm.count("recover")){
+            std::cout << "Finished recovery, exiting" << std::endl;
+            exit(0);
+        }
     
         std::vector<UNPACKER_DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
         limit = gpg_data.size();

@@ -124,7 +124,8 @@ int main(int argc, char* argv[]){
             unpack_desc.add_options()
                 ("threads, t", po::value<unsigned int>(), "set number of threads")
                 ("keys, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-                ("limit, l", po::value<unsigned int>(), "set limit to how many keys to unpack per run");
+                ("limit, l", po::value<unsigned int>(), "set limit to how many keys to unpack per run")
+                ("recover, r", "recover");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
@@ -210,27 +211,28 @@ void help(){
     std::cout << std::endl;
 
     std::cout << "  import \t\tImport certificates into Mysql" << std::endl;
-    std::cout << "    -t, --threads \tSet number of threads to use" << std::endl;
-    std::cout << "    -k, --keys \t\tSet how many keys a thread has to analyze" << std::endl;
-    std::cout << "    -p, --path \t\tSet the path of the dump" << std::endl;
+    std::cout << "    --threads \tSet number of threads to use" << std::endl;
+    std::cout << "    --keys \t\tSet how many keys a thread has to analyze" << std::endl;
+    std::cout << "    --path \t\tSet the path of the dump" << std::endl;
     std::cout << "    --csv-only \t\tonly create temporary csv file, do not import into DB" << std::endl;
     std::cout << "    --import-only \tonly import temporary csv, do not create anything" << std::endl;
-    std::cout << "    -f, --fastimport \tDo not unpack certificates" << std::endl;
+    std::cout << "    --fastimport \tDo not unpack certificates" << std::endl;
     std::cout << "    --noclean \t\tdo not clean temporary folder" << std::endl;
 
     std::cout << std::endl; 
 
     std::cout << "  unpack \t\tUnpack certificate not analyzer during fastimport" << std::endl;
-    std::cout << "    -t, --threads \tSet number of threads to use" << std::endl;
-    std::cout << "    -k, --keys \t\tSet how many keys a thread has to analyze" << std::endl;
-    std::cout << "    -l, --limit \tSet the limit on key to unpack" << std::endl;
+    std::cout << "    --threads \tSet number of threads to use" << std::endl;
+    std::cout << "    --keys \t\tSet how many keys a thread has to analyze" << std::endl;
+    std::cout << "    --limit \tSet the limit on key to unpack" << std::endl;
+    std::cout << "    --recover \tRecover previous broken session only" << std::endl;
 
     std::cout << std::endl;
 
     std::cout << "  analyze \t\tPerform security analysis on imported pubkeys" << std::endl;
-    std::cout << "    -t, --threads \tSet number of threads to use" << std::endl;
-    std::cout << "    -k, --keys \t\tSet how many keys a thread has to analyze" << std::endl;
-    std::cout << "    -l, --limit \tSet the limit on key to analyze" << std::endl;
+    std::cout << "    --threads \tSet number of threads to use" << std::endl;
+    std::cout << "    --keys \t\tSet how many keys a thread has to analyze" << std::endl;
+    std::cout << "    --limit \tSet the limit on key to analyze" << std::endl;
 
     std::cout << std::endl;
 
