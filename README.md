@@ -1,4 +1,20 @@
 # Peaks Compilation and Usage
+
+## Get
+
+Be sure to download the full repo (including submodules)
+
+```bash
+git clone --recursive https://github.com/r4yan2/peaks.git
+```
+
+or if you have just downloaded the repository without the submodule
+
+```bash
+cd peaks/
+git submodule update --init --recursive
+```
+
 ## Compile
 ### Dependencies
 
@@ -97,6 +113,8 @@ Optionally is also possible to disable MySQL logging to speed up bulk insert que
 
 ```sql
 SET global general_log = 0;
+SET sql_log_bin = 0;
+SET foreign_key_checks = 0;
 
 ```
 
@@ -150,8 +168,8 @@ Now will follow a list of the configuration options that could be modified from 
 |----|-----------------|-------------|------------------|
 |mbar|      5|Parameter for the linear interpolation|                NO|
 |bq  |       2|Regulate the fanout of the prefix-tree| NO               |
-|max_ptree_nodes|      |1000|NO|
-|pthree_thresh_mult|10|NO|
+|max_ptree_nodes|1000| --- |NO|
+|pthree_thresh_mult|10| multiplicative constant| NO|
 |P_SKS_STRING|5305128895516023225051275203|finite field used by SKS|NO|
 |reconciliation_timeout|45|timeout for the reconciliation protocol|NO|
 |peaks_version|1.1.6 |version sent to sks, needed for compatiblity|NO|
