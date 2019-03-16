@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.5.1)
 project(unpacker)
 
 set(SOURCE_FILES Thread_Pool.cc unpacker.cc DBManager.cc Key_Tools.cc DBStruct.h utils.cc)
