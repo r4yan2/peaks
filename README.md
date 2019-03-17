@@ -33,7 +33,7 @@ git submodule update --init --recursive
 **On Debian/Ubuntu you can install all dependencies with**
 
 ```bash
-apt install build-essential m4 curl python cmake libpcre3-dev libicu-dev libgcrypt11-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libboost-regex-dev libmysqlcppconn-dev
+apt-get install -y build-essential m4 curl python cmake git libcurl4-openssl-dev libpcre3-dev libicu-dev libgcrypt11-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libmysqlcppconn-dev
 ```
 
 NTL, GMP and OpenPGP can be installed running
