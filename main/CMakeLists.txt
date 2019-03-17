@@ -1,4 +1,5 @@
 add_executable(peaks peaks.cc)
+add_executable(peaks-test test/pTree.cc)
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
 set(STRIP "peaks_stripped")
@@ -12,6 +13,10 @@ add_custom_command(TARGET peaks POST_BUILD
     COMMAND sha1sum peaks
     WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
     COMMENT "Running checksum on binary")
+
+add_test(NAME peaks-test
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/bin/peaks-test )
 
 target_link_libraries(peaks import)
 target_link_libraries(peaks recon_daemon)
@@ -59,3 +64,7 @@ endif()
 target_link_libraries(peaks ${booster_lib})
 target_link_libraries(peaks ${libgmp})
 
+target_link_libraries(peaks-test ${Boost_LIBRARIES})
+target_link_libraries(peaks-test ${NTL_DIRECTORY}/lib/libntl.a)
+target_link_libraries(peaks-test ${GMP_DIRECTORY}/lib/libgmp.so)
+target_link_libraries(peaks-test recon_daemon)

@@ -61,6 +61,7 @@ if(${DBMANAGER} STREQUAL "MARIADBCPP")
 endif()
 
 find_package(Boost REQUIRED 
+    unit_test_framework 
     program_options
     system
     filesystem
