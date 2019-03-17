@@ -1,5 +1,5 @@
-#ifndef UNPACKER_THREAD_POOL_H
-#define UNPACKER_THREAD_POOL_H
+#ifndef THREAD_POOL_H
+#define THREAD_POOL_H
 
 #include <functional>
 #include <vector>

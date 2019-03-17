@@ -8,7 +8,7 @@
 #include "peer.h"
 #include "pTreeDB.h"
 #include <sys/syslog.h>
-#include "../dump_import/Config.h"
+#include "../import/Config.h"
 
 namespace po = boost::program_options;
 void build(po::variables_map &vm);

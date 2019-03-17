@@ -1,5 +1,5 @@
-#ifndef DUMPIMPORT_DBMANAGER_H
-#define DUMPIMPORT_DBMANAGER_H
+#ifndef IMPORT_DBMANAGER_H
+#define IMPORT_DBMANAGER_H
 
 
 #include <cppconn/resultset.h>
@@ -14,11 +14,11 @@
 #include "Config.h"
 #include "utils.h"
 
-namespace DBStruct = DUMP_DBStruct;
-class DUMPIMPORT_DBManager {
+namespace DBStruct = IMPORT_DBStruct;
+class IMPORT_DBManager {
 public:
-    DUMPIMPORT_DBManager(const Dumpimport_DBConfig &settings_);
-    ~DUMPIMPORT_DBManager();
+    IMPORT_DBManager(const Import_DBConfig &settings_);
+    ~IMPORT_DBManager();
 
     void init_database_connection();
     bool existSignature(const DBStruct::signatures &s);
@@ -51,7 +51,7 @@ public:
 
 private:
 
-    Dumpimport_DBConfig settings;
+    Import_DBConfig settings;
     std::map<unsigned int, std::ofstream> file_list;
     sql::Driver *driver;
     std::shared_ptr<sql::Connection> con;

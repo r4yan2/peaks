@@ -12,7 +12,7 @@
 #include <Misc/PKCS1.h>
 #include <sys/syslog.h>
 #include <gcrypt.h>
-#include "Thread_Pool.h"
+#include "../common/Thread_Pool.h"
 
 using namespace std;
 using namespace OpenPGP;
@@ -113,7 +113,7 @@ int analyzer(po::variables_map &vm){
         for (unsigned int j = 0; i < pk.size() && j < key_per_thread; j++, i++){
             pks.push_back(pk[i]);
         }
-        pool->Add_Job([=] { return a.analyze_pubkeys(pks); });
+        pool->Add_Job(std::make_shared<Job>([=] { return a.analyze_pubkeys(pks); }));
     }
 
     pool->Stop_Filling_UP();
@@ -154,10 +154,10 @@ int analyzer(po::variables_map &vm){
         for (unsigned int j = 0; i < ss.size() && j < key_per_thread; i++, j++){
             sss.push_back(ss[i]);
         }
-        pool->Add_Job([=] { return a.analyze_signatures(sss); });
+        pool->Add_Job(std::make_shared<Job>([=] { return a.analyze_signatures(sss); }));
     }
 
-    pool->Add_Job([=] { return dbm->write_repeated_r_csv(); });
+    pool->Add_Job(std::make_shared<Job>([=] { return dbm->write_repeated_r_csv(); }));
 
     pool->Stop_Filling_UP();
 

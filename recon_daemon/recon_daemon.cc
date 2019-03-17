@@ -77,7 +77,7 @@ void build(po::variables_map &vm){
     std::cout << std::endl;
     std::cout << "Writing resulting ptree to DB!" << std::endl;
     dbm->commit_memtree();
-    DUMP_Utils::remove_directory_content(vm["recon_tmp_folder"].as<std::string>());
+    IMPORT_Utils::remove_directory_content(vm["recon_tmp_folder"].as<std::string>());
     std::cout << "Inserted " << entries << " entry!" << std::endl; 
     closelog();
     exit(0);

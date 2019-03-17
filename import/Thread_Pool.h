@@ -1,5 +1,5 @@
-#ifndef THREAD_POOL_H
-#define THREAD_POOL_H
+#ifndef IMPORT_THREAD_POOL_H
+#define IMPORT_THREAD_POOL_H
 
 #include <functional>
 #include <vector>

@@ -101,7 +101,7 @@ namespace Unpacker {
      
         std::cout << "key per thread: " << key_per_thread << std::endl;
         
-        std::shared_ptr<Unpacker_Thread_Pool> pool = std::make_shared<Unpacker_Thread_Pool>();
+        std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
         std::vector<std::thread> pool_vect(nThreads);
     
         for (unsigned int i = 0; i < nThreads; i++){

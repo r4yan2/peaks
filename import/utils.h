@@ -1,5 +1,5 @@
-#ifndef DUMPIMPORT_Utils_H
-#define DUMPIMPORT_Utils_H
+#ifndef IMPORT_Utils_H
+#define IMPORT_Utils_H
 
 #include <vector>
 #include <cstring>
@@ -9,7 +9,7 @@
 #include "Config.h"
 #include <iostream>
 
-namespace DUMP_Utils{
+namespace IMPORT_Utils{
     const unsigned int CERTIFICATE      = 1;
     const unsigned int PUBKEY           = 2;
     const unsigned int SIGNATURE        = 3;
@@ -44,4 +44,4 @@ namespace DUMP_Utils{
 */
 }
 
-#endif //DUMP_IMPORT_Utils_H
+#endif //IMPORT_Utils_H

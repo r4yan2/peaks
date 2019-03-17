@@ -12,8 +12,9 @@
 #include "cgi_handler/pks.h"
 #include "recon_daemon/recon_daemon.h"
 #include "unpacker/unpacker.h"
-#include "dump_import/dump_import.h"
+#include "import/import.h"
 #include "analyzer/analyzer.h"
+#include "dump/dump.h"
 
 /** convenient renaming for program_options, totally optional */
 namespace po = boost::program_options;
@@ -101,6 +102,15 @@ int main(int argc, char* argv[]){
             //po::options_description build_desc("build options");
             build(vm);
             }
+        else if (cmd == "dump"){
+            po::options_description dump_desc("dump options");
+            dump_desc.add_options()
+                ("threads, t", po::value<unsigned int>(), "set number of threads");
+            std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
+            opts.erase(opts.begin());
+            po::store(po::command_line_parser(opts).options(dump_desc).run(), vm);
+            Dump::dump(vm);
+        }
         else if (cmd == "import"){
             po::options_description import_desc("import options");
             import_desc.add_options()
@@ -219,7 +229,12 @@ void help(){
     std::cout << "    --fastimport \tDo not unpack certificates" << std::endl;
     std::cout << "    --noclean \t\tdo not clean temporary folder" << std::endl;
 
-    std::cout << std::endl; 
+    std::cout << std::endl;
+
+    std::cout << "  dump \t\tDump database into csv files, currently output in MySQL directory" << std::endl;
+    std::cout << "    --threads \tSet number of threads to use" << std::endl;
+
+    std::cout << std::endl;
 
     std::cout << "  unpack \t\tUnpack certificate not analyzer during fastimport" << std::endl;
     std::cout << "    --threads \tSet number of threads to use" << std::endl;
@@ -291,8 +306,8 @@ void parse_config(std::string filename, po::variables_map &vm){
             ("unpacker_tmp_folder", po::value<std::string>())
             ("unpacker_error_folder", po::value<std::string>())
             ("recon_tmp_folder", po::value<std::string>())
-            ("dumpimport_tmp_folder", po::value<std::string>())
-            ("dumpimport_error_folder", po::value<std::string>())
+            ("import_tmp_folder", po::value<std::string>())
+            ("import_error_folder", po::value<std::string>())
             ;
         po::store(po::parse_config_file(cFile, config, false), vm);
         vm.insert(std::make_pair("sks_zp_bytes", po::variable_value(17, false)));

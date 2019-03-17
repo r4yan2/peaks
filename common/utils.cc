@@ -11,31 +11,50 @@
 using namespace boost::filesystem;
 using namespace std;
 
-namespace DUMP_Utils{
-    string get_file_name(const std::string &csv_folder, const unsigned int &i, const thread::id &ID){
+namespace Utils{
+    string get_file_name(const std::string &folder_name, const unsigned int &i, const thread::id &ID){
         stringstream t_id;
         t_id << ID;
-        return csv_folder + t_id.str() + FILENAME.at(i);
+        return folder_name + t_id.str() + FILENAME.at(i);
     }
 
-    int create_folder(const std::string &folder_name){
+    int create_folders(const std::string &folder_name){
         boost::system::error_code returnedError;
 
-		create_directories(folder_name, returnedError );
+        create_directories( folder_name, returnedError );
 
         if ( returnedError ){
             return -1;  // did not successfully create directories
         }
         else{
             return 0;
-            } // directories successfully created
         }
+    }
 
-    void put_in_error(const std::string &error_folder, const string &f, const unsigned int &i){
+    /*
+    void sort_csv(const std::string & filename){
+        ifstream icsv(filename);
+        map<pair<string, string>, string> content;
+        string line;
+        
+        while (getline(icsv,line)){
+            vector<string> vec
+            boost::algorithm::split(vec, line, boost::is_any_of(','));
+            map.insert(make_pair(vec.begin(), vec.begin()+1), line);
+        }
+        icsv.close();
+
+        ofstream ocsv(filename);
+        for (auto const & x : content){
+            ocsv << x.second
+        }
+        
+    */
+    void put_in_error(const std::string &folder_name, const string &f, const unsigned int &i){
         try{
             std::ofstream error_file;
             std::ifstream actual_file;
-            error_file.open(error_folder + string("Errors") + FILENAME.at(i), ios_base::app);
+            error_file.open(folder_name + "Errors" + FILENAME.at(i), ios_base::app);
             actual_file.open(f);
 
             error_file.seekp(0, ios_base::end);
@@ -48,35 +67,38 @@ namespace DUMP_Utils{
                 boost::random::uniform_int_distribution<> dist(1000, 10000);
 
                 string rnd_num = to_string(dist(gen));
-                copy_file(f, error_folder + rnd_num + FILENAME.at(i), copy_option::fail_if_exists);
+                copy_file(f, folder_name + rnd_num + FILENAME.at(i), copy_option::fail_if_exists);
             }catch (error_code &e){
                 syslog(LOG_CRIT, "Saving errors during CSV insertion FAILED, data will be lost! - %s", e.message().c_str());
             }
         }
     }
 
-    vector<string> get_files(const std::string &tmp_folder, const unsigned int &i){
+    int get_files_number(const std::string & folder_name){
+        int count=0;
         directory_iterator end_itr;
-        vector<string> file_list;
-
-        for (directory_iterator itr(tmp_folder); itr != end_itr; ++itr){
-            if (hasEnding(itr->path().string(), FILENAME.at(i))) {
-                string current_file = itr->path().string();
-                file_list.push_back(itr->path().string());
+        for (directory_iterator itr(folder_name); itr != end_itr; ++itr)
+        {
+            if (is_regular_file(itr->path())) {
+                count += 1;
             }
         }
-        return file_list;
+        return count;
     }
 
-    vector<string> get_dump_files(const path &dump_path){
+    vector<string> get_files(const std::string &folder_name, const unsigned int &i){
         directory_iterator end_itr;
         vector<string> file_list;
 
         // cycle through the directory
-        for (directory_iterator itr(dump_path); itr != end_itr; ++itr){
-            if (itr->path().extension() == ".pgp") {
+        for (directory_iterator itr(folder_name); itr != end_itr; ++itr)
+        {
+            // If it's not a directory, list it. If you want to list directories too, just remove this check.
+            if (is_regular_file(itr->path()) && hasEnding(itr->path().string(), FILENAME.at(i))) {
+                // assign current file name to current_file and echo it out to the console.
                 string current_file = itr->path().string();
                 file_list.push_back(itr->path().string());
+                // std::cout << current_file << std::endl;
             }
         }
         return file_list;
@@ -118,4 +140,25 @@ namespace DUMP_Utils{
         }
         closedir(theFolder);
     }
+
+    std::vector<std::string> dirlisting(const std::string &foldername)
+    {
+        DIR *theFolder = opendir(foldername.c_str());
+        struct dirent *next_file;
+        char filepath[512];
+        std::vector<std::string> files;
+    
+        while ( (next_file = readdir(theFolder)) != NULL )
+        {
+            //skipping folders
+            if (next_file->d_type == DT_DIR)
+                continue;
+            // build the path for each file in the folder
+            sprintf(filepath, "%s/%s", foldername.c_str(), next_file->d_name);
+            files.push_back(std::string(filepath));
+        }
+        closedir(theFolder);
+        return files;
+    }
+
 }

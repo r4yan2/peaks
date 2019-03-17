@@ -1,17 +1,17 @@
-#ifndef DUMP_IMPORT_H
-#define DUMP_IMPORT_H
+#ifndef IMPORT_H
+#define IMPORT_H
 
 #include "DBManager.h"
-#include "Thread_Pool.h"
+#include "../common/Thread_Pool.h"
 #include "utils.h"
 #include "unpacker.h"
 #include "Config.h"
 
 class Importer{
     private:
-        Dumpimport_settings settings;
-        Dumpimport_DBConfig db_settings;
-        std::shared_ptr<DUMPIMPORT_DBManager> dbm;
+        Import_settings settings;
+        Import_DBConfig db_settings;
+        std::shared_ptr<IMPORT_DBManager> dbm;
     public:
         Importer();
         ~Importer();
@@ -29,21 +29,21 @@ class Importer{
 
 class ReconImporter{
     private:
-        Dumpimport_settings settings;
-        std::shared_ptr<DUMPIMPORT_DBManager> dbm; 
+        Import_settings settings;
+        std::shared_ptr<IMPORT_DBManager> dbm; 
         bool unpack;
-        Dumpimport_DBConfig db_settings;
+        Import_DBConfig db_settings;
     public:
 
         ReconImporter(po::variables_map &vm);
         ReconImporter();
         ~ReconImporter();
 
-        /** dump import from a string of keys (useful for reconing)
+        /** Import certificates from a string of keys (useful for reconing)
          * @param keys vector of keys as strings
          * @return vector of hashes of processed keys
          */
-        std::vector<std::string> dump_import(std::vector<std::string> keys);
+        std::vector<std::string> import(std::vector<std::string> keys);
         
         /** get hashes from processed keys
          * @param files to know from which file fetch the key

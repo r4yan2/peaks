@@ -107,7 +107,7 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
         syslog(LOG_WARNING, "DRY RUN, exiting without inserting certificates");
         return;
     }
-    std::vector<std::string> hashes = di.dump_import(keys);
+    std::vector<std::string> hashes = di.import(keys);
     if (hashes.size() != elements.size()){
         syslog(LOG_WARNING, "number of recovered keys does not match number of hashes recovered!");
     }

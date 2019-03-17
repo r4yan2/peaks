@@ -29,7 +29,7 @@ max_unpacker_limit = 10000
 unpack_on_import = 0
 
 # DB settings
-db_host = 172.17.0.3
+db_host = 172.17.0.2
 db_user = root
 db_database = gpg_keyserver
 
@@ -37,8 +37,8 @@ db_database = gpg_keyserver
 membership_config = /etc/peaks/membership
 cppcms_config = /etc/peaks/config.js
 default_dump_path = /tmp/pgp_dump/
-dumpimport_tmp_folder = /tmp/dump_import/
-dumpimport_error_folder = /tmp/dumpimport_errors/
+import_tmp_folder = /tmp/dump_import/
+import_error_folder = /tmp/dumpimport_errors/
 analyzer_tmp_folder = /tmp/analyzer/
 unpacker_tmp_folder = /tmp/unpacker/
 recon_tmp_folder = /tmp/recon/

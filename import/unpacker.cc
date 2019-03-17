@@ -3,10 +3,10 @@
 using namespace std;
 using namespace OpenPGP;
 
-namespace Dumpimport {
+namespace Import {
 
-    void unpack_string_th(const Dumpimport_DBConfig &db_config, const vector<string> keys){
-        shared_ptr<DUMPIMPORT_DBManager> dbm(new DUMPIMPORT_DBManager(db_config));
+    void unpack_string_th(const Import_DBConfig &db_config, const vector<string> keys){
+        shared_ptr<IMPORT_DBManager> dbm(new IMPORT_DBManager(db_config));
         dbm->init_database_connection();
         dbm->openCSVFiles();
         int i=0;
@@ -29,8 +29,8 @@ namespace Dumpimport {
     }
 
 
-    void unpack_dump_th(const Dumpimport_DBConfig &db_config, const vector<std::string> &files, const bool &fast){
-        shared_ptr<DUMPIMPORT_DBManager> dbm(new DUMPIMPORT_DBManager(db_config));
+    void unpack_dump_th(const Import_DBConfig &db_config, const vector<std::string> &files, const bool &fast){
+        shared_ptr<IMPORT_DBManager> dbm(new IMPORT_DBManager(db_config));
         dbm->init_database_connection();
         dbm->openCSVFiles();
 
@@ -69,10 +69,10 @@ namespace Dumpimport {
         }
     }
 
-    void fast_unpack(Key::Ptr &key, const shared_ptr<DUMPIMPORT_DBManager> &dbm){
+    void fast_unpack(Key::Ptr &key, const shared_ptr<IMPORT_DBManager> &dbm){
         Key::pkey pk;
-        DBStruct::gpg_keyserver_data gpg_keyserver_table;
-        DBStruct::Unpacker_errors modified;
+        IMPORT_DBStruct::gpg_keyserver_data gpg_keyserver_table;
+        IMPORT_DBStruct::Unpacker_errors modified;
 
         try{
             key->set_type(PGP::PUBLIC_KEY_BLOCK);
@@ -156,10 +156,10 @@ namespace Dumpimport {
     }
 
 
-    void unpack(Key::Ptr &key, const shared_ptr<DUMPIMPORT_DBManager> &dbm){
+    void unpack(Key::Ptr &key, const shared_ptr<IMPORT_DBManager> &dbm){
         Key::pkey pk;
-        DBStruct::gpg_keyserver_data gpg_keyserver_table;
-        DBStruct::Unpacker_errors modified;
+        IMPORT_DBStruct::gpg_keyserver_data gpg_keyserver_table;
+        IMPORT_DBStruct::Unpacker_errors modified;
 
         try{
             key->set_type(PGP::PUBLIC_KEY_BLOCK);
@@ -240,10 +240,10 @@ namespace Dumpimport {
         }
 
         Packet::Key::Ptr primaryKey = static_pointer_cast<Packet::Key>(pk.key);
-        vector<DBStruct::pubkey> unpackedPubkeys;
-        vector<DBStruct::signatures> unpackedSignatures; // contains also self-signatures
-        vector<DBStruct::userID> unpackedUserID;
-        vector<DBStruct::userAtt> unpackedUserAtt;
+        vector<IMPORT_DBStruct::pubkey> unpackedPubkeys;
+        vector<IMPORT_DBStruct::signatures> unpackedSignatures; // contains also self-signatures
+        vector<IMPORT_DBStruct::userID> unpackedUserID;
+        vector<IMPORT_DBStruct::userAtt> unpackedUserAtt;
 
         try{
             unpackedPubkeys.push_back(get_publicKey_data(primaryKey, primaryKey));
@@ -285,7 +285,7 @@ namespace Dumpimport {
 
         for (auto it = pk.uid_userAtt.begin(); it != pk.uid_userAtt.end(); it++) {
             try {
-                DBStruct::userAtt ua_struct{
+                IMPORT_DBStruct::userAtt ua_struct{
                         .id = std::distance(pk.uid_userAtt.begin(), it) + 1,
                         .fingerprint = primaryKey->get_fingerprint(),
                         .name = ascii2radix64(dynamic_pointer_cast<Packet::Tag13>(it->first)->get_contents())
@@ -351,8 +351,8 @@ namespace Dumpimport {
         dbm->write_unpackerErrors_csv(modified);
     }
 
-    DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const Packet::Key::Ptr &priKey, const string &uatt_id) {
-        DBStruct::signatures ss;
+    IMPORT_DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const Packet::Key::Ptr &priKey, const string &uatt_id) {
+        IMPORT_DBStruct::signatures ss;
         Packet::Tag2::Ptr sig = dynamic_pointer_cast<Packet::Tag2>(sp->second);
 
         ss.type = sig->get_type();
@@ -476,7 +476,7 @@ namespace Dumpimport {
         return ss;
     }
 
-    void handle_wrong_sig(DBStruct::signatures &ss, const Packet::Key::Ptr &key, const Packet::Key::Ptr &subkey,
+    void handle_wrong_sig(IMPORT_DBStruct::signatures &ss, const Packet::Key::Ptr &key, const Packet::Key::Ptr &subkey,
                           const Packet::Tag2::Ptr &sig){
         vector<string> prob_hash;
         prob_hash.push_back(to_sign_18(key, subkey, sig));
@@ -504,7 +504,7 @@ namespace Dumpimport {
         }
     }
 
-    void handle_wrong_sig(DBStruct::signatures &ss, const Packet::Key::Ptr &key, const Packet::User::Ptr &user,
+    void handle_wrong_sig(IMPORT_DBStruct::signatures &ss, const Packet::Key::Ptr &key, const Packet::User::Ptr &user,
                           const Packet::Tag2::Ptr &sig) {
         if (user->get_tag() == Packet::USER_ID){
             return;
@@ -539,9 +539,9 @@ namespace Dumpimport {
         }
     }
 
-    DBStruct::pubkey get_publicKey_data(const Packet::Tag::Ptr &p, const Packet::Key::Ptr &priKey) {
+    IMPORT_DBStruct::pubkey get_publicKey_data(const Packet::Tag::Ptr &p, const Packet::Key::Ptr &priKey) {
         Packet::Key::Ptr k = dynamic_pointer_cast<Packet::Key>(p);
-        DBStruct::pubkey pk;
+        IMPORT_DBStruct::pubkey pk;
 
         pk.keyId = mpitodec(rawtompi(k->get_keyid()));
 
@@ -613,17 +613,17 @@ namespace Dumpimport {
         return pk;
     }
 
-    DBStruct::userID get_userID_data(const Packet::Tag::Ptr &user_pkt, const Packet::Key::Ptr &key) {
+    IMPORT_DBStruct::userID get_userID_data(const Packet::Tag::Ptr &user_pkt, const Packet::Key::Ptr &key) {
         Packet::Tag13::Ptr t13 = dynamic_pointer_cast<Packet::Tag13>(user_pkt);
         string user = t13->get_contents();
-        return DBStruct::userID {
+        return IMPORT_DBStruct::userID {
                 .ownerkeyID = mpitodec(rawtompi(key->get_keyid())),
                 .fingerprint = key->get_fingerprint(),
                 .name = ascii2radix64(user),
         };
     }
 
-    void get_userAttributes_data(const Packet::Tag::Ptr &p, DBStruct::userAtt &ua_struct) {
+    void get_userAttributes_data(const Packet::Tag::Ptr &p, IMPORT_DBStruct::userAtt &ua_struct) {
         Packet::Tag17::Ptr t17 = dynamic_pointer_cast<Packet::Tag17>(p);
 
         for (auto &a: t17->get_attributes()){
@@ -643,7 +643,7 @@ namespace Dumpimport {
         }
     }
 
-    void get_tag2_subpackets_data(const std::vector<Subpacket::Tag2::Sub::Ptr> &subps, DBStruct::signatures *ss) {
+    void get_tag2_subpackets_data(const std::vector<Subpacket::Tag2::Sub::Ptr> &subps, IMPORT_DBStruct::signatures *ss) {
         for (auto &p : subps) {
             switch (p->get_type()) {
                 case Subpacket::Tag2::SIGNATURE_CREATION_TIME:
@@ -744,7 +744,7 @@ namespace Dumpimport {
         }
     }
 
-    void read_gpg_keyserver_data(const Key::Ptr &k, DBStruct::gpg_keyserver_data *gk){
+    void read_gpg_keyserver_data(const Key::Ptr &k, IMPORT_DBStruct::gpg_keyserver_data *gk){
         gk->fingerprint = k->fingerprint();
         gk->version = k->version();
         gk->ID = mpitodec(rawtompi(k->keyid()));

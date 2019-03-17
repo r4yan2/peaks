@@ -1,8 +1,8 @@
-#ifndef DUMP_IMPORT_CONFIG_H
-#define DUMP_IMPORT_CONFIG_H
+#ifndef IMPORT_CONFIG_H
+#define IMPORT_CONFIG_H
 #include <string>
 
-struct Dumpimport_DBConfig{
+struct Import_DBConfig{
     std::string db_host;
     std::string db_user;
     std::string db_password;
@@ -11,7 +11,7 @@ struct Dumpimport_DBConfig{
     std::string error_folder;
 };
 
-struct Dumpimport_settings{
+struct Import_settings{
     std::string csv_folder;
     std::string error_folder;
 

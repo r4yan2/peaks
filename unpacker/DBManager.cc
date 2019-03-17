@@ -58,8 +58,7 @@ void UNPACKER_DBManager::ensure_database_connection(){
     update_valid = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 or isRevoked = 1;"));
     update_revoked_1 = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
                   "signedFingerprint, signedUsername FROM Signatures WHERE isRevocation = 1;"));
-    update_revoked_2 = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures set isRevoked = 1, isValid = -1 where isRevoked = 0 "
-                  "and isRevocation = 0 and (issuingKeyId, signedFingerprint, signedUsername) in (select * from revocationSignatures);"));
+    update_revoked_2 = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN revocationSignatures on (Signatures.issuingKeyId = revocationSignatures.issuingKeyId and Signatures.signedFingerprint = revocationSignatures.signedFingerprint and Signatures.signedUsername = revocationSignatures.signedUsername) set isRevoked = 1, isValid = -1 where isRevoked = 0 and isRevocation = 0;"));
     commit = shared_ptr<PreparedStatement>(con->prepareStatement("COMMIT;"));
 
 }
