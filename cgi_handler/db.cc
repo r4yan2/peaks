@@ -228,7 +228,7 @@ forward_list<DB_Key*> *DBManager::indexQuery(string key) {
     //transform(key.begin(), key.end(), key.begin(), ::toupper);
     
     std::vector<std::string> splitted;
-    boost::split(splitted, key, boost::is_any_of(" "), boost::token_compress_on);
+    boost::split(splitted, key, boost::is_any_of(" ()*+-<>@~"), boost::token_compress_on);
     for (auto &str: splitted)
         str.insert(str.begin(), '+');
     string searchString = boost::join(splitted, " ");
