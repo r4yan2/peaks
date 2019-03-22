@@ -59,7 +59,6 @@ namespace IMPORT_DBStruct{
         int trustLevel = 0;
         int isPrimaryUserId = 0;
         std::string primaryUserId = "";
-        std::string userRole = "";
         std::string preferedHash = "";
         std::string preferedCompression = "";
         std::string preferedSymmetric = "";

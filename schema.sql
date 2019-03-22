@@ -325,7 +325,6 @@ CREATE TABLE `selfSignaturesMetadata` (
   `keyExpirationTime` datetime DEFAULT NULL,
   `isPrimaryUserId` tinyint(1) NOT NULL,
   `signedUserId` varchar(750) CHARACTER SET utf8 DEFAULT NULL,
-  `userRole` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `type` (`type`),
   KEY `hashAlgorithm` (`hashAlgorithm`),
