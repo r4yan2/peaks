@@ -57,13 +57,11 @@ CREATE TABLE `Pubkey` (
   `y` blob,
   `curveOID` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_analyzed` tinyint(4) NOT NULL DEFAULT '0',
-  `sccIndex` int(10) unsigned DEFAULT NULL,
   PRIMARY KEY (`fingerprint`, `version`),
   KEY `n` (`n`(200)),
   KEY `p` (`p`(200)),
   KEY `q` (`q`(200)),
   KEY `y` (`y`(200)),
-  KEY `sccIndex` (`sccIndex`),
   KEY `keyId` (`keyId`,`fingerprint`) USING BTREE,
   KEY `Pubkey_cert` (`PriFingerprint`, `version`),
   KEY `is_analyzed` (`is_analyzed`)
