@@ -409,7 +409,7 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
         }
     } while (backoff > 0 && num_retries < 5);
     if (backoff > 0){
-        UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, UNPACKER_Utils::UNPACKER_ERRORS);
+        UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, table);
     }
     try{
         remove(f.c_str());
