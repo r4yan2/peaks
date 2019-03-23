@@ -105,7 +105,8 @@ int main(int argc, char* argv[]){
         else if (cmd == "dump"){
             po::options_description dump_desc("dump options");
             dump_desc.add_options()
-                ("threads, t", po::value<unsigned int>(), "set number of threads");
+                ("threads, t", po::value<unsigned int>(), "set number of threads")
+                ("outdir, o", po::value<std::string>(), "set output dir");
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(dump_desc).run(), vm);

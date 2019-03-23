@@ -31,16 +31,23 @@ namespace Dump{
         
         syslog(LOG_NOTICE, "Using %d Threads", nThreads);
 
+        std::string dump_path;
+        if (vm.count("outdir"))
+            dump_path = vm["outdir"].as<std::string>();
+
         const Dump_DBConfig db_settings = {
             vm["db_host"].as<std::string>(),
             vm["db_user"].as<std::string>(),
             vm["db_password"].as<std::string>(),
             vm["db_database"].as<std::string>(),
+            dump_path
         };
         std::shared_ptr<DUMP_DBManager> dbm = std::make_shared<DUMP_DBManager>(db_settings);
         dbm->ensure_database_connection();
 
-        std::string dump_path = dbm->get_dump_path();
+        if (vm.count("outdir") == 0){
+            dump_path = dbm->get_dump_path();
+        }
 
         try{
             if (Utils::get_files_number(dump_path) > 0){
@@ -56,8 +63,12 @@ namespace Dump{
         std::vector<std::thread> pool_vect(nThreads);
         for (unsigned int i = 0; i < nThreads; i++)
             pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
-        for (unsigned int i = Utils::CERTIFICATE; i <= Utils::BROKEN_KEY; i++){
-            std::shared_ptr<Job> j = std::make_shared<Job>([=] { (std::make_shared<DUMP_DBManager>(dbm))->dumpCSV(i); });
+        for (unsigned int i = Utils::CERTIFICATE; i <= Utils::USERID; i++){
+            std::shared_ptr<Job> j;
+            if (vm.count("outdir"))
+                j = std::make_shared<Job>([=] { (std::make_shared<DUMP_DBManager>(dbm))->dumplocalCSV(i); });
+            else
+                j = std::make_shared<Job>([=] { (std::make_shared<DUMP_DBManager>(dbm))->dumpCSV(i); });
             pool->Add_Job(j);
         }
         

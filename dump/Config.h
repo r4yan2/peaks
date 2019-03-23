@@ -7,6 +7,7 @@ struct Dump_DBConfig{
     std::string db_user;
     std::string db_password;
     std::string db_database;
+    std::string output_folder;
 };
 
 #endif

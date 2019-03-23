@@ -14,11 +14,13 @@
 #include <boost/algorithm/string.hpp>
 
 
+typedef std::vector<std::string> query_template;
+
 /** @brief Class manging the database
  * Database manager for the unpacked, it will do the effective data dump into several csv file
  */
 class DUMP_DBManager {
-    static std::pair<std::string, std::string> 
+    static query_template 
         dump_gpgkeyserver_stmt,
         dump_pubkey_stmt, 
         dump_signature_stmt, 
@@ -72,10 +74,16 @@ public:
 
     std::string get_dump_path();
 
+    void write_pubkey_csv();
+    void write_userAttributes_csv();
+    void write_userID_csv();
+    void write_signature_csv();
+    void write_self_signature_csv();
+    void write_gpg_keyserver_csv();
+    void dumplocalCSV(const unsigned int &table);
+
 private:
     Dump_DBConfig settings;
-
-    std::map<unsigned int, std::ifstream> file_list;
 
     sql::Driver *driver;
 
