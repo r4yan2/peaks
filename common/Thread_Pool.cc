@@ -18,6 +18,14 @@ void Thread_Pool::Infinite_loop_function() {
     }
 };
 
+void Thread_Pool::Add_Job(std::function<void ()> f) {
+    {
+        unique_lock <mutex> lock(queue_mutex);
+        queue.push_back(std::make_shared<Job>(f));
+        condition.notify_one();
+    }
+};
+
 void Thread_Pool::Add_Job(std::shared_ptr<Job> new_job) {
     {
         unique_lock <mutex> lock(queue_mutex);

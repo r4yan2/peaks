@@ -104,6 +104,20 @@ namespace Utils{
         return file_list;
     }
 
+    vector<string> get_dump_files(const path &dump_path){
+        directory_iterator end_itr;
+        vector<string> file_list;
+
+        // cycle through the directory
+        for (directory_iterator itr(dump_path); itr != end_itr; ++itr){
+            if (itr->path().extension() == ".pgp") {
+                string current_file = itr->path().string();
+                file_list.push_back(itr->path().string());
+            }
+        }
+        return file_list;
+    }
+
     string getCurrentTime(){
         time_t rawtime;
         struct tm * timeinfo;

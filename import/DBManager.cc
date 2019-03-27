@@ -122,7 +122,7 @@ bool IMPORT_DBManager::existSignature(const DBStruct::signatures &s){
 
 void IMPORT_DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_data, const int is_unpacked){
     try{
-        ostream &f = file_list.at(IMPORT_Utils::CERTIFICATE);
+        ostream &f = file_list.at(Utils::CERTIFICATE);
         f << '.' << '"' << to_string(gpg_data.version) << "\",";
         f << '"' << gpg_data.ID << "\",";
         f << '"' << hexlify(gpg_data.fingerprint) << "\",";
@@ -141,7 +141,7 @@ void IMPORT_DBManager::write_broken_key_csv(std::ifstream &file_cert, const std:
         file_cert.clear();
         file_cert.seekg(file_cert.beg);
         std::string buffer(std::istreambuf_iterator <char> (file_cert), {});
-        ostream &f = file_list.at(IMPORT_Utils::BROKEN_KEY);
+        ostream &f = file_list.at(Utils::BROKEN_KEY);
         f << '.' << '"' << hexlify(buffer) << "\",";
         f << '"' << error << "\",";
         f << "\n";
@@ -152,7 +152,7 @@ void IMPORT_DBManager::write_broken_key_csv(std::ifstream &file_cert, const std:
 
 void IMPORT_DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
     try{
-        ostream &f = file_list.at(IMPORT_Utils::PUBKEY);
+        ostream &f = file_list.at(Utils::PUBKEY);
         f << '.' << '"' << pubkey.keyId << "\",";
         f << '"' << pubkey.version << "\",";
         f << '"' << hexlify(pubkey.fingerprint) << "\",";
@@ -172,7 +172,7 @@ void IMPORT_DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
 
 void IMPORT_DBManager::write_userID_csv(const DBStruct::userID &uid) {
     try{
-        ostream &f = file_list.at(IMPORT_Utils::USERID);
+        ostream &f = file_list.at(Utils::USERID);
         f << '.' << '"' << uid.ownerkeyID << "\",";
         f << '"' << hexlify(uid.fingerprint) << "\",";
         f << '"' << uid.name << "\",";
@@ -184,7 +184,7 @@ void IMPORT_DBManager::write_userID_csv(const DBStruct::userID &uid) {
 
 void IMPORT_DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
     try{
-        ostream &f = file_list.at(IMPORT_Utils::USER_ATTRIBUTES);
+        ostream &f = file_list.at(Utils::USER_ATTRIBUTES);
         f << '.' << '"' << to_string(ua.id) << "\",";
         f << '"' << hexlify(ua.fingerprint) << "\",";
         f << '"' << ua.name << "\",";
@@ -198,7 +198,7 @@ void IMPORT_DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
 
 void IMPORT_DBManager::write_signature_csv(const DBStruct::signatures &ss) {
     try{
-        ostream &f = file_list.at(IMPORT_Utils::SIGNATURE);
+        ostream &f = file_list.at(Utils::SIGNATURE);
         f << '.' << '"' << ss.type << "\",";
         f << '"' << ss.pubAlgorithm << "\",";
         f << '"' << ss.hashAlgorithm << "\",";
@@ -235,7 +235,7 @@ void IMPORT_DBManager::write_signature_csv(const DBStruct::signatures &ss) {
 
 void IMPORT_DBManager::write_self_signature_csv(const DBStruct::signatures &ss) {
     try{
-        ostream &f = file_list.at(IMPORT_Utils::SELF_SIGNATURE);
+        ostream &f = file_list.at(Utils::SELF_SIGNATURE);
         f << '.' << '"' << ss.type << "\",";
         f << '"' << ss.pubAlgorithm << "\",";
         f << '"' << ss.hashAlgorithm << "\",";
@@ -257,7 +257,7 @@ void IMPORT_DBManager::write_self_signature_csv(const DBStruct::signatures &ss) 
 
 void IMPORT_DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod){
     try{
-        ostream &f = file_list.at(IMPORT_Utils::UNPACKER_ERRORS);
+        ostream &f = file_list.at(Utils::UNPACKER_ERRORS);
         for (const auto &c: mod.comments){
             //f << '.' << '"' << mod.keyId << "\",";
             f << '.' << '"' << mod.version << "\",";
@@ -272,17 +272,17 @@ void IMPORT_DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors 
 
 void IMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned int &table){
     switch (table){
-        case IMPORT_Utils::PUBKEY:
+        case Utils::PUBKEY:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_pubkey_stmt.first + f + insert_pubkey_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
-                    IMPORT_Utils::put_in_error(settings.error_folder, f, IMPORT_Utils::PUBKEY);
+                    Utils::put_in_error(settings.error_folder, f, Utils::PUBKEY);
                 }
             }
             break;
-        case IMPORT_Utils::SIGNATURE:
+        case Utils::SIGNATURE:
             for (const auto &f: files){
                 try{
                     string query = insert_signature_stmt.first + f + insert_signature_stmt.second;
@@ -290,73 +290,73 @@ void IMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned int
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    IMPORT_Utils::put_in_error(settings.error_folder, f, IMPORT_Utils::SIGNATURE);
+                    Utils::put_in_error(settings.error_folder, f, Utils::SIGNATURE);
                 }
             }
             break;
-        case IMPORT_Utils::SELF_SIGNATURE:
+        case Utils::SELF_SIGNATURE:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_self_signature_stmt.first + f + insert_self_signature_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    IMPORT_Utils::put_in_error(settings.error_folder, f, IMPORT_Utils::SELF_SIGNATURE);
+                    Utils::put_in_error(settings.error_folder, f, Utils::SELF_SIGNATURE);
                 }
             }
             break;
-        case IMPORT_Utils::USERID:
+        case Utils::USERID:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_userID_stmt.first + f + insert_userID_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    IMPORT_Utils::put_in_error(settings.error_folder, f, IMPORT_Utils::USERID);
+                    Utils::put_in_error(settings.error_folder, f, Utils::USERID);
                 }
             }
             break;
-        case IMPORT_Utils::USER_ATTRIBUTES:
+        case Utils::USER_ATTRIBUTES:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_userAtt_stmt.first + f + insert_userAtt_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
                                       e.what());
-                    IMPORT_Utils::put_in_error(settings.error_folder, f, IMPORT_Utils::USER_ATTRIBUTES);
+                    Utils::put_in_error(settings.error_folder, f, Utils::USER_ATTRIBUTES);
                 }
             }
             break;
-        case IMPORT_Utils::CERTIFICATE:
+        case Utils::CERTIFICATE:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_certificate_stmt.first + f + insert_certificate_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_certificate_stmt FAILED, the key will not have the certificate in the database! - %s",
                                       e.what());
-                    IMPORT_Utils::put_in_error(settings.error_folder, f, IMPORT_Utils::CERTIFICATE);
+                    Utils::put_in_error(settings.error_folder, f, Utils::CERTIFICATE);
                 }
             }
             break;
-        case IMPORT_Utils::UNPACKER_ERRORS:
+        case Utils::UNPACKER_ERRORS:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
                                       e.what());
-                    IMPORT_Utils::put_in_error(settings.error_folder, f, IMPORT_Utils::UNPACKER_ERRORS);
+                    Utils::put_in_error(settings.error_folder, f, Utils::UNPACKER_ERRORS);
                 }
             }
             break;
-        case IMPORT_Utils::BROKEN_KEY:
+        case Utils::BROKEN_KEY:
             for (const auto &f: files){
                 try{
                     shared_ptr<Statement>(con->createStatement())->execute(insert_brokenKey_stmt.first + f + insert_brokenKey_stmt.second);
                 }catch (exception &e){
                     syslog(LOG_CRIT, "insert_brokenKey_stmt FAILED, the broken key will not be in the database! - %s",
                                       e.what());
-                    IMPORT_Utils::put_in_error(settings.error_folder, f, IMPORT_Utils::BROKEN_KEY);
+                    Utils::put_in_error(settings.error_folder, f, Utils::BROKEN_KEY);
                 }
             }
             break;
@@ -445,9 +445,9 @@ void IMPORT_DBManager::unlockTables(){
 void IMPORT_DBManager::openCSVFiles() {
     // Open files
     std::map<unsigned int, std::ofstream> file_list;
-    for (const auto &it: IMPORT_Utils::FILENAME){
+    for (const auto &it: Utils::FILENAME){
         IMPORT_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(
                 it.first,
-                ofstream(IMPORT_Utils::get_file_name(settings.csv_folder, it.first, this_thread::get_id()), ios_base::app)));
+                ofstream(Utils::get_file_name(settings.csv_folder, it.first, this_thread::get_id()), ios_base::app)));
     }
 }

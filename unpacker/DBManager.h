@@ -10,7 +10,7 @@
 #include <Key.h>
 #include <iostream>
 #include "DBStruct.h"
-#include "utils.h"
+#include "../common/utils.h"
 #include "Config.h"
 #include <boost/algorithm/string.hpp>
 

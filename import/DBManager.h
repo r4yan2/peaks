@@ -12,7 +12,7 @@
 #include <iostream>
 #include "DBStruct.h"
 #include "Config.h"
-#include "utils.h"
+#include "../common/utils.h"
 
 namespace DBStruct = IMPORT_DBStruct;
 class IMPORT_DBManager {

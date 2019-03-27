@@ -6,7 +6,6 @@
 
 #include "DBManager.h"
 
-
 using namespace sql;
 using namespace std;
 

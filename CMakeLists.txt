@@ -42,10 +42,11 @@ add_subdirectory(recon_daemon)
 add_subdirectory(unpacker)
 add_subdirectory(analyzer)
 add_subdirectory(dump)
+add_subdirectory(common)
 
 find_package(Boost REQUIRED program_options)
 
-add_executable(peaks peaks.cc common/Thread_Pool.cc common/utils.cc)
+add_executable(peaks peaks.cc)
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
 set(STRIP "peaks_stripped")
@@ -69,4 +70,5 @@ target_link_libraries(peaks recon_daemon)
 target_link_libraries(peaks unpacker)
 target_link_libraries(peaks analyzer)
 target_link_libraries(peaks dump)
+target_link_libraries(peaks common)
 target_link_libraries(peaks -Wl,--whole-archive pks -Wl,--no-whole-archive)

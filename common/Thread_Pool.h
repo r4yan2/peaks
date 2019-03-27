@@ -105,6 +105,14 @@ public:
      */
     void Infinite_loop_function();
 
+    /** @brief Add single job to the pool
+     * Provide backward compatibility with old
+     * implementation as well as a quick way to add 
+     * simple jobs to the pool
+     * @param f task to execute
+     */
+    void Add_Job(std::function<void ()> f);
+
     /** @brief Add a job to the pool
      * @param new_job Job to be added
      */

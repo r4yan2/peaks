@@ -51,12 +51,12 @@ namespace Unpacker {
 
         std::cout << "limiting analysis at " << limit << " keys" << std::endl;
     
-        if(UNPACKER_Utils::create_folders(vm["unpacker_tmp_folder"].as<std::string>()) == -1){
+        if(Utils::create_folders(vm["unpacker_tmp_folder"].as<std::string>()) == -1){
             syslog(LOG_WARNING,  "Unable to create temp folder");
             exit(-1);
         }
 
-        if (UNPACKER_Utils::create_folders(vm["unpacker_error_folder"].as<std::string>()) == -1){
+        if (Utils::create_folders(vm["unpacker_error_folder"].as<std::string>()) == -1){
             syslog(LOG_WARNING,  "Unable to create error folder");
             exit(-1);
         }
@@ -72,7 +72,7 @@ namespace Unpacker {
         std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>(db_settings);
         dbm->ensure_database_connection();
         
-        std::vector<std::string> error_files = UNPACKER_Utils::dirlisting(vm["unpacker_error_folder"].as<std::string>());
+        std::vector<std::string> error_files = Utils::dirlisting(vm["unpacker_error_folder"].as<std::string>());
         if (error_files.size() > 0){
             std::cout << "Found files in unpacker error folder, proceding to error recovery" << std::endl;
             std::cout << "List of files to recover:" << std::endl;
@@ -166,14 +166,15 @@ namespace Unpacker {
             pool->Add_Job(unpacking_jobs.back());
         }
 
-        int files_number = 0;
-        while (files_number < UNPACKER_Utils::USERID * nThreads){
+        int file_number;
+        do{
+            file_number = Utils::get_files_number(db_settings.unpacker_tmp_folder);
             this_thread::sleep_for(std::chrono::seconds{1});
-            files_number = UNPACKER_Utils::get_files_number(db_settings.unpacker_tmp_folder);
         }
+        while (file_number < Utils::get_files_number(db_settings.unpacker_tmp_folder));
 
-        for (unsigned int i = UNPACKER_Utils::UNPACKED; i <= UNPACKER_Utils::USERID; i++){
-            for (const std::string & filename: UNPACKER_Utils::get_files(db_settings.unpacker_tmp_folder, i)){
+        for (unsigned int i = Utils::PUBKEY; i <= Utils::UNPACKED; i++){
+            for (const std::string & filename: Utils::get_files(db_settings.unpacker_tmp_folder, i)){
                 std::shared_ptr<Job> j = std::make_shared<Job>([=] { (std::make_shared<UNPACKER_DBManager>(dbm))->insertCSV(filename, i); }, unpacking_jobs);
                 pool->Add_Job(j);
             }

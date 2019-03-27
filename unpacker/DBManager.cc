@@ -38,7 +38,7 @@ void UNPACKER_DBManager::ensure_database_connection(){
     con->createStatement()->execute("set foreign_key_checks = 0;");
 
     // Create prepared Statements
-    get_analyzable_cert_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT version, fingerprint, certificate "
+    get_analyzable_cert_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT version, fingerprint, certificate, hex(certificate) as hexcert "
                                          "FROM gpg_keyserver WHERE is_unpacked = 0 LIMIT ?"));
     
     get_signature_by_index = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT id "
@@ -186,7 +186,7 @@ void UNPACKER_DBManager::set_as_not_analyzable(const int &version, const string 
 
 void UNPACKER_DBManager::write_unpacked_csv(const OpenPGP::Key::Ptr &key, const UNPACKER_DBStruct::Unpacker_errors &mod){
     try{
-        ostream &f = file_list.at(UNPACKER_Utils::UNPACKED);
+        ostream &f = file_list.at(Utils::UNPACKED);
         f << '.' << '"' << to_string(key->version()) << "\",";
         f << '"' << hexlify(key->fingerprint()) << "\",";
         if (mod.modified){
@@ -202,7 +202,7 @@ void UNPACKER_DBManager::write_unpacked_csv(const OpenPGP::Key::Ptr &key, const 
 
 void UNPACKER_DBManager::write_pubkey_csv(const UNPACKER_DBStruct::pubkey &pubkey) {
     try{
-        ostream &f = file_list.at(UNPACKER_Utils::PUBKEY);
+        ostream &f = file_list.at(Utils::PUBKEY);
         f << '.' << '"' << pubkey.keyId << "\",";
         f << '"' << pubkey.version << "\",";
         f << '"' << hexlify(pubkey.fingerprint) << "\",";
@@ -222,7 +222,7 @@ void UNPACKER_DBManager::write_pubkey_csv(const UNPACKER_DBStruct::pubkey &pubke
 
 void UNPACKER_DBManager::write_userID_csv(const UNPACKER_DBStruct::userID &uid) {
     try{
-        ostream &f = file_list.at(UNPACKER_Utils::USERID);
+        ostream &f = file_list.at(Utils::USERID);
         f << '.' << '"' << uid.ownerkeyID << "\",";
         f << '"' << hexlify(uid.fingerprint) << "\",";
         f << '"' << uid.name << "\",";
@@ -235,7 +235,7 @@ void UNPACKER_DBManager::write_userID_csv(const UNPACKER_DBStruct::userID &uid) 
 
 void UNPACKER_DBManager::write_userAttributes_csv(const UNPACKER_DBStruct::userAtt &ua) {
     try{
-        ostream &f = file_list.at(UNPACKER_Utils::USER_ATTRIBUTES);
+        ostream &f = file_list.at(Utils::USER_ATTRIBUTES);
         f << '.' << '"' << to_string(ua.id) << "\",";
         f << '"' << hexlify(ua.fingerprint) << "\",";
         f << '"' << ua.name << "\",";
@@ -250,7 +250,7 @@ void UNPACKER_DBManager::write_userAttributes_csv(const UNPACKER_DBStruct::userA
 
 void UNPACKER_DBManager::write_signature_csv(const UNPACKER_DBStruct::signatures &ss) {
     try{
-        ostream &f = file_list.at(UNPACKER_Utils::SIGNATURE);
+        ostream &f = file_list.at(Utils::SIGNATURE);
         f << '.' << '"' << ss.type << "\",";
         f << '"' << ss.pubAlgorithm << "\",";
         f << '"' << ss.hashAlgorithm << "\",";
@@ -288,7 +288,7 @@ void UNPACKER_DBManager::write_signature_csv(const UNPACKER_DBStruct::signatures
 
 void UNPACKER_DBManager::write_self_signature_csv(const UNPACKER_DBStruct::signatures &ss) {
     try{
-        ostream &f = file_list.at(UNPACKER_Utils::SELF_SIGNATURE);
+        ostream &f = file_list.at(Utils::SELF_SIGNATURE);
         f << '.' << '"' << ss.type << "\",";
         f << '"' << ss.pubAlgorithm << "\",";
         f << '"' << ss.hashAlgorithm << "\",";
@@ -311,7 +311,7 @@ void UNPACKER_DBManager::write_self_signature_csv(const UNPACKER_DBStruct::signa
 
 void UNPACKER_DBManager::write_unpackerErrors_csv(const UNPACKER_DBStruct::Unpacker_errors &mod){
     try{
-        ostream &f = file_list.at(UNPACKER_Utils::UNPACKER_ERRORS);
+        ostream &f = file_list.at(Utils::UNPACKER_ERRORS);
         for (const auto &c: mod.comments){
             f << '.' << '"' << mod.version << "\",";
             f << '"' << hexlify(mod.fingerprint) << "\"";
@@ -327,8 +327,8 @@ void UNPACKER_DBManager::write_unpackerErrors_csv(const UNPACKER_DBStruct::Unpac
 void UNPACKER_DBManager::insertCSV(const string &f){
     std::vector<std::string> fullpath, filename;
     boost::split(fullpath, f, boost::is_any_of("/"));
-    for (auto const &x: UNPACKER_Utils::FILENAME){
-        if (UNPACKER_Utils::hasEnding(fullpath.back(), x.second)){
+    for (auto const &x: Utils::FILENAME){
+        if (Utils::hasEnding(fullpath.back(), x.second)){
             return insertCSV(f, x.first);
         }
     }
@@ -340,26 +340,26 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
     shared_ptr<Statement> query(con->createStatement());
     std::string statement;
     switch (table){
-        case UNPACKER_Utils::PUBKEY:
+        case Utils::PUBKEY:
             statement = insert_pubkey_stmt.first + f + insert_pubkey_stmt.second;
             break;
-        case UNPACKER_Utils::SIGNATURE:
+        case Utils::SIGNATURE:
             statement = insert_signature_stmt.first + f + insert_signature_stmt.second;
             break;
-        case UNPACKER_Utils::SELF_SIGNATURE:
+        case Utils::SELF_SIGNATURE:
             statement = insert_self_signature_stmt.first + f + insert_self_signature_stmt.second;
             break;
-        case UNPACKER_Utils::USERID:
+        case Utils::USERID:
             statement = insert_userID_stmt.first + f + insert_userID_stmt.second;
             break;
-        case UNPACKER_Utils::USER_ATTRIBUTES:
+        case Utils::USER_ATTRIBUTES:
             statement = insert_userAtt_stmt.first + f + insert_userAtt_stmt.second;
             break;
-        case UNPACKER_Utils::UNPACKED:
+        case Utils::UNPACKED:
             query->execute(create_unpacker_tmp_table);
             statement = insert_unpacked_stmt.first + f + insert_unpacked_stmt.second;
             break;
-        case UNPACKER_Utils::UNPACKER_ERRORS:
+        case Utils::UNPACKER_ERRORS:
             statement = insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second;
             break;
     }
@@ -367,7 +367,7 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
     do{
         try{
             query->execute(statement);
-            if (table == UNPACKER_Utils::UNPACKED){
+            if (table == Utils::UNPACKED){
                 query->execute(update_gpg_keyserver);
             }
             backoff = 0;
@@ -375,32 +375,32 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
             num_retries += 1;
             unsigned int sleep_seconds = (backoff << num_retries) * 60 ;
             switch (table){
-                case UNPACKER_Utils::PUBKEY:
+                case Utils::PUBKEY:
                         syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s",
                                           e.what());
                         break;
-                case UNPACKER_Utils::SIGNATURE:
+                case Utils::SIGNATURE:
                         syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                           e.what());
                         break;
-                case UNPACKER_Utils::SELF_SIGNATURE:
+                case Utils::SELF_SIGNATURE:
                         syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
                                           e.what());
                         break;
-                case UNPACKER_Utils::USERID:
+                case Utils::USERID:
                         syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
                                           e.what());
                         break;
-                case UNPACKER_Utils::USER_ATTRIBUTES:
+                case Utils::USER_ATTRIBUTES:
                         syslog(LOG_CRIT, "insert_userAtt_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
                                           e.what());
                         break;
-                case UNPACKER_Utils::UNPACKED:
+                case Utils::UNPACKED:
                         syslog(LOG_CRIT, "insert_unpacked_stmt FAILED, the key will result NOT UNPACKED in the database! - %s",
                                           e.what());
                         query->execute(drop_unpacker_tmp_table);
                         break;
-                case UNPACKER_Utils::UNPACKER_ERRORS:
+                case Utils::UNPACKER_ERRORS:
                         syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
                                           e.what());
                         break;
@@ -409,7 +409,7 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
         }
     } while (backoff > 0 && num_retries < 5);
     if (backoff > 0){
-        UNPACKER_Utils::put_in_error(settings.unpacker_error_folder, f, table);
+        Utils::put_in_error(settings.unpacker_error_folder, f, table);
     }
     try{
         remove(f.c_str());
@@ -470,9 +470,9 @@ void UNPACKER_DBManager::UpdateIsValid() {
 
 void UNPACKER_DBManager::openCSVFiles(){
     // Open files
-    for (const auto &it: UNPACKER_Utils::FILENAME){
+    for (const auto &it: Utils::FILENAME){
         UNPACKER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(
                 it.first,
-                ofstream(UNPACKER_Utils::get_file_name(settings.unpacker_tmp_folder, it.first, this_thread::get_id()), ios_base::app)));
+                ofstream(Utils::get_file_name(settings.unpacker_tmp_folder, it.first, this_thread::get_id()), ios_base::app)));
     }
 }
