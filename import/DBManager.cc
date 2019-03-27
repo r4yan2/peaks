@@ -69,11 +69,11 @@ void IMPORT_DBManager::init_database_connection() {
                                      "@hexpreferedHash,@hexpreferedCompression,@hexpreferedSymmetric,trustLevel,@vkeyExpirationTime,"
                                      "isPrimaryUserId,@base64signedUserId) SET issuingFingerprint = UNHEX(@hexissuingFingerprint), "
                                      "preferedSymmetric = UNHEX(@hexpreferedSymmetric), preferedCompression = UNHEX(@hexpreferedCompression), "
-                                     "preferedHash = UNHEX(@hexpreferedHash), keyExpirationTime = nullif(@vkeyExpirationTime, signedUserID = FROM_BASE64(@base64signedUserID) '');");
+                                     "preferedHash = UNHEX(@hexpreferedHash), keyExpirationTime = nullif(@vkeyExpirationTime, ''), signedUserID = FROM_BASE64(@base64signedUserID);");
 
     insert_userID_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE UserID FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
-                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (ownerkeyID,@hexfingerprint,@base64name,email) "
+                                     "LINES STARTING BY '.' TERMINATED BY '\\n' (ownerkeyID,@hexfingerprint,@base64name) "
                                      "SET fingerprint = UNHEX(@hexfingerprint), name = FROM_BASE64(@base64name);");
 
     insert_userAtt_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
@@ -369,8 +369,7 @@ void IMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned int
 void IMPORT_DBManager::UpdateSignatureIssuingFingerprint() {
     try{
         shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN Signature_no_issuing_fp "
-             "as ifp SET Signatures.issuingFingerprint = ifp.fp WHERE ifp.id = Signatures.id;");
+        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN Pubkey on issuingKeyId = KeyId SET issuingFingerprint = fingerprint where isnull(issuingFingerprint) and issuingKeyId = KeyId;");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
                           e.what());
