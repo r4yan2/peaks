@@ -141,12 +141,15 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(unpack_desc).run(), vm);
-			while(!(quitting)){
+            do{
             	Unpacker::unpacker(vm);
-                if (quitting)
-                    break;
-        		std::this_thread::sleep_for(std::chrono::seconds{vm["gossip_interval"].as<int>()});
-			}
+                int slept = 0;
+                while (!quitting and slept < vm["gossip_interval"].as<int>()){
+                    slept += 1;
+        		    std::this_thread::sleep_for(std::chrono::seconds{1});
+			    }
+            }
+			while(!(quitting));
         }
         else if (cmd == "analyze"){
             po::options_description analyzer_desc("analyzer options");
