@@ -9,12 +9,12 @@
 #include <thread>
 #include <csignal>
 
-#include "cgi_handler/pks.h"
-#include "recon_daemon/recon_daemon.h"
-#include "unpacker/unpacker.h"
-#include "import/import.h"
-#include "analyzer/analyzer.h"
-#include "dump/dump.h"
+#include "../cgi_handler/pks.h"
+#include "../recon_daemon/recon_daemon.h"
+#include "../unpacker/unpacker.h"
+#include "../import/import.h"
+#include "../analyzer/analyzer.h"
+#include "../dump/dump.h"
 
 /** convenient renaming for program_options, totally optional */
 namespace po = boost::program_options;
@@ -127,7 +127,7 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(import_desc).run(), vm);
-            Importer importer = Importer();
+            Importer importer;
             importer.import(vm);
             }
         else if (cmd == "unpack"){
