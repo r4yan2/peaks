@@ -30,6 +30,9 @@
 typedef std::pair<std::string, int> peertype;
 typedef Myset<NTL::ZZ_p> zset;
 
+struct Bad_client : std::runtime_error{
+    Bad_client():runtime_error(""){};
+};
 
 /** singleton class used to manage the connection with the other peer.
  * Upon establishing a connection a tmpfd socket is used, and only when
@@ -38,15 +41,14 @@ typedef Myset<NTL::ZZ_p> zset;
  */
 class Connection_Manager{
     private:
-        int sockfd = -1;
-        int tmpfd = -1;
-        int listenfd = -1;
+        int sockfd;
+        int tmpfd;
+        int listenfd;
         Connection_config settings;
     public:
 
         /** default constructor */
-        Connection_Manager();
-        Connection_Manager(Connection_config &conn_settings);
+        Connection_Manager(const Connection_config &conn_settings);
 
         /** init connection as client 
          * with given peer peer */
@@ -64,7 +66,8 @@ class Connection_Manager{
         /** acceptor (this is only the accept part, 
          * has to be called in a loop to be effective 
          */
-        std::pair<bool,peertype> acceptor(std::vector<std::string> & addresses);
+        peertype acceptor(std::vector<std::string> & addresses);
+
         /** helper method to activate keep-alive
          * on a given socket
          */
@@ -75,9 +78,6 @@ class Connection_Manager{
 
         /** exchange and validate config with peer */
         int check_remote_config();
-
-        /** default destructor */
-        ~Connection_Manager();
 
         /** read only n bytes from network, and store into buf */
         bool read_n_bytes(void *buf, std::size_t n, bool tmp_socket=false, int signal=MSG_WAITALL);

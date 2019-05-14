@@ -1,11 +1,12 @@
 #include "peer.h"
 
-Peer::Peer(Ptree &new_tree, Recon_config &peer_settings, Connection_config &conn_settings, ReconImporter &di_, Message_config &conf){
-    msg_config = conf;
-    di = di_;
-    tree = new_tree;
-    settings = peer_settings;
-    cn = Connection_Manager(conn_settings);
+Peer::Peer(Ptree &new_tree, const Recon_config & peer_settings, const Connection_config & conn_settings, ReconImporter &di_, const Message_config & conf):
+    cn(conn_settings),
+    tree(std::move(new_tree)),
+    settings(peer_settings),
+    di (di_),
+    msg_config(conf)
+{
     std::ifstream f(settings.membership_config);
     std::string addr;
     int port;
@@ -57,16 +58,14 @@ void Peer::serve(){
 
     for (;;){
         peertype remote_peer;
-        bool check;
-        std::tie(check, remote_peer) = cn.acceptor(addresses);
-        if (check){
+        try{
+            remote_peer = cn.acceptor(addresses);
             syslog(LOG_DEBUG, "Accepted remote peer %s, starting interaction...", remote_peer.first.c_str());
-            //std::thread srv_c {&Peer::interact_with_client, this, remote_peer};
-            try{
-                interact_with_client(remote_peer);
-            }catch(std::exception &e){
-                syslog(LOG_WARNING, "server terminated with exception: %s", e.what());
-            }
+            interact_with_client(remote_peer);
+        } catch (Bad_client & e){
+            // error already logged by the connection manager
+        } catch(std::exception & e){
+            syslog(LOG_WARNING, "server terminated with exception: %s", e.what());
         }
     }
 }

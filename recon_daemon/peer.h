@@ -85,7 +85,7 @@ class Peer{
          * constructor take a ptree on which operate
          * @param new_tree Init with the reference to the curren ptree
          */ 
-        Peer(Ptree &new_tree, Recon_config &peer_settings, Connection_config &conn_settings, ReconImporter &di, Message_config &conf);
+        Peer(Ptree &new_tree, const Recon_config &peer_settings, const Connection_config &conn_settings, ReconImporter &di, const Message_config &conf);
 
         /** choose random peer partner among the
          * one specified in membership
@@ -184,7 +184,7 @@ class Recon_manager{
         /** recon manager is initialized with a reference to the current connection manager 
          * @param conn_manager reference to initialized connection manage
          */
-        Recon_manager(Connection_Manager &conn_manager, Message_config &msg_config);
+        Recon_manager(Connection_Manager &conn_manager, const Message_config &msg_config);
         ~Recon_manager();
 
         /** push value to the bottom queue

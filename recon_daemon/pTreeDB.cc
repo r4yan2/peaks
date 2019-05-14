@@ -3,7 +3,7 @@
 Ptree::Ptree(){
 }
 
-Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbp, Ptree_config &settings_){
+Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbp, const Ptree_config &settings_){
   settings = settings_;
   dbm = dbp;
 }

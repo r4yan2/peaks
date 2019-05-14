@@ -3,9 +3,9 @@
 
 using namespace std;
 
-Thread_Pool::Thread_Pool(){
-    Start_Filling_UP();
-};
+Thread_Pool::Thread_Pool():
+    filling_up(true)
+{}
 
 void Thread_Pool::Infinite_loop_function() {
 
@@ -16,27 +16,27 @@ void Thread_Pool::Infinite_loop_function() {
         }
         job->execute();
     }
-};
+}
 
-void Thread_Pool::Add_Job(std::function<void ()> f) {
+void Thread_Pool::Add_Job(const std::function<void ()> & f) {
     {
-        unique_lock <mutex> lock(queue_mutex);
+        std::lock_guard <mutex> lock(queue_mutex);
         queue.push_back(std::make_shared<Job>(f));
         condition.notify_one();
     }
-};
+}
 
-void Thread_Pool::Add_Job(std::shared_ptr<Job> new_job) {
+void Thread_Pool::Add_Job(const std::shared_ptr<Job> & new_job) {
     {
-        unique_lock <mutex> lock(queue_mutex);
+        std::lock_guard <mutex> lock(queue_mutex);
         queue.push_back(new_job);
         condition.notify_one();
     }
-};
+}
 
-void Thread_Pool::Add_Jobs(std::vector<std::shared_ptr<Job>> new_jobs){
+void Thread_Pool::Add_Jobs(const std::vector<std::shared_ptr<Job>> & new_jobs){
     {
-        unique_lock <mutex> lock(queue_mutex);
+        std::lock_guard <mutex> lock(queue_mutex);
         queue.insert(queue.end(), new_jobs.begin(), new_jobs.end());
         condition.notify_all();
     }
@@ -73,18 +73,16 @@ std::shared_ptr<Job> Thread_Pool::Request_Job(){
     }
 }
 
-Job::Job(std::function<void()> f){
-    status = Job_Status::FREE;
-    assignment = f;
-    dependencies.clear();
-}
+Job::Job(std::function<void()> f):
+    assignment(f),
+    status(Job_Status::FREE)
+{}
 
-Job::Job(std::function<void()> f, const std::vector<std::shared_ptr<Job>> & depends){
-    status = Job_Status::FREE;
-    assignment = f;
-    for (auto & dep: depends)
-        dependencies.push_back(dep);
-}
+Job::Job(std::function<void()> f, const std::vector<std::shared_ptr<Job>> & depends):
+    assignment(f),
+    status(Job_Status::FREE),
+    dependencies(depends)
+{}
 
 Job::~Job(){}
 

@@ -26,10 +26,10 @@ using namespace OpenPGP;
 namespace Import {
 
     void Import(po::variables_map &vm);
-    void unpack_string_th(const Import_DBConfig &db_config, const std::vector<std::string> keys);
-    void unpack_dump_th(const Import_DBConfig &db_config, const std::vector<std::string> &files, const bool &fast);
+    void unpack_string_th(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::vector<std::string> keys);
+    void unpack_dump_th(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::vector<std::string> &files, const bool &fast);
     void unpack_dump(std::ifstream &key_file, const std::shared_ptr<IMPORT_DBManager> &dbm);
-    void unpack_string(std::string key, const std::shared_ptr<IMPORT_DBManager> &dbm);
+    void unpack_string(std::string key, std::shared_ptr<IMPORT_DBManager> dbm);
     void fast_unpack(Key::Ptr &key, const std::shared_ptr<IMPORT_DBManager> &dbm);
     void unpack(Key::Ptr &key, const std::shared_ptr<IMPORT_DBManager> &dbm);
     IMPORT_DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey, const std::string &uatt_id = "");
@@ -43,13 +43,9 @@ namespace Import {
                           const OpenPGP::Packet::Tag2::Ptr &sig);
     void handle_wrong_sig(IMPORT_DBStruct::signatures &ss, const OpenPGP::Packet::Key::Ptr &key, const OpenPGP::Packet::Key::Ptr &subkey,
                           const OpenPGP::Packet::Tag2::Ptr &sig);
-
-
     OpenPGP::PGP::Packets get_ordered_packet(OpenPGP::PGP::Packets packet_list);
     std::string concat(const OpenPGP::PGP::Packets &packet_list);
     bool compare(const OpenPGP::Packet::Tag::Ptr &p1, const OpenPGP::Packet::Tag::Ptr &p2);
-
-
 };
 
 #endif //IMPORT_UNPACKER_H

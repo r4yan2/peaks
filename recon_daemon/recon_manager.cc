@@ -1,9 +1,9 @@
 #include "peer.h"
 
-Recon_manager::Recon_manager(Connection_Manager &conn_manager, Message_config &msg_config){
-    settings = msg_config;
-    cn = conn_manager;
-}
+Recon_manager::Recon_manager(Connection_Manager &conn_manager, const Message_config &msg_config):
+    settings(msg_config),
+    cn(conn_manager)
+{}
 
 Recon_manager::~Recon_manager(){}
 

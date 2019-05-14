@@ -1,13 +1,10 @@
 #ifndef PEAKS_PKS_H_
 #define PEAKS_PKS_H_
 
-#include <cppcms/application.h>
 #include <cppcms/service.h>
-#include <cppcms/http_response.h>
 #include <cppcms/url_dispatcher.h>
 #include <cppcms/url_mapper.h>
 #include <cppcms/applications_pool.h>
-#include <cppcms/http_request.h>
 #include "db.h"
 #include "db_key.h"
 #include <boost/program_options.hpp>
@@ -24,8 +21,8 @@ namespace peaks {
 
 class Pks : public cppcms::application {
 public:
-    Pks(cppcms::service &srv, const Cgi_DBConfig &db_config) : cppcms::application(srv) {
-        dbm = new DBManager(db_config);
+    Pks(cppcms::service &srv, const DBSettings & db_config) : cppcms::application(srv) {
+        dbm = std::make_unique<CGI_DBManager>(db_config);
 
         dispatcher().assign("/lookup", &Pks::lookup, this);
         mapper().assign("lookup", "/lookup");
@@ -42,7 +39,6 @@ public:
         mapper().root("/pks");
     }
     ~Pks() {
-        delete dbm;
     }
 
     /**
@@ -63,7 +59,7 @@ public:
     void add();
 
 private:
-    DBManager* dbm;
+    std::unique_ptr<CGI_DBManager> dbm;
     void get(const std::string& id);
     void index(const std::string& id);
     std::string genEntry(DB_Key *keyInfo);

@@ -1,4 +1,5 @@
 #include "import.h"
+#include <functional>
 
 using namespace std;
 using namespace std::chrono_literals;
@@ -6,15 +7,13 @@ using namespace std::chrono_literals;
 ReconImporter::ReconImporter(){
 }
 ReconImporter::ReconImporter(po::variables_map &vm){
-    settings = {
-        vm["import_tmp_folder"].as<std::string>(),
-        vm["import_error_folder"].as<std::string>(),
-    };
     db_settings = {
-        vm["db_host"].as<std::string>(),
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
+        vm["db_host"].as<std::string>(),
+        vm["db_database"].as<std::string>()
+    };
+    folders = {
         vm["import_tmp_folder"].as<std::string>(),
         vm["import_error_folder"].as<std::string>(),
     };
@@ -43,19 +42,20 @@ vector<string> ReconImporter::get_hashes(const vector<string> &files){
 
 vector<string> ReconImporter::import(vector<string> keys){
 
-    dbm = make_shared<IMPORT_DBManager>(db_settings);
-    dbm->init_database_connection();
-    Utils::create_folders(settings.csv_folder);
-    Utils::create_folders(settings.error_folder);
+    std::shared_ptr<IMPORT_DBManager> dbm = make_shared<IMPORT_DBManager>(db_settings, folders);
+    Utils::create_folders(folders.csv_folder);
+    Utils::create_folders(folders.error_folder);
 
-    Import::unpack_string_th(db_settings, keys);
+    Import::unpack_string_th(dbm, keys);
 
     dbm->lockTables();
-    vector<string> hashes = get_hashes(Utils::get_files(settings.csv_folder, Utils::CERTIFICATE));
-    dbm->insertCSV(Utils::get_files(settings.csv_folder, Utils::CERTIFICATE), Utils::CERTIFICATE);
+    vector<string> hashes = get_hashes(Utils::get_files(folders.csv_folder, Utils::CERTIFICATE));
+    for (const std::string & filename: Utils::get_files(folders.csv_folder, Utils::CERTIFICATE)){
+        dbm->insertCSV(filename, Utils::CERTIFICATE);
+    }
     dbm->unlockTables();
 
-    Utils::remove_directory_content(settings.csv_folder);
+    Utils::remove_directory_content(folders.csv_folder);
     return hashes;
 }
 
@@ -102,24 +102,27 @@ void Importer::import(po::variables_map &vm) {
     
     std::cout << "Threads: " << nThreads << std::endl;
 
-    settings = {
+    folders = {
         vm["import_tmp_folder"].as<std::string>(),
         vm["import_error_folder"].as<std::string>()
     };
 
-    Utils::create_folders(settings.csv_folder);
-    Utils::create_folders(settings.error_folder);
+    Utils::create_folders(folders.csv_folder);
+    Utils::create_folders(folders.error_folder);
 
     db_settings = {
-        vm["db_host"].as<std::string>(),
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
-        vm["import_tmp_folder"].as<std::string>(),
-        vm["import_error_folder"].as<std::string>()
+        vm["db_host"].as<std::string>(),
+        vm["db_database"].as<std::string>()
     };
 
-    dbm = std::make_shared<IMPORT_DBManager>(db_settings);
+    try{
+        dbm = std::make_shared<IMPORT_DBManager>(db_settings, folders);
+    }catch(std::exception &e){
+        std::cout << "Unable to connect to the database" << std::endl;
+        exit(0);
+    }
 
     if (!(vm.count("import-only"))){
         boost::filesystem::path path = vm["default_dump_path"].as<std::string>();
@@ -157,7 +160,7 @@ void Importer::import(po::variables_map &vm) {
         import_csv(selection);
     if (vm.count("noclean") == 0){
         std::cout << Utils::getCurrentTime() << "Cleaning temporary folder." << std::endl;
-        Utils::remove_directory_content(settings.csv_folder);
+        Utils::remove_directory_content(folders.csv_folder);
     }else{
         std::cout << Utils::getCurrentTime() << "Not removing temporary csv fileiles as user request." << std::endl;
     }
@@ -180,7 +183,8 @@ void Importer::generate_csv(std::vector<std::string> files, boost::filesystem::p
         for (unsigned int j = 0; i < files.size() && j < key_per_thread; j++, i++){
             dump_file_tmp.push_back(files[i]);
         }
-        pool->Add_Job(std::make_shared<Job>([=] { return Import::unpack_dump_th(db_settings, dump_file_tmp, fastimport); }));
+        std::function<void ()> f = std::bind(Import::unpack_dump_th, dbm, dump_file_tmp, fastimport);
+        pool->Add_Job(f);
     }
 
     pool->Stop_Filling_UP();
@@ -193,16 +197,17 @@ void Importer::generate_csv(std::vector<std::string> files, boost::filesystem::p
 
 void Importer::import_csv(int selection){
 
-    dbm->init_database_connection();
     std::cout << Utils::getCurrentTime() << "Writing dumped packet in DB:" << std::endl;
 
     dbm->lockTables();
     if (selection == -1){
-        for (unsigned int i= Utils::CERTIFICATE; i<= Utils::BROKEN_KEY; i++){
+        for (unsigned int i = Utils::CERTIFICATE; i <= Utils::USERID; i++){
             std::cout << Utils::getCurrentTime() << "\tInserting ";
             std::string s = Utils::FILENAME.at(i); 
             std::cout << s.substr(1, s.size()-5) << std::endl;
-            dbm->insertCSV(Utils::get_files(settings.csv_folder, i), i);
+            for (const std::string & filename: Utils::get_files(folders.csv_folder, i)){
+                dbm->insertCSV(filename, i);
+            }
         }
         std::cout << Utils::getCurrentTime() << "\tUpdating issuing fingerprint in Signatures" << std::endl;
         dbm->UpdateSignatureIssuingFingerprint();
@@ -213,8 +218,9 @@ void Importer::import_csv(int selection){
         std::cout << Utils::getCurrentTime() << "\tInserting ";
         std::string s = Utils::FILENAME.at(selection); 
         std::cout << s.substr(1, s.size()-5) << std::endl;
-        dbm->insertCSV(Utils::get_files(settings.csv_folder, selection), selection);
-
+        for (const std::string & filename: Utils::get_files(folders.csv_folder, selection)){
+            dbm->insertCSV(filename, selection);
+        }
     }
 
     dbm->unlockTables();

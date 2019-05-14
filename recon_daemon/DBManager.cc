@@ -6,18 +6,11 @@
 
 #include "DBManager.h"
 
-using namespace sql;
 using namespace std;
 // Database connector initialization
 
-RECON_DBManager::RECON_DBManager( const Recon_DBConfig & db_settings ){
-    settings = db_settings;
-    driver = NULL;
-}
-
-RECON_DBManager::~RECON_DBManager(){
-    if (driver != NULL)
-        driver->threadEnd();
+RECON_DBManager::RECON_DBManager( const DBSettings & db_settings, const std::string & tmp_folder_ ): DBManager(db_settings){
+    tmp_folder = tmp_folder_;
 }
 
 std::vector<std::string> Recon_memory_DBManager::fetch_removed_elements(){
@@ -33,38 +26,32 @@ void Recon_mysql_DBManager::commit_memtree(){
     throw std::runtime_error("Cannot commit whole tree in mysql database manager");
 };
 
-Recon_mysql_DBManager::Recon_mysql_DBManager(const Recon_DBConfig & dbsettings): RECON_DBManager(dbsettings) {}
+Recon_mysql_DBManager::Recon_mysql_DBManager(const DBSettings & dbsettings, const std::string & tmp_folder_): RECON_DBManager(dbsettings, tmp_folder_) {
+    prepare_queries();
+}
 
-void Recon_mysql_DBManager::init_database_connection(){
-    Recon_mysql_DBManager::driver = get_driver_instance();
-    Recon_mysql_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
-    // Connect to the MySQL keys database
-    con->setSchema(settings.db_database);
-
-    // Create prepared Statements
+void Recon_mysql_DBManager::prepare_queries(){
     
-    get_pnode_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT * FROM ptree WHERE node_key = (?)"));
+    get_pnode_stmt = prepare_query("SELECT * FROM ptree WHERE node_key = (?)");
 
-    insert_pnode_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT INTO ptree VALUES (?,?,?,?,?)"));
+    insert_pnode_stmt = prepare_query("INSERT INTO ptree VALUES (?,?,?,?,?)");
 
-    update_pnode_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE ptree SET node_svalues = (?), num_elements = (?), leaf = (?), node_elements = (?) WHERE node_key = (?)"));
+    update_pnode_stmt = prepare_query("UPDATE ptree SET node_svalues = (?), num_elements = (?), leaf = (?), node_elements = (?) WHERE node_key = (?)");
                                       
-    delete_pnode_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("DELETE FROM ptree WHERE node_key = (?)"));
+    delete_pnode_stmt = prepare_query("DELETE FROM ptree WHERE node_key = (?)");
 
-    check_key_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT * FROM gpg_keyserver where hash = (?)"));
+    check_key_stmt = prepare_query("SELECT * FROM gpg_keyserver where hash = (?)");
 
 	insert_ptree_stmt = make_pair<string, string>(
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE ptree FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
             "LINES STARTING BY '.' TERMINATED BY '\\n' (node_key, node_svalues, num_elements, leaf, node_elements) "
             );
 
-	get_removed_hash_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("select hash from removed_hash"));
+	get_removed_hash_stmt = prepare_query("select hash from removed_hash");
 
-	truncate_removed_hash_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("truncate removed_hash"));
+	truncate_removed_hash_stmt = prepare_query("truncate removed_hash");
 
 }
-
-Recon_mysql_DBManager::~Recon_mysql_DBManager(){}
 
 void Recon_mysql_DBManager::insert_node(const RECON_DBStruct::node &n){
   try{
@@ -73,14 +60,10 @@ void Recon_mysql_DBManager::insert_node(const RECON_DBStruct::node &n){
     insert_pnode_stmt->setInt(3, n.num_elements);
     insert_pnode_stmt->setBoolean(4, n.leaf);
     insert_pnode_stmt->setString(5, n.elements);
-    insert_pnode_stmt->executeQuery();
+    insert_pnode_stmt->execute();
   }
-  catch (SQLException &e){
-    if(e.getErrorCode() == 1062){
-      syslog(LOG_INFO, "inserting pnode failed - node already present %s", e.what());
-    }else{
+  catch (std::exception &e){
       syslog(LOG_ERR, "inserting pnode failed - %s", e.what());
-    }
     }
   }
   
@@ -91,21 +74,17 @@ void Recon_mysql_DBManager::update_node(const RECON_DBStruct::node &n){
     update_pnode_stmt->setBoolean(3, n.leaf);
     update_pnode_stmt->setString(4, n.elements);
     update_pnode_stmt->setString(5, n.key);
-    update_pnode_stmt->executeQuery();
+    update_pnode_stmt->execute();
   }
-  catch (SQLException &e){
-    if(e.getErrorCode() == 1062){
-      syslog(LOG_INFO, "update pnode failed %s", e.what());
-    }else{
+  catch (std::exception &e){
       syslog(LOG_ERR, "update pnode failed - %s", e.what());
-    }
     }
 }
 
 RECON_DBStruct::node Recon_mysql_DBManager::get_node(const std::string k){
   RECON_DBStruct::node n;
   get_pnode_stmt->setString(1, k);
-  result = shared_ptr<ResultSet>(get_pnode_stmt->executeQuery());
+  std::unique_ptr<DBResult> result = get_pnode_stmt->execute();
   result->next();
   n = {k, result->getString("node_svalues"), result->getInt("num_elements"), result->getBoolean("leaf"), result->getString("node_elements")};
   return n;
@@ -114,7 +93,7 @@ RECON_DBStruct::node Recon_mysql_DBManager::get_node(const std::string k){
 void Recon_mysql_DBManager::delete_node(const std::string k){
   try{
     delete_pnode_stmt->setString(1,k);
-    delete_pnode_stmt->executeQuery();
+    delete_pnode_stmt->execute();
   } catch (exception &e){
     syslog(LOG_WARNING, "Hash not found: %s", k.c_str());
   }
@@ -123,7 +102,7 @@ void Recon_mysql_DBManager::delete_node(const std::string k){
 bool Recon_mysql_DBManager::check_key(const std::string k){
     try{
         check_key_stmt->setString(1,k);
-        result = shared_ptr<ResultSet>(check_key_stmt->executeQuery());
+        std::unique_ptr<DBResult> result = check_key_stmt->execute();
         result->next();
 		result->getString("hash");
     } catch (exception &e){
@@ -134,30 +113,24 @@ bool Recon_mysql_DBManager::check_key(const std::string k){
 
 std::vector<std::string> Recon_mysql_DBManager::fetch_removed_elements(){
     std::vector<std::string> hashes;
-    result = shared_ptr<ResultSet>(get_removed_hash_stmt->executeQuery());
+    std::unique_ptr<DBResult> result = get_removed_hash_stmt->execute();
     while(result->next()){
         std::string hash = result->getString("hash");
         hashes.push_back(hash);
     }
-	truncate_removed_hash_stmt->executeQuery();
+	truncate_removed_hash_stmt->execute();
     return hashes;
 }
 
-Recon_memory_DBManager::Recon_memory_DBManager(const Recon_DBConfig & dbsettings) : RECON_DBManager(dbsettings) {}
-Recon_memory_DBManager::~Recon_memory_DBManager(){}
+Recon_memory_DBManager::Recon_memory_DBManager(const DBSettings & dbsettings, const std::string & tmp_folder_) : RECON_DBManager(dbsettings, tmp_folder_){
+    prepare_queries();
+}
 
-void Recon_memory_DBManager::init_database_connection(){
+void Recon_memory_DBManager::prepare_queries(){
 
-    Recon_memory_DBManager::driver = get_driver_instance();
-    Recon_memory_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
-    // Connect to the MySQL keys database
-    con->setSchema(settings.db_database);
+    get_all_hash_stmt = prepare_query("SELECT hash FROM gpg_keyserver order by hash ASC");
 
-    // Create prepared Statements
-    
-    get_all_hash_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT hash FROM gpg_keyserver order by hash ASC"));
-
-    check_key_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT * FROM gpg_keyserver where hash = (?)"));
+    check_key_stmt = prepare_query("SELECT * FROM gpg_keyserver where hash = (?)");
 
 	insert_ptree_stmt = make_pair<string, string>(
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE ptree FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
@@ -168,7 +141,7 @@ void Recon_memory_DBManager::init_database_connection(){
 
 void Recon_memory_DBManager::lockTables(){
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("LOCK TABLES ptree WRITE;");
+        execute_query("LOCK TABLES ptree WRITE;");
     }catch (exception &e){
         syslog(LOG_WARNING, "lock_tables_stmt FAILED, the query will be slowly! - %s", e.what());
     }
@@ -176,7 +149,7 @@ void Recon_memory_DBManager::lockTables(){
 
 void Recon_memory_DBManager::unlockTables(){
     try{
-        shared_ptr<Statement>(con->createStatement())->execute(("UNLOCK TABLES;"));
+        execute_query("UNLOCK TABLES;");
     }catch (exception &e){
         syslog(LOG_CRIT, "unlock_tables_stmt FAILED, the tables will remain locked! - %s", e.what());
     }
@@ -209,7 +182,7 @@ RECON_DBStruct::node Recon_memory_DBManager::get_node(const std::string k){
 
 std::vector<std::string> Recon_memory_DBManager::get_all_hash(){
     std::vector<std::string> hashes;
-    result = shared_ptr<ResultSet>(get_all_hash_stmt->executeQuery());
+    std::unique_ptr<DBResult> result = get_all_hash_stmt->execute();
     while(result->next()){
         std::string hash = result->getString("hash");
         hashes.push_back(hash);
@@ -218,7 +191,7 @@ std::vector<std::string> Recon_memory_DBManager::get_all_hash(){
 }
 
 void Recon_memory_DBManager::delete_node(const std::string k){
-    syslog(LOG_DEBUG, "deleting node %s from memory DB", k);
+    syslog(LOG_DEBUG, "deleting node %s from memory DB", k.c_str());
   try{
         memory_storage.erase(k);
   } catch (exception &e){
@@ -229,7 +202,7 @@ void Recon_memory_DBManager::delete_node(const std::string k){
 bool Recon_memory_DBManager::check_key(const std::string k){
     try{
         check_key_stmt->setString(1,k);
-        result = shared_ptr<ResultSet>(check_key_stmt->executeQuery());
+        std::unique_ptr<DBResult> result = check_key_stmt->execute();
         result->next();
 		result->getString("hash");
     } catch (exception &e){
@@ -240,7 +213,7 @@ bool Recon_memory_DBManager::check_key(const std::string k){
 
 void Recon_memory_DBManager::commit_memtree(){
     // Open file
-    csv_file = ofstream(settings.tmp_folder + "ptree.csv");
+    csv_file = ofstream(tmp_folder + "ptree.csv");
     try{
         for (auto const entry: memory_storage){
             csv_file << '.';
@@ -252,7 +225,7 @@ void Recon_memory_DBManager::commit_memtree(){
             csv_file << "\n";
         }
         csv_file.close();
-    	shared_ptr<Statement>(con->createStatement())->execute(insert_ptree_stmt.first + settings.tmp_folder + "ptree.csv" + insert_ptree_stmt.second);
+    	execute_query(insert_ptree_stmt.first + tmp_folder + "ptree.csv" + insert_ptree_stmt.second);
     }catch (exception &e){
         syslog(LOG_CRIT, "commit of the ptree to database failed!\nthe ptree will not be saved into DB because %s", e.what());
     }

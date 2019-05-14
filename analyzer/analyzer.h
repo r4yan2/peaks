@@ -10,14 +10,16 @@ namespace po = boost::program_options;
 
 class Analyzer {
 public:
-    Analyzer(std::shared_ptr<ANALYZER_DBManager> &dbptr, const Analyzer_DBConfig &db_settings);
+    Analyzer(std::shared_ptr<ANALYZER_DBManager> &dbptr);
     void analyze_pubkeys(const std::vector<ANALYZER_DBStruct::pubkey> &pks) const;
     void analyze_signatures(const std::vector<ANALYZER_DBStruct::signatures> &ss) const;
 
     void analyze_RSA_modulus_common_factor(const std::shared_ptr<ANALYZER_DBManager> &dbm, const unsigned int &nThreads);
 
 private:
-    Analyzer_DBConfig settings;
+    DBSettings settings;
+    AnalyzerFolders folders;
+
     std::shared_ptr<ANALYZER_DBManager> dbm;
     void analyze_pubkey(ANALYZER_DBStruct::pubkey pk, const std::shared_ptr<ANALYZER_DBManager> &dbm) const;
     void ELGAMAL_DSA_subgroup_size_check(const unsigned int &q, ANALYZER_DBStruct::KeyStatus &ks, const std::shared_ptr<ANALYZER_DBManager> &dbm) const;

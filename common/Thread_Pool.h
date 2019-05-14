@@ -111,17 +111,17 @@ public:
      * simple jobs to the pool
      * @param f task to execute
      */
-    void Add_Job(std::function<void ()> f);
+    void Add_Job(const std::function<void ()> & f);
 
     /** @brief Add a job to the pool
      * @param new_job Job to be added
      */
-    void Add_Job(std::shared_ptr<Job> new_job);
+    void Add_Job(const std::shared_ptr<Job> & new_job);
 
     /** @brief Add multiple jobs to the pool
      * @param new_jobs vector of jobs to be added
      */
-    void Add_Jobs(std::vector<std::shared_ptr<Job>> new_jobs);
+    void Add_Jobs(const std::vector<std::shared_ptr<Job>> & new_jobs);
 
     /** @brief Signal that no more jobs will be added
      */
@@ -139,9 +139,7 @@ public:
 private:
     bool filling_up;
     std::vector<std::shared_ptr<Job>> queue;
-    std::vector<int> checkout;
     std::mutex queue_mutex;
-    std::mutex checkout_mutex;
     std::condition_variable condition;
 };
 

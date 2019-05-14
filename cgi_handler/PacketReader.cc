@@ -13,7 +13,7 @@ using namespace OpenPGP;
 using namespace peaks;
 
 
-void pr::readPublicKeyPacket(const string &arm, peaks::DBManager *dbm){
+void pr::readPublicKeyPacket(const string &arm, peaks::CGI_DBManager *dbm){
     PublicKey::Ptr key(new PublicKey(arm));
 
     gpg_keyserver_data gk = {};
@@ -27,7 +27,7 @@ void pr::readPublicKeyPacket(const string &arm, peaks::DBManager *dbm){
             if (p->get_tag() == Packet::PUBLIC_KEY){
                 // Verifico se la chiave è già presente nel DB ed eventualmente mergio
                 string q = hexlify(dynamic_pointer_cast<Packet::Tag6>(p)->get_fingerprint());
-                istream *query = dbm -> fingerprintQuery(q);
+                std::shared_ptr<istream> query = dbm -> fingerprintQuery(q);
                 if(query){ exist = pr::manageMerge(key, query); }
                 break;
             }
@@ -127,7 +127,7 @@ void pr::readPublicKeyPacket(const string &arm, peaks::DBManager *dbm){
     cout << "Upload of the key finished" << endl;
 }
 
-bool pr::manageMerge(PublicKey::Ptr key, istream *query){
+bool pr::manageMerge(PublicKey::Ptr key, std::shared_ptr<istream> & query){
     cout << "Key already in the database, proceeding with merge" << endl;
     std::string content{ std::istreambuf_iterator<char>(*query), std::istreambuf_iterator<char>() };
     const Key::Ptr oldKey = make_shared<Key>(content);

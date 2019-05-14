@@ -5,9 +5,8 @@ using namespace OpenPGP;
 
 namespace Import {
 
-    void unpack_string_th(const Import_DBConfig &db_config, const vector<string> keys){
-        shared_ptr<IMPORT_DBManager> dbm(new IMPORT_DBManager(db_config));
-        dbm->init_database_connection();
+    void unpack_string_th(std::shared_ptr<IMPORT_DBManager> & dbm_, const vector<string> keys){
+        shared_ptr<IMPORT_DBManager> dbm = make_shared<IMPORT_DBManager>(dbm_);
         dbm->openCSVFiles();
         int i=0;
         for (auto key_str : keys){
@@ -28,10 +27,10 @@ namespace Import {
         }
     }
 
-
-    void unpack_dump_th(const Import_DBConfig &db_config, const vector<std::string> &files, const bool &fast){
-        shared_ptr<IMPORT_DBManager> dbm(new IMPORT_DBManager(db_config));
-        dbm->init_database_connection();
+    void unpack_dump_th(std::shared_ptr<IMPORT_DBManager> & dbm_, const vector<std::string> &files, const bool &fast){
+        DBSettings s_ = dbm_->get_settings();
+        ImportFolders f_ = dbm_->get_folders();
+        shared_ptr<IMPORT_DBManager> dbm = make_shared<IMPORT_DBManager>(s_, f_);
         dbm->openCSVFiles();
 
         for (const auto &f : files) {

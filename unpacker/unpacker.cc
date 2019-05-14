@@ -60,17 +60,19 @@ namespace Unpacker {
             syslog(LOG_WARNING,  "Unable to create error folder");
             exit(-1);
         }
-        const Unpacker_DBConfig db_settings = {
-            vm["db_host"].as<std::string>(),
+        const DBSettings db_settings = {
             vm["db_user"].as<std::string>(),
             vm["db_password"].as<std::string>(),
+            vm["db_host"].as<std::string>(),
             vm["db_database"].as<std::string>(),
-            vm["unpacker_tmp_folder"].as<std::string>(),
-            vm["unpacker_error_folder"].as<std::string>(),
         };
 
-        std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>(db_settings);
-        dbm->ensure_database_connection();
+        const UnpackerFolders folders = {
+            vm["unpacker_tmp_folder"].as<std::string>(),
+            vm["unpacker_error_folder"].as<std::string>()
+        };
+
+        std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>(db_settings, folders);
         
         std::vector<std::string> error_files = Utils::dirlisting(vm["unpacker_error_folder"].as<std::string>());
         if (error_files.size() > 0){
@@ -91,8 +93,10 @@ namespace Unpacker {
         std::vector<UNPACKER_DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
         limit = gpg_data.size();
 
-        if (limit == 0)
-            return limit;
+        if (limit == 0){
+            std::cout << "No data to process, exiting" << std::endl;
+            exit(0);
+        }
 
         if(vm.count("keys"))
             key_per_thread = vm["keys"].as<unsigned int>();
@@ -115,11 +119,6 @@ namespace Unpacker {
             for (unsigned int j = 0; i < gpg_data.size() && j < key_per_thread; j++, i++){
                 Key::Ptr key;
                 try{
-                    //std::stringstream s(gpg_data[i].certificate);
-                    //PGP::Ptr pkt(new PGP(s)), true));
-                    //PGP::Ptr pkt(new PGP(gpg_data[i].certificate));
-                    //pkt -> set_type(PGP::PUBLIC_KEY_BLOCK);
-                    //pks.push_back(std::make_shared<PublicKey>(PublicKey(*pkt)));
                     key = std::make_shared<Key>(gpg_data[i].certificate);
                     key->set_type(PGP::PUBLIC_KEY_BLOCK);
                     key->meaningful();
@@ -162,19 +161,19 @@ namespace Unpacker {
                     continue;
                 }
             }
-            unpacking_jobs.push_back(std::make_shared<Job>([=] {Unpacker::unpack_key_th(db_settings, pks); }));
+            unpacking_jobs.push_back(std::make_shared<Job>([=] {Unpacker::unpack_key_th(make_shared<UNPACKER_DBManager>(dbm), pks); }));
             pool->Add_Job(unpacking_jobs.back());
         }
 
         int file_number;
         do{
-            file_number = Utils::get_files_number(db_settings.unpacker_tmp_folder);
+            file_number = Utils::get_files_number(folders.tmp_folder);
             this_thread::sleep_for(std::chrono::seconds{1});
         }
-        while (file_number < Utils::get_files_number(db_settings.unpacker_tmp_folder));
+        while (file_number < Utils::get_files_number(folders.tmp_folder));
 
         for (unsigned int i = Utils::PUBKEY; i <= Utils::UNPACKED; i++){
-            for (const std::string & filename: Utils::get_files(db_settings.unpacker_tmp_folder, i)){
+            for (const std::string & filename: Utils::get_files(folders.tmp_folder, i)){
                 std::shared_ptr<Job> j = std::make_shared<Job>([=] { (std::make_shared<UNPACKER_DBManager>(dbm))->insertCSV(filename, i); }, unpacking_jobs);
                 pool->Add_Job(j);
             }
@@ -187,7 +186,6 @@ namespace Unpacker {
             th.join();
         }
 
-        dbm->ensure_database_connection();
         dbm->UpdateSignatureIssuingFingerprint();
         //dbm->UpdateSignatureIssuingUsername();
         dbm->UpdateIsRevoked();
@@ -196,10 +194,8 @@ namespace Unpacker {
         return limit;
     }
 
-    void unpack_key_th(const Unpacker_DBConfig &db_settings, const vector<Key::Ptr> &pks){
+    void unpack_key_th(std::shared_ptr<UNPACKER_DBManager> dbm, const vector<Key::Ptr> &pks){
         
-        std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>(db_settings);
-        dbm->ensure_database_connection();
         dbm->openCSVFiles();
 
         for (const auto &pk : pks) {
@@ -222,7 +218,7 @@ namespace Unpacker {
         }
     }
 
-    void unpack_key( const Key::Ptr &key, const shared_ptr<UNPACKER_DBManager> &dbm){
+    void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
 
         Key::pkey pk;
         UNPACKER_DBStruct::Unpacker_errors modified;

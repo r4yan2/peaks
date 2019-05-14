@@ -2,9 +2,6 @@
 #define ANALYZER_DBMANAGER_H
 
 
-#include <cppconn/resultset.h>
-#include <cppconn/prepared_statement.h>
-#include <cppconn/driver.h>
 #include <forward_list>
 #include <vector>
 #include <map>
@@ -14,10 +11,11 @@
 #include "DBStruct.h"
 #include "Math_Support.h"
 #include "Config.h"
+#include "../common/DBManager.h"
 
-class ANALYZER_DBManager {
+class ANALYZER_DBManager: public DBManager {
 public:
-    ANALYZER_DBManager(Analyzer_DBConfig &settings);
+    ANALYZER_DBManager(const DBSettings & settings_, const AnalyzerFolders & folders_);
     ~ANALYZER_DBManager();
     void open_pubkey_files();
     void open_signatures_files();
@@ -40,20 +38,27 @@ public:
     void write_analyzed_sign_csv(const ANALYZER_DBStruct::signatures &s);
 
 private:
-    Analyzer_DBConfig settings;
-
     std::map<unsigned int, std::ofstream> file_list;
 
-    sql::Driver *driver;
-    std::shared_ptr<sql::Connection> con;
-    std::shared_ptr<sql::PreparedStatement> get_analyzable_pubkey_stmt, get_analyzable_signature_stmt,
-            get_RSA_modulo_list_stmt, get_MPI_pubkey_stmt;
-    std::shared_ptr<sql::ResultSet> result;
+    AnalyzerFolders folders;
+    void prepare_queries();
 
-    std::pair<std::string, std::string> set_pubkey_analyzed_stmt, set_analyzed_signature_stmt, insert_broken_key_stmt,
-            insert_broken_signature_stmt, insert_broken_modulus_stmt, insert_repeated_r_stmt;
+    std::shared_ptr<DBQuery>
+        get_repeated_r_stmt,
+        get_analyzable_pubkey_stmt,
+        get_analyzable_signature_stmt,
+        get_RSA_modulo_list_stmt,
+        get_MPI_pubkey_stmt,
+        commit_stmt;
+
+    std::pair<std::string, std::string> 
+        set_pubkey_analyzed_stmt, 
+        set_analyzed_signature_stmt, 
+        insert_broken_key_stmt,
+        insert_broken_signature_stmt, 
+        insert_broken_modulus_stmt, 
+        insert_repeated_r_stmt;
 
 };
-
 
 #endif //UNPACKER_DBMANAGER_H

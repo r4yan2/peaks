@@ -49,7 +49,7 @@ struct Recon_config{
     int request_chunk_size;
 
     /** if dry run is set recon daemon will only fetch certificates without importing them */
-    int dry_run;
+    unsigned long dry_run;
 
     /** flag used to ignore logging for known bugs */
     int ignore_known_bug;

@@ -127,7 +127,7 @@ void Pks::homepage() {
 
 void Pks::post(const string& arm){
     try {
-        pr::readPublicKeyPacket(arm, dbm);
+        pr::readPublicKeyPacket(arm, dbm.get());
         response().status(cppcms::http::response::ok);
         response().out() << "Key uploaded succesfully";
     }catch (error_code &ec){
@@ -171,10 +171,8 @@ void Pks::post(const string& arm){
 void Pks::get(const string& id) {
     syslog(LOG_INFO, "Looking up key with id: %s", id.c_str());
     // Query key from database
-    istream *bin_key;
+    std::shared_ptr<istream> bin_key;
     int exit_code = dbm->searchKey(id, bin_key);
-
-
 
     if(exit_code == SUCCESS) {
         // Encode ASCII-armor key
@@ -192,7 +190,6 @@ void Pks::get(const string& id) {
         cert.keyID = Utils::toLower(id);
         cert.pubkey = pubkey;
         render("certificate", cert);
-        delete(bin_key);
     }
     else if (exit_code == KEY_NOT_FOUND) {
         response().status(cppcms::http::response::not_found);
@@ -406,11 +403,11 @@ void serve(po::variables_map &vm, po::parsed_options &parsed){
            }
            );
 
-    Cgi_DBConfig cgi_settings = {
-        vm["db_host"].as<std::string>(),
+    const DBSettings cgi_settings = {
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
+        vm["db_host"].as<std::string>(),
+        vm["db_database"].as<std::string>()
     };
 
     int log_option;

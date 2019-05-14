@@ -1,4 +1,5 @@
 #include "dump.h"
+#include <iostream>
 
 namespace Dump{
     int dump(po::variables_map &vm){
@@ -31,21 +32,19 @@ namespace Dump{
         
         syslog(LOG_NOTICE, "Using %d Threads", nThreads);
 
-        std::string dump_path;
-        if (vm.count("outdir"))
-            dump_path = vm["outdir"].as<std::string>();
-
-        const Dump_DBConfig db_settings = {
-            vm["db_host"].as<std::string>(),
+        const DBSettings db_settings = {
             vm["db_user"].as<std::string>(),
             vm["db_password"].as<std::string>(),
-            vm["db_database"].as<std::string>(),
-            dump_path
+            vm["db_host"].as<std::string>(),
+            vm["db_database"].as<std::string>()
         };
         std::shared_ptr<DUMP_DBManager> dbm = std::make_shared<DUMP_DBManager>(db_settings);
-        dbm->ensure_database_connection();
 
-        if (vm.count("outdir") == 0){
+        std::string dump_path;
+        if (vm.count("outdir")){
+            dump_path = vm["outdir"].as<std::string>();
+            dbm->set_dump_path(dump_path);
+        }else{
             dump_path = dbm->get_dump_path();
         }
 
@@ -66,9 +65,9 @@ namespace Dump{
         for (unsigned int i = Utils::CERTIFICATE; i <= Utils::USERID; i++){
             std::shared_ptr<Job> j;
             if (vm.count("outdir"))
-                j = std::make_shared<Job>([=] { (std::make_shared<DUMP_DBManager>(dbm))->dumplocalCSV(i); });
+                j = std::make_shared<Job>([=] { (std::make_unique<DUMP_DBManager>(dbm.get()))->dumplocalCSV(i); });
             else
-                j = std::make_shared<Job>([=] { (std::make_shared<DUMP_DBManager>(dbm))->dumpCSV(i); });
+                j = std::make_shared<Job>([=] { (std::make_unique<DUMP_DBManager>(dbm.get()))->dumpCSV(i); });
             pool->Add_Job(j);
         }
         

@@ -189,9 +189,8 @@ public:
 	/** Constructor for ptree
      * @param dbp Databse manager pointer, will be passed to created nodes
      */
-    Ptree(std::shared_ptr<RECON_DBManager> dbp, Ptree_config &settings_);
+    Ptree(std::shared_ptr<RECON_DBManager> dbp, const Ptree_config &settings_);
     ~Ptree();
- 
     int get_mbar();
     int get_bq();
     size_t get_num_samples();

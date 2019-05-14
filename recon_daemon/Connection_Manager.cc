@@ -1,11 +1,11 @@
 #include "Connection_Manager.h"
 
-Connection_Manager::Connection_Manager(){};
-
-Connection_Manager::Connection_Manager(Connection_config &conn_settings){
-    settings = conn_settings;
-}
-Connection_Manager::~Connection_Manager(){}
+Connection_Manager::Connection_Manager(const Connection_config & conn_settings):
+    sockfd(-1),
+    tmpfd(-1),
+    listenfd(-1),
+    settings(conn_settings)
+{}
 
 void Connection_Manager::setup_listener(int portno){
     struct sockaddr_in serv_addr; 
@@ -28,14 +28,15 @@ void Connection_Manager::setup_listener(int portno){
     listen(listenfd, 10);
 }
 
-std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> & addresses){
+peertype Connection_Manager::acceptor(std::vector<std::string> & addresses){
     peertype remote_peer;
     struct sockaddr_in client_addr;
     socklen_t clilen = sizeof(client_addr);
     tmpfd = accept(listenfd, (struct sockaddr*)&client_addr, &clilen);
-    if (tmpfd < 0){
-        syslog(LOG_WARNING, "Error on accept");
-        return std::make_pair(false, remote_peer);
+    if (tmpfd < 0)
+    {
+        syslog(LOG_WARNING, "error on accept");
+        throw Bad_client();
     }
     struct sockaddr_in* pV4Addr = (struct sockaddr_in*)&client_addr;
     struct in_addr ipAddr = pV4Addr->sin_addr;
@@ -47,13 +48,13 @@ std::pair<bool,peertype> Connection_Manager::acceptor(std::vector<std::string> &
         // ip does not belong to membership
         syslog(LOG_WARNING, "blocked %s because not in membership", ip_str);
         close(tmpfd);
-        return std::make_pair(false, remote_peer);
+        throw Bad_client();
         }
     int remote_port = check_remote_config();
     if (remote_port < 0)
-        return std::make_pair(false, remote_peer);
+        throw Bad_client();
     remote_peer = std::make_pair(std::string(ip_str), remote_port);
-    return std::make_pair(true, remote_peer);
+    return remote_peer;
 }
 
 void Connection_Manager::set_timeout(){

@@ -21,8 +21,7 @@ using namespace ANALYZER_DBStruct;
 using namespace Math_Support;
 using namespace ANALYZER_Utils;
 
-Analyzer::Analyzer(std::shared_ptr<ANALYZER_DBManager> &dbptr, const Analyzer_DBConfig &db_settings){
-    settings = db_settings;
+Analyzer::Analyzer(std::shared_ptr<ANALYZER_DBManager> & dbptr){
     dbm = dbptr;
 }
 
@@ -53,32 +52,34 @@ int analyzer(po::variables_map &vm){
     unsigned int limit = vm["max_unpacker_limit"].as<unsigned int>();
     unsigned int key_per_thread;
 
-    Analyzer_DBConfig db_settings = {
-        vm["db_host"].as<std::string>(),
+    const DBSettings db_settings = {
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
+        vm["db_host"].as<std::string>(),
+        vm["db_database"].as<std::string>()
+    };
+    const AnalyzerFolders folders = {
         vm["analyzer_tmp_folder"].as<std::string>(),
         vm["analyzer_error_folder"].as<std::string>(),
         vm["analyzer_gcd_folder"].as<std::string>()
     };
 
-    if(ANALYZER_Utils::create_folders(db_settings.analyzer_tmp_folder) == -1){
+    if(ANALYZER_Utils::create_folders(folders.analyzer_tmp_folder) == -1){
         syslog(LOG_WARNING, "Unable to create temp folder");
         exit(-1);
     }
-    if(ANALYZER_Utils::create_folders(db_settings.analyzer_error_folder) == -1){
+    if(ANALYZER_Utils::create_folders(folders.analyzer_error_folder) == -1){
         syslog(LOG_WARNING, "Unable to create temp folder");
         exit(-1);
     }
-    if(ANALYZER_Utils::create_folders(db_settings.analyzer_gcd_folder) == -1){
+    if(ANALYZER_Utils::create_folders(folders.analyzer_gcd_folder) == -1){
         syslog(LOG_WARNING, "Unable to create temp folder");
         exit(-1);
     }
 
-    shared_ptr<ANALYZER_DBManager> dbm = make_shared<ANALYZER_DBManager>(db_settings);
+    shared_ptr<ANALYZER_DBManager> dbm = make_shared<ANALYZER_DBManager>(db_settings, folders);
 
-    Analyzer a = Analyzer(dbm, db_settings);
+    Analyzer a = Analyzer(dbm);
 
     syslog(LOG_INFO, "Starting pubkey analysis");
     if(vm.count("threads"))
@@ -126,8 +127,8 @@ int analyzer(po::variables_map &vm){
 
     syslog(LOG_INFO, "Writing analyzed pubkeys in DB");
 
-    dbm->insertCSV(ANALYZER_Utils::get_files(db_settings.analyzer_tmp_folder, ANALYZER_Utils::BROKEN_PUBKEY), ANALYZER_Utils::BROKEN_PUBKEY);
-    dbm->insertCSV(ANALYZER_Utils::get_files(db_settings.analyzer_tmp_folder, ANALYZER_Utils::ANALYZED_PUBKEY), ANALYZER_Utils::ANALYZED_PUBKEY);
+    dbm->insertCSV(ANALYZER_Utils::get_files(folders.analyzer_tmp_folder, ANALYZER_Utils::BROKEN_PUBKEY), ANALYZER_Utils::BROKEN_PUBKEY);
+    dbm->insertCSV(ANALYZER_Utils::get_files(folders.analyzer_tmp_folder, ANALYZER_Utils::ANALYZED_PUBKEY), ANALYZER_Utils::ANALYZED_PUBKEY);
 
     syslog(LOG_INFO, "Starting RSA modulus analysis");
 
@@ -137,7 +138,7 @@ int analyzer(po::variables_map &vm){
 
     syslog(LOG_INFO, "Writing analyzed pubkeys in DB");
 
-    dbm->insertCSV(ANALYZER_Utils::get_files(db_settings.analyzer_tmp_folder, ANALYZER_Utils::BROKEN_MODULUS), ANALYZER_Utils::BROKEN_MODULUS);
+    dbm->insertCSV(ANALYZER_Utils::get_files(folders.analyzer_tmp_folder, ANALYZER_Utils::BROKEN_MODULUS), ANALYZER_Utils::BROKEN_MODULUS);
 
     syslog(LOG_INFO, "Starting signature analysis");
 
@@ -167,9 +168,9 @@ int analyzer(po::variables_map &vm){
     }
 
 
-    dbm->insertCSV(ANALYZER_Utils::get_files(db_settings.analyzer_tmp_folder, ANALYZER_Utils::BROKEN_SIGNATURE), ANALYZER_Utils::BROKEN_SIGNATURE);
-    dbm->insertCSV(ANALYZER_Utils::get_files(db_settings.analyzer_tmp_folder, ANALYZER_Utils::REPEATED_R), ANALYZER_Utils::REPEATED_R);
-    dbm->insertCSV(ANALYZER_Utils::get_files(db_settings.analyzer_tmp_folder, ANALYZER_Utils::ANALYZED_SIGNATURE), ANALYZER_Utils::ANALYZED_SIGNATURE);
+    dbm->insertCSV(ANALYZER_Utils::get_files(folders.analyzer_tmp_folder, ANALYZER_Utils::BROKEN_SIGNATURE), ANALYZER_Utils::BROKEN_SIGNATURE);
+    dbm->insertCSV(ANALYZER_Utils::get_files(folders.analyzer_tmp_folder, ANALYZER_Utils::REPEATED_R), ANALYZER_Utils::REPEATED_R);
+    dbm->insertCSV(ANALYZER_Utils::get_files(folders.analyzer_tmp_folder, ANALYZER_Utils::ANALYZED_SIGNATURE), ANALYZER_Utils::ANALYZED_SIGNATURE);
 
     syslog(LOG_NOTICE, "Analyzer daemon is stopping!");
 
@@ -778,7 +779,7 @@ bool Analyzer::check_signature(const signatures &sign, const shared_ptr<ANALYZER
 }
 
 void Analyzer::analyze_RSA_modulus_common_factor(const shared_ptr<ANALYZER_DBManager> &dbm, const unsigned int &nThreads) {
-    fastGCD fgcd = fastGCD(dbm->get_RSA_modulus(), nThreads, settings.analyzer_gcd_folder);
+    fastGCD fgcd = fastGCD(dbm->get_RSA_modulus(), nThreads, folders.analyzer_gcd_folder);
     vector<std::string> broken_modulus = fgcd.compute();
     dbm->write_broken_modulus_csv(broken_modulus);
 }

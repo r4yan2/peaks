@@ -1,26 +1,26 @@
 #ifndef UNPACKER_DBMANAGER_H
 #define UNPACKER_DBMANAGER_H
 
-#include <cppconn/resultset.h>
-#include <cppconn/prepared_statement.h>
-#include <cppconn/driver.h>
 #include <forward_list>
 #include <vector>
-#include <regex>
 #include <Key.h>
-#include <iostream>
 #include "DBStruct.h"
 #include "../common/utils.h"
+#include "../common/DBManager.h"
 #include "Config.h"
 #include <boost/algorithm/string.hpp>
 
+struct UnpackerFolders{
+    std::string tmp_folder;
+    std::string error_folder;
+};
 
 /** @brief Class manging the database
  * Database manager for the unpacked, it will store data in the csv
  * load the csv into the database, and check expired/revoked/invalid
  * keys after all operations
  */
-class UNPACKER_DBManager {
+class UNPACKER_DBManager:DBManager {
     static std::pair<std::string, std::string> 
         insert_pubkey_stmt, 
         insert_signature_stmt, 
@@ -40,7 +40,7 @@ public:
      * will be used to reach the database
      * @param un_settings settings for the database connection
      */
-    UNPACKER_DBManager(const Unpacker_DBConfig &settings);
+    UNPACKER_DBManager(const DBSettings & settings_, const UnpackerFolders & folders_);
 
     /** @brief Copy constructor
      * This copy constructor is used to parellelize
@@ -50,21 +50,14 @@ public:
      */
     UNPACKER_DBManager(const std::shared_ptr<UNPACKER_DBManager> & dbm);
 
-    /** @brief get settings
-     * @return settings
-     */
-    Unpacker_DBConfig get_settings();
-    /** @brief Destructor for the database connector
+     /** @brief Destructor for the database connector
      * The destructor will just close the file left open
      */
     ~UNPACKER_DBManager();
 
-    /** @brief Connect to database
-     * Actual connection to the database is performed
-     * in this method. It will also load all the relevant
-     * prepared statement
-     */
-    void ensure_database_connection();
+    void prepare_queries();
+
+    UnpackerFolders get_folders();
 
     /** @brief Ready CSV files for writing tmp data
      */
@@ -151,17 +144,15 @@ public:
     void UpdateSignatureIssuingUsername();
 
 private:
+
+    UnpackerFolders folders;
+
     Unpacker_DBConfig settings;
 
     std::map<unsigned int, std::ofstream> file_list;
 
-    sql::Driver *driver;
-
-    std::shared_ptr<sql::Connection> con;
-
-    std::shared_ptr<sql::ResultSet> result;
-
-    std::shared_ptr<sql::PreparedStatement> get_analyzable_cert_stmt, 
+    std::shared_ptr<DBQuery>
+        get_analyzable_cert_stmt, 
         get_signature_by_index, 
         set_key_not_analyzable,
         insert_error_comments,
@@ -173,7 +164,6 @@ private:
         update_valid,
         commit,
         set_unpacking_status_stmt;
-
 
 };
 

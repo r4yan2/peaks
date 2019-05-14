@@ -1,50 +1,30 @@
 #include <sys/syslog.h>
-#include <cstring>
-#include <sstream>
-#include <Misc/mpi.h>
-#include <thread>
-
+#include "../common/utils.h"
 #include "DBManager.h"
 
-using namespace sql;
 using namespace std;
 
-DUMP_DBManager::DUMP_DBManager(const Dump_DBConfig &un_settings){
-    settings = un_settings;
-};
+DUMP_DBManager::DUMP_DBManager(const DBSettings & settings_):
+    DBManager(settings_),
+    dump_path()
+{}
 
-DUMP_DBManager::DUMP_DBManager(const std::shared_ptr<DUMP_DBManager> & dbm){
-    settings = dbm->get_settings();
-    con = NULL;
-    ensure_database_connection();
-    get_dump_path_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT @@secure_file_priv as path;"));
-    result = shared_ptr<ResultSet>(get_dump_path_stmt->executeQuery());
-    result->next();
-    dump_path = result->getString("path");
+DUMP_DBManager::DUMP_DBManager(DUMP_DBManager * dbm_): 
+    DBManager(dbm_->get_settings()),
+    dump_path(dbm_->get_dump_path())
+{}
+
+void DUMP_DBManager::set_dump_path(const std::string & dump_path_){
+    dump_path = dump_path_;
 }
 
 std::string DUMP_DBManager::get_dump_path(){
-    get_dump_path_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT @@secure_file_priv as path;"));
-    result = shared_ptr<ResultSet>(get_dump_path_stmt->executeQuery());
-    result->next();
-    dump_path = result->getString("path");
+    if (dump_path == ""){
+        std::unique_ptr<DBResult> result = prepare_query("SELECT @@secure_file_priv as path")->execute();
+        result->next();
+        dump_path = result->getString("path");
+    }
     return dump_path;
-}
-
-Dump_DBConfig DUMP_DBManager::get_settings(){
-    return settings;
-}
-
-void DUMP_DBManager::ensure_database_connection(){
-    bool connected = con != NULL && con->isValid(); //(con->isValid() || con->reconnect());
-    if (connected)
-        return;
-
-    DUMP_DBManager::driver = get_driver_instance();
-    DUMP_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
-    // Connect to the MySQL keys database
-    con->setSchema(settings.db_database);
-    
 }
 
 query_template DUMP_DBManager::dump_gpgkeyserver_stmt = {
@@ -72,7 +52,7 @@ query_template DUMP_DBManager::dump_userID_stmt = {
 };
 
 query_template DUMP_DBManager::dump_self_signature_stmt = {
-    "SELECT type, pubAlgorithm, hashAlgorithm, version, issuingKeyId, hex(issuingFingerprint) as hexissuingFingerprint, hex(preferedHash) as hexpreferedHash, hex(preferedCompression) as hexpreferedCompression, hex(preferedSymmetric) as hexpreferedSymmetric, trustLevel, keyExpirationTime, isPrimaryUserId, TO_BASE64(signedUserId) as base64signedUserId, userRole FROM selfSignaturesMetadata",
+    "SELECT type, pubAlgorithm, hashAlgorithm, version, issuingKeyId, hex(issuingFingerprint) as hexissuingFingerprint, hex(preferedHash) as hexpreferedHash, hex(preferedCompression) as hexpreferedCompression, hex(preferedSymmetric) as hexpreferedSymmetric, trustLevel, keyExpirationTime, isPrimaryUserId, TO_BASE64(signedUserId) as base64signedUserId FROM selfSignaturesMetadata",
     " INTO OUTFILE '",
     "' FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES STARTING BY '.' TERMINATED BY '\\n';"
 };
@@ -95,13 +75,11 @@ query_template DUMP_DBManager::dump_brokenKey_stmt = {
     "' FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES STARTING BY '.' TERMINATED BY '\\n';"
 };
 
-DUMP_DBManager::~DUMP_DBManager(){
-};
-
 void DUMP_DBManager::write_gpg_keyserver_csv(){
     try{
-        result = shared_ptr<ResultSet>(con->createStatement()->executeQuery(dump_gpgkeyserver_stmt[0]));
-        ofstream f = ofstream(settings.output_folder + "DUMP" + Utils::FILENAME.at(Utils::CERTIFICATE), ios_base::app);
+        std::unique_ptr<DBResult> result = prepare_query(dump_gpgkeyserver_stmt[0])->execute();
+
+        ofstream f = ofstream(dump_path + "DUMP" + Utils::FILENAME.at(Utils::CERTIFICATE), ios_base::app);
         while(result->next()){
             f << '.';
             f << '"' << result->getString("version") << "\",";
@@ -120,8 +98,8 @@ void DUMP_DBManager::write_gpg_keyserver_csv(){
 
 void DUMP_DBManager::write_pubkey_csv() {
     try{
-        result = shared_ptr<ResultSet>(con->createStatement()->executeQuery(dump_pubkey_stmt[0]));
-        ofstream f = ofstream(settings.output_folder + "DUMP" + Utils::FILENAME.at(Utils::PUBKEY), ios_base::app);
+        std::unique_ptr<DBResult> result = prepare_query(dump_pubkey_stmt[0])->execute();
+        ofstream f = ofstream(dump_path + "DUMP" + Utils::FILENAME.at(Utils::PUBKEY), ios_base::app);
         while(result->next()){
             f << '.';
             f << '"' << result->getString("keyId") << "\",";
@@ -147,8 +125,8 @@ void DUMP_DBManager::write_pubkey_csv() {
 
 void DUMP_DBManager::write_signature_csv() {
     try{
-        result = shared_ptr<ResultSet>(con->createStatement()->executeQuery(dump_signature_stmt[0]));
-        ofstream f = ofstream(settings.output_folder + "DUMP" + Utils::FILENAME.at(Utils::SIGNATURE), ios_base::app);
+        std::unique_ptr<DBResult> result = prepare_query(dump_signature_stmt[0])->execute();
+        ofstream f = ofstream(dump_path + "DUMP" + Utils::FILENAME.at(Utils::SIGNATURE), ios_base::app);
         while(result->next()){
             f << '.';
             f << '"' << result->getString("type") << "\",";
@@ -161,7 +139,7 @@ void DUMP_DBManager::write_signature_csv() {
             f << '"' << result->getString("hexsignedFingerprint") << "\",";
             f << '"' << result->getString("base64signedUsername") << "\",";
             f << '"' << result->getString("base64issuingUsername") << "\",";
-            f << '"' << result->getString("sign_uatt_id") << "\",";
+            f << '"' << result->getString("sign_Uatt_id") << "\",";
             f << '"' << result->getString("regex") << "\",";
             f << '"' << result->getString("creationTime") << "\",";
             f << '"' << result->getString("expirationTime") << "\",";
@@ -188,8 +166,8 @@ void DUMP_DBManager::write_signature_csv() {
 
 void DUMP_DBManager::write_userID_csv() {
     try{
-        result = shared_ptr<ResultSet>(con->createStatement()->executeQuery(dump_userID_stmt[0]));
-        ofstream f = ofstream(settings.output_folder + "DUMP" + Utils::FILENAME.at(Utils::USERID), ios_base::app);
+        std::unique_ptr<DBResult> result = prepare_query(dump_userID_stmt[0])->execute();
+        ofstream f = ofstream(dump_path + "DUMP" + Utils::FILENAME.at(Utils::USERID), ios_base::app);
         while(result->next()){
             f << '.';
             f << '"' << result->getString("ownerkeyID") << "\",";
@@ -204,8 +182,8 @@ void DUMP_DBManager::write_userID_csv() {
 
 void DUMP_DBManager::write_userAttributes_csv() {
     try{
-        result = shared_ptr<ResultSet>(con->createStatement()->executeQuery(dump_userAtt_stmt[0]));
-        ofstream f = ofstream(settings.output_folder + "DUMP" + Utils::FILENAME.at(Utils::USER_ATTRIBUTES), ios_base::app);
+        std::unique_ptr<DBResult> result = prepare_query(dump_userAtt_stmt[0])->execute();
+        ofstream f = ofstream(dump_path + "DUMP" + Utils::FILENAME.at(Utils::USER_ATTRIBUTES), ios_base::app);
         while(result->next()){
             f << '.';
             f << '"' << result->getString("id") << "\",";
@@ -222,8 +200,8 @@ void DUMP_DBManager::write_userAttributes_csv() {
 
 void DUMP_DBManager::write_self_signature_csv() {
     try{
-        result = shared_ptr<ResultSet>(con->createStatement()->executeQuery(dump_self_signature_stmt[0]));
-        ofstream f = ofstream(settings.output_folder + "DUMP" + Utils::FILENAME.at(Utils::SELF_SIGNATURE), ios_base::app);
+        std::unique_ptr<DBResult> result = prepare_query(dump_self_signature_stmt[0])->execute();
+        ofstream f = ofstream(dump_path + "DUMP" + Utils::FILENAME.at(Utils::SELF_SIGNATURE), ios_base::app);
         while(result->next()){
             f << '.';
             f << '"' << result->getString("type") << "\",";
@@ -270,7 +248,6 @@ void DUMP_DBManager::dumplocalCSV(const unsigned int &table){
 }
 
 void DUMP_DBManager::dumpCSV(const unsigned int &table){
-    shared_ptr<Statement> query(con->createStatement());
     std::string statement;
     switch (table){
         case Utils::PUBKEY:
@@ -300,7 +277,7 @@ void DUMP_DBManager::dumpCSV(const unsigned int &table){
     }
 
     try{
-        query->execute(statement);
+        execute_query(statement);
     }catch(exception &e){
         switch (table){
             case Utils::PUBKEY:

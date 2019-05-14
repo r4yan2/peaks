@@ -5,8 +5,8 @@
 #include "db.h"
 
 namespace pr {
-    void readPublicKeyPacket(const std::string &arm, peaks::DBManager *dbm);
-    bool manageMerge(OpenPGP::PublicKey::Ptr key, std::istream *query);
+    void readPublicKeyPacket(const std::string &arm, peaks::CGI_DBManager *dbm);
+    bool manageMerge(OpenPGP::PublicKey::Ptr key, std::shared_ptr<std::istream> & query);
 
     void read_gpg_keyserver_data(const OpenPGP::Key::Ptr &k, peaks::gpg_keyserver_data *gk);
     peaks::userID_data read_userID_data(const OpenPGP::Key::Ptr &k, const OpenPGP::Packet::Tag13::Ptr &u);

@@ -7,37 +7,34 @@
 #include "DBManager.h"
 #include <boost/program_options.hpp>
 
-
-using namespace sql;
 using namespace std;
 
-
-// Database connector initialization
-
-IMPORT_DBManager::IMPORT_DBManager(const Import_DBConfig &settings_) {
-    IMPORT_DBManager::driver = get_driver_instance();
-    settings = settings_;
+IMPORT_DBManager::IMPORT_DBManager(const DBSettings & settings_, const ImportFolders & folders_):
+    DBManager(settings_),
+    folders(folders_)
+{
+    prepare_queries();
 }
 
-void IMPORT_DBManager::init_database_connection() {
-    IMPORT_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
-    // Connect to the MySQL keys database
-    con->setSchema(settings.db_database);
+IMPORT_DBManager::IMPORT_DBManager(const std::shared_ptr<IMPORT_DBManager> & dbm_):
+    DBManager(dbm_->get_settings()),
+    folders(dbm_->get_folders())
+{
+    prepare_queries();
+}
 
-    //con->createStatement()->execute("set sql_log_bin = 0;");
-    con->createStatement()->execute("set foreign_key_checks = 0;");
+void IMPORT_DBManager::prepare_queries() {
+    get_signature_by_index = prepare_query("SELECT id "
+                                     "FROM Signatures WHERE r = (?) and s = (?)");
+}
 
-    // Create prepared Statements
-    get_signature_by_index = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT id "
-                                     "FROM Signatures WHERE r = (?) and s = (?)"));
-
-    insert_brokenKey_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+    std::pair<std::string, std::string> IMPORT_DBManager::insert_brokenKey_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE broken_keys FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(@hexcertificate,log) SET certificate = UNHEX(@hexcertificate);");
 
 
-    insert_pubkey_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+    std::pair<std::string, std::string> IMPORT_DBManager::insert_pubkey_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Pubkey FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(keyId,version,@hexfingerprint,@hexpriFingerprint,pubAlgorithm,creationTime,@vexpirationTime,"
@@ -46,7 +43,7 @@ void IMPORT_DBManager::init_database_connection() {
                                      "p = UNHEX(@hexp), q = UNHEX(@hexq), g = UNHEX(@hexg), y = UNHEX(@hexy), "
                                      "expirationTime = nullif(@vexpirationTime, '');");
 
-    insert_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+    std::pair<std::string, std::string> IMPORT_DBManager::insert_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Signatures FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(type,pubAlgorithm,hashAlgorithm,version,issuingKeyId,signedKeyId,"
@@ -62,7 +59,7 @@ void IMPORT_DBManager::init_database_connection() {
                                      "signedHash = UNHEX(@hexsignedHash), expirationTime = nullif(@vexpirationTime, ''), "
                                      "keyExpirationTime = nullif(@vkeyExpirationTime, ''), flags = UNHEX(@hexflags);");
 
-    insert_self_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+    std::pair<std::string, std::string> IMPORT_DBManager::insert_self_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE selfSignaturesMetadata FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' "
                                      "(type,pubAlgorithm,hashAlgorithm,version,issuingKeyId,@hexissuingFingerprint,"
@@ -71,27 +68,25 @@ void IMPORT_DBManager::init_database_connection() {
                                      "preferedSymmetric = UNHEX(@hexpreferedSymmetric), preferedCompression = UNHEX(@hexpreferedCompression), "
                                      "preferedHash = UNHEX(@hexpreferedHash), keyExpirationTime = nullif(@vkeyExpirationTime, ''), signedUserID = FROM_BASE64(@base64signedUserID);");
 
-    insert_userID_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+    std::pair<std::string, std::string> IMPORT_DBManager::insert_userID_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE UserID FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (ownerkeyID,@hexfingerprint,@base64name) "
                                      "SET fingerprint = UNHEX(@hexfingerprint), name = FROM_BASE64(@base64name);");
 
-    insert_userAtt_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+    std::pair<std::string, std::string> IMPORT_DBManager::insert_userAtt_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE UserAttribute FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (id,@hexfingerprint,@base64name,encoding,@heximage) "
                                      "SET fingerprint = UNHEX(@hexfingerprint), name = FROM_BASE64(@base64name), image = UNHEX(@heximage);");
 
-    insert_unpackerErrors_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
+    std::pair<std::string, std::string> IMPORT_DBManager::insert_unpackerErrors_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Unpacker_errors FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (version,@hexfingerprint,error) "
                                      "SET fingerprint = UNHEX(@hexfingerprint);");
 
-    insert_certificate_stmt = make_pair<string, string>(
+    std::pair<std::string, std::string> IMPORT_DBManager::insert_certificate_stmt = make_pair<string, string>(
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE gpg_keyserver FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
             "LINES STARTING BY '.' TERMINATED BY '\\n' (version,ID,@hexfingerprint,@hexcertificate,hash,is_unpacked,error_code) "
-            "SET fingerprint = UNHEX(@hexfingerprint), certificate = UNHEX(@hexcertificate), is_synchronized = 1;");
-
-}
+            "SET fingerprint = UNHEX(@hexfingerprint), certificate = UNHEX(@hexcertificate), is_synchronized = 1");
 
 IMPORT_DBManager::~IMPORT_DBManager(){
     for (auto &it: file_list){
@@ -99,8 +94,11 @@ IMPORT_DBManager::~IMPORT_DBManager(){
             it.second.close();
         }
     }
-    driver->threadEnd();
 };
+
+ImportFolders IMPORT_DBManager::get_folders(){
+    return folders;
+}
 
 bool IMPORT_DBManager::existSignature(const DBStruct::signatures &s){
     std::istream *r_sign = new istringstream(s.r);
@@ -108,7 +106,7 @@ bool IMPORT_DBManager::existSignature(const DBStruct::signatures &s){
     try {
         get_signature_by_index->setBlob(1, r_sign);
         get_signature_by_index->setBlob(2, s_sign);
-        result = shared_ptr<ResultSet>(get_signature_by_index->executeQuery());
+        std::unique_ptr<DBResult> result = get_signature_by_index->execute();
         delete r_sign;
         delete s_sign;
         return result->next();
@@ -270,106 +268,96 @@ void IMPORT_DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors 
     }
 }
 
-void IMPORT_DBManager::insertCSV(const vector<string> &files, const unsigned int &table){
+void IMPORT_DBManager::insertCSV(const std::string & f, const unsigned int &table){
+    unsigned int backoff = 1;
+    unsigned int num_retries = 0;
+    std::string statement;
     switch (table){
         case Utils::PUBKEY:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_pubkey_stmt.first + f + insert_pubkey_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
-                    Utils::put_in_error(settings.error_folder, f, Utils::PUBKEY);
-                }
-            }
+            statement = insert_pubkey_stmt.first + f + insert_pubkey_stmt.second;
             break;
         case Utils::SIGNATURE:
-            for (const auto &f: files){
-                try{
-                    string query = insert_signature_stmt.first + f + insert_signature_stmt.second;
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_signature_stmt.first + f + insert_signature_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
-                                      e.what());
-                    Utils::put_in_error(settings.error_folder, f, Utils::SIGNATURE);
-                }
-            }
+            statement = insert_signature_stmt.first + f + insert_signature_stmt.second;
             break;
         case Utils::SELF_SIGNATURE:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_self_signature_stmt.first + f + insert_self_signature_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
-                                      e.what());
-                    Utils::put_in_error(settings.error_folder, f, Utils::SELF_SIGNATURE);
-                }
-            }
+            statement = insert_self_signature_stmt.first + f + insert_self_signature_stmt.second;
             break;
         case Utils::USERID:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_userID_stmt.first + f + insert_userID_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
-                                      e.what());
-                    Utils::put_in_error(settings.error_folder, f, Utils::USERID);
-                }
-            }
+            statement = insert_userID_stmt.first + f + insert_userID_stmt.second;
             break;
         case Utils::USER_ATTRIBUTES:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_userAtt_stmt.first + f + insert_userAtt_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
-                                      e.what());
-                    Utils::put_in_error(settings.error_folder, f, Utils::USER_ATTRIBUTES);
-                }
-            }
+            statement = insert_userAtt_stmt.first + f + insert_userAtt_stmt.second;
             break;
         case Utils::CERTIFICATE:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_certificate_stmt.first + f + insert_certificate_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_certificate_stmt FAILED, the key will not have the certificate in the database! - %s",
-                                      e.what());
-                    Utils::put_in_error(settings.error_folder, f, Utils::CERTIFICATE);
-                }
-            }
-            break;
-        case Utils::UNPACKER_ERRORS:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
-                                      e.what());
-                    Utils::put_in_error(settings.error_folder, f, Utils::UNPACKER_ERRORS);
-                }
-            }
+            statement = insert_certificate_stmt.first + f + insert_certificate_stmt.second;
             break;
         case Utils::BROKEN_KEY:
-            for (const auto &f: files){
-                try{
-                    shared_ptr<Statement>(con->createStatement())->execute(insert_brokenKey_stmt.first + f + insert_brokenKey_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_brokenKey_stmt FAILED, the broken key will not be in the database! - %s",
-                                      e.what());
-                    Utils::put_in_error(settings.error_folder, f, Utils::BROKEN_KEY);
-                }
-            }
+            statement = insert_brokenKey_stmt.first + f + insert_brokenKey_stmt.second;
             break;
-        default:
-            throw runtime_error("Table not recognized");
+        case Utils::UNPACKER_ERRORS:
+            statement = insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second;
+            break;
     }
 
+    do{
+        try{
+            execute_query(statement);
+            backoff = 0;
+        }catch(exception &e){
+            num_retries += 1;
+            unsigned int sleep_seconds = (backoff << num_retries) * 60 ;
+            switch (table){
+                case Utils::PUBKEY:
+                        syslog(LOG_CRIT, "insert_pubkey_stmt FAILED, the key not have the results of the unpacking in the database! - %s",
+                                          e.what());
+                        break;
+                case Utils::SIGNATURE:
+                        syslog(LOG_CRIT, "insert_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
+                                          e.what());
+                        break;
+                case Utils::SELF_SIGNATURE:
+                        syslog(LOG_CRIT, "insert_self_signature_stmt FAILED, the signature not have the results of the unpacking in the database! - %s",
+                                          e.what());
+                        break;
+                case Utils::USERID:
+                        syslog(LOG_CRIT, "insert_userID_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                                          e.what());
+                        break;
+                case Utils::USER_ATTRIBUTES:
+                        syslog(LOG_CRIT, "insert_userAtt_stmt FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                                          e.what());
+                        break;
+                case Utils::CERTIFICATE:
+                        syslog(LOG_CRIT, "insert_certificate_stmt FAILED, the key will not have the certificate in the database! - %s",
+                                          e.what());
+                        break;
+                case Utils::BROKEN_KEY:
+                        syslog(LOG_CRIT, "insert_brokenKey_stmt FAILED, the broken key will not be in the database! - %s",
+                                      e.what());
+                        break;
+                case Utils::UNPACKER_ERRORS:
+                        syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
+                                          e.what());
+                        break;
+            }
+            this_thread::sleep_for(std::chrono::seconds{sleep_seconds});
+        }
+    } while (backoff > 0 && num_retries < 5);
+    if (backoff > 0){
+        Utils::put_in_error(folders.error_folder, f, table);
+    }
+    try{
+        remove(f.c_str());
+    } catch (std::exception &e){
+        syslog(LOG_CRIT, "File deleting FAILED, the following file MUST be deleted manually: %s. Error: %s", f.c_str(), e.what());
+
+    }
 }
 
 void IMPORT_DBManager::UpdateSignatureIssuingFingerprint() {
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN Pubkey on issuingKeyId = KeyId SET issuingFingerprint = fingerprint where isnull(issuingFingerprint) and issuingKeyId = KeyId;");
+        execute_query("COMMIT");
+        execute_query("UPDATE Signatures INNER JOIN Pubkey on issuingKeyId = KeyId SET issuingFingerprint = fingerprint where isnull(issuingFingerprint) and issuingKeyId = KeyId;");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
                           e.what());
@@ -378,8 +366,8 @@ void IMPORT_DBManager::UpdateSignatureIssuingFingerprint() {
 
 void IMPORT_DBManager::UpdateSignatureIssuingUsername() {
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures INNER JOIN key_primary_userID on "
+        execute_query("COMMIT");
+        execute_query("UPDATE Signatures INNER JOIN key_primary_userID on "
              "issuingFingerprint = fingerprint SET issuingUsername = name WHERE issuingUsername IS NULL;");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
@@ -389,8 +377,8 @@ void IMPORT_DBManager::UpdateSignatureIssuingUsername() {
 
 void IMPORT_DBManager::UpdateIsExpired() {
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures SET isExpired = 1 WHERE expirationTime < NOW();");
+        execute_query("COMMIT");
+        execute_query("UPDATE Signatures SET isExpired = 1 WHERE expirationTime < NOW();");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
                           e.what());
@@ -399,10 +387,10 @@ void IMPORT_DBManager::UpdateIsExpired() {
 
 void IMPORT_DBManager::UpdateIsRevoked() {
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        shared_ptr<Statement>(con->createStatement())->execute("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
+        execute_query("COMMIT");
+        execute_query("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
              "signedFingerprint, signedUsername FROM Signatures WHERE isRevocation = 1;");
-        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures set isRevoked = 1 where isRevoked = 0 "
+        execute_query("UPDATE Signatures set isRevoked = 1 where isRevoked = 0 "
              "and isRevocation = 0 and (issuingKeyId, signedFingerprint, signedUsername) in (select * from revocationSignatures);");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
@@ -412,8 +400,8 @@ void IMPORT_DBManager::UpdateIsRevoked() {
 
 void IMPORT_DBManager::UpdateIsValid() {
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("COMMIT");
-        shared_ptr<Statement>(con->createStatement())->execute("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 "
+        execute_query("COMMIT");
+        execute_query("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 "
              "or isRevoked = 1;");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
@@ -423,9 +411,9 @@ void IMPORT_DBManager::UpdateIsValid() {
 
 void IMPORT_DBManager::lockTables(){
     try{
-        shared_ptr<Statement>(con->createStatement())->execute("LOCK TABLES broken_keys WRITE, gpg_keyserver WRITE, "
+        execute_query("LOCK TABLES broken_keys WRITE, gpg_keyserver WRITE, "
              "KeyStatus WRITE, Pubkey WRITE, selfSignaturesMetadata WRITE, Signatures WRITE, SignatureStatus WRITE, revocationSignatures WRITE, "
-             "Unpacker_errors WRITE, UserID WRITE, Signature_no_issuing_fp WRITE, UserAttribute WRITE, key_primary_userID WRITE;");
+             "Unpacker_errors WRITE, UserID WRITE, Signature_no_issuing_fp WRITE, UserAttribute WRITE, key_primary_userID WRITE");
     }catch (exception &e){
         syslog(LOG_WARNING, "lock_tables_stmt FAILED, the query will be slowly! - %s",
                              e.what());
@@ -434,7 +422,7 @@ void IMPORT_DBManager::lockTables(){
 
 void IMPORT_DBManager::unlockTables(){
     try{
-        shared_ptr<Statement>(con->createStatement())->execute(("UNLOCK TABLES;"));
+        execute_query(("UNLOCK TABLES;"));
     }catch (exception &e){
         syslog(LOG_CRIT, "unlock_tables_stmt FAILED, the tables will remain locked! - %s",
                           e.what());
@@ -447,6 +435,6 @@ void IMPORT_DBManager::openCSVFiles() {
     for (const auto &it: Utils::FILENAME){
         IMPORT_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(
                 it.first,
-                ofstream(Utils::get_file_name(settings.csv_folder, it.first, this_thread::get_id()), ios_base::app)));
+                ofstream(Utils::get_file_name(folders.csv_folder, it.first, this_thread::get_id()), ios_base::app)));
     }
 }

@@ -31,16 +31,15 @@ void build(po::variables_map &vm){
         exit(1);
     }
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
-    Recon_DBConfig db_settings = {
-        vm["db_host"].as<std::string>(),
+    DBSettings db_settings = {
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
-        vm["recon_tmp_folder"].as<std::string>()
+        vm["db_host"].as<std::string>(),
+        vm["db_database"].as<std::string>()
     };
+    std::string recon_tmp_folder = vm["recon_tmp_folder"].as<std::string>();
 
-    std::shared_ptr<Recon_memory_DBManager> dbm = std::make_shared<Recon_memory_DBManager>(db_settings);
-    dbm->init_database_connection();
+    std::shared_ptr<Recon_memory_DBManager> dbm = std::make_shared<Recon_memory_DBManager>(db_settings, recon_tmp_folder);
     int entries;
     std::vector<std::string> hashes;
     hashes = dbm->get_all_hash();
@@ -109,17 +108,15 @@ void recon(po::variables_map &vm){
     setlogmask(log_upto);
 
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
-    Recon_DBConfig db_settings = {
+    const DBSettings db_settings = {
         vm["db_host"].as<std::string>(),
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
-        vm["recon_tmp_folder"].as<std::string>()
+        vm["db_database"].as<std::string>()
     };
-    std::shared_ptr<Recon_mysql_DBManager> dbm = std::make_shared<Recon_mysql_DBManager>(db_settings);
-    dbm->init_database_connection();
+    std::shared_ptr<Recon_mysql_DBManager> dbm = std::make_shared<Recon_mysql_DBManager>(db_settings, vm["recon_tmp_folder"].as<std::string>());
     std::vector<NTL::ZZ_p> points = RECON_Utils::Zpoints(vm["num_samples"].as<int>());
-    Ptree_config ptree_settings = {
+    const Ptree_config ptree_settings = {
         vm["mbar"].as<int>(),
         vm["bq"].as<int>(),
         vm["max_ptree_nodes"].as<int>(),
@@ -137,7 +134,7 @@ void recon(po::variables_map &vm){
         exit(0);
     }
 
-    Connection_config conn_settings = {
+    const Connection_config conn_settings = {
         vm["mbar"].as<int>(),
         vm["bq"].as<int>(),
         vm["peaks_version"].as<std::string>(),
@@ -149,7 +146,7 @@ void recon(po::variables_map &vm){
     };
 
 
-    Message_config msg_settings = {
+    const Message_config msg_settings = {
         vm["max_read_len"].as<int>(),
         vm["P_SKS_STRING"].as<std::string>(),
         vm["sks_zp_bytes"].as<int>(),
@@ -157,7 +154,7 @@ void recon(po::variables_map &vm){
         vm["split_threshold"].as<int>()
     };
 
-    Recon_config peer_settings = {
+    const Recon_config peer_settings = {
         vm["membership_config"].as<std::string>(),
         vm["peaks_recon_port"].as<int>(),
         vm["request_chunk_size"].as<int>(),

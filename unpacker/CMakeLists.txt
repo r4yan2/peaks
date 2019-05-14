@@ -1,18 +1,3 @@
-cmake_minimum_required(VERSION 3.5.1)
-project(unpacker)
-
 set(SOURCE_FILES unpacker.cc DBManager.cc Key_Tools.cc DBStruct.h)
 
 add_library(unpacker ${SOURCE_FILES})
-
-set(OpenPGP_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../OpenPGP)
-include_directories(${OpenPGP_DIRECTORY})
-link_directories(${OpenPGP_DIRECTORY})
-
-
-target_link_libraries(unpacker ${OpenPGP_DIRECTORY}/libOpenPGP.a)
-target_link_libraries(unpacker ${Boost_LIBRARIES})
-target_link_libraries(unpacker mysqlcppconn)
-target_link_libraries(unpacker gmp)
-target_link_libraries(unpacker bz2)
-target_link_libraries(unpacker z)

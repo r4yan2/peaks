@@ -9,13 +9,13 @@
 
 namespace Utils{
     const unsigned int CERTIFICATE      = 1;
+    const unsigned int BROKEN_KEY       = 2;
     const unsigned int PUBKEY           = 3;
-    const unsigned int SIGNATURE        = 2;
-    const unsigned int SELF_SIGNATURE   = 4;
-    const unsigned int USER_ATTRIBUTES  = 5;
-    const unsigned int UNPACKER_ERRORS  = 6;
-    const unsigned int USERID           = 7;
-    const unsigned int BROKEN_KEY       = 8;
+    const unsigned int SIGNATURE        = 4;
+    const unsigned int SELF_SIGNATURE   = 5;
+    const unsigned int USER_ATTRIBUTES  = 6;
+    const unsigned int UNPACKER_ERRORS  = 7;
+    const unsigned int USERID           = 8;
     const unsigned int UNPACKED         = 9;
 
     const std::map<const unsigned int, std::string> FILENAME{

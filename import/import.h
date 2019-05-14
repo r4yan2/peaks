@@ -9,8 +9,8 @@
 
 class Importer{
     private:
-        Import_settings settings;
-        Import_DBConfig db_settings;
+        ImportFolders folders;
+        DBSettings db_settings;
         std::shared_ptr<IMPORT_DBManager> dbm;
     public:
         Importer();
@@ -29,10 +29,9 @@ class Importer{
 
 class ReconImporter{
     private:
-        Import_settings settings;
-        std::shared_ptr<IMPORT_DBManager> dbm; 
         bool unpack;
-        Import_DBConfig db_settings;
+        DBSettings db_settings;
+        ImportFolders folders;
     public:
 
         ReconImporter(po::variables_map &vm);

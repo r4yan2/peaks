@@ -1,15 +1,12 @@
 #ifndef PEAKS_DB_H_
 #define PEAKS_DB_H_
 
-#include <cppconn/resultset.h>
-#include <cppconn/prepared_statement.h>
-#include <cppconn/driver.h>
 #include <forward_list>
 #include <vector>
 #include "db_key.h"
 #include "utils.h"
 #include "Config.h"
-#include <boost/algorithm/string.hpp>
+#include "../common/DBManager.h"
 
 namespace peaks {
 
@@ -40,19 +37,18 @@ struct userID_data{
     std::string email;
 };
 
-class DBManager {
+class CGI_DBManager: DBManager {
 public:
-    DBManager(const Cgi_DBConfig &db_settings);
+    CGI_DBManager(const DBSettings & db_settings);
     /**
      * default destructor
      */
-    ~DBManager();
+    ~CGI_DBManager();
 
 	/**
-	 * ensure that the database connection is up
-	 * and is case is down restart it
+	 * prepare some queries
 	 */
-	void ensure_connection();
+	void prepare_queries();
 
 	/**
 	 * search functionality based on key length
@@ -61,33 +57,32 @@ public:
 	 * 32 -> Fingerprint Query (v3)
 	 * 40 -> Fingerprint Query (v4)
 	 * @param key query string
-	 * @param result pointer in which store the final result
 	 * @return success status
 	 */
-    int searchKey(std::string key, std::istream*& result);
+    int searchKey(std::string key, std::shared_ptr<std::istream> & result);
 
 	/**
 	 * Query the database searching for certificates with id
 	 * ending in <keyID>
 	 * @param keyID id to search
-	 * @return std::istream* pointer to the certificate blob
+	 * @return pointer to the certificate blob (stream)
 	 */
-    std::istream* shortIDQuery(const std::string &keyID);
+	std::shared_ptr<std::istream> shortIDQuery(const std::string &keyID);
 
 	/**
 	 * Query the database searching for certificates with id
 	 * equal to <keyID>
 	 * @param keyID id to search
-	 * @return std::istream* pointer to the certificate blob
+	 * @return pointer to the certificate blob (stream)
 	 */
-    std::istream* longIDQuery(const std::string &keyID);
+	std::shared_ptr<std::istream> longIDQuery(const std::string &keyID);
 	/**
 	 * Query the database searching for certificates with
 	 * fingerprint equal to <fp>
 	 * @param fp fingerprint to search
-	 * @return std::istream* pointer to the certificate blob
+	 * @return pointer to the certificate blob
 	 */
-    std::istream* fingerprintQuery(const std::string &fp);
+	std::shared_ptr<std::istream> fingerprintQuery(const std::string &fp);
 
 	/**
 	 * normal index query entrypoint
@@ -127,21 +122,33 @@ public:
     std::string get_key_by_hash(const std::string &hash);
 
 private:
-	Cgi_DBConfig settings;
-    sql::Driver *driver;
-    std::shared_ptr<sql::Connection> con;
-    std::shared_ptr<sql::PreparedStatement> shortid_stmt, longid_stmt, fprint_stmt, index_stmt, insert_gpg_stmt,
-            update_gpg_stmt, insert_uid_stmt, insert_brokenKey_stmt, vindex_prikey_full_id_stmt, vindex_prikey_short_id_stmt,
-            vindex_prikey_fp_stmt, vindex_uid_fp_stmt, vindex_signatures_stmt, vindex_uatt_stmt,
-            vindex_subkey_fp_stmt, vindex_key_vuln_stmt, vindex_sign_vuln_stmt, get_by_hash_stmt;
-    std::shared_ptr<sql::ResultSet> result;
-    std::string hexToUll(const std::string &hex) {
+	std::shared_ptr<DBQuery>
+			shortid_stmt, 
+			longid_stmt, 
+			fprint_stmt, 
+			index_stmt, 
+			insert_gpg_stmt,
+            update_gpg_stmt, 
+			insert_uid_stmt, 
+			insert_brokenKey_stmt, 
+			vindex_prikey_full_id_stmt, 
+			vindex_prikey_short_id_stmt,
+            vindex_prikey_fp_stmt, 
+			vindex_uid_fp_stmt, 
+			vindex_signatures_stmt, 
+			vindex_uatt_stmt,
+            vindex_subkey_fp_stmt, 
+			vindex_key_vuln_stmt, 
+			vindex_sign_vuln_stmt, 
+			get_by_hash_stmt;
+    
+	std::string hexToUll(const std::string &hex) {
         unsigned long long ullKey = std::stoull(hex, nullptr, 16);
         return std::to_string(ullKey);
     }
 
 
-    key get_key_info(const std::shared_ptr<sql::ResultSet> &key_result);
+    key get_key_info(const std::unique_ptr<DBResult> & key_result);
 
     std::forward_list<signature> get_signatures(const std::string &signedFingerprint, const std::string &signedUsername = "", const int &ua_id = -1);
 

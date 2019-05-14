@@ -1,65 +1,53 @@
 #include <sys/syslog.h>
 #include <cstring>
-#include <sstream>
 #include <Misc/mpi.h>
 #include <thread>
 
 #include "DBManager.h"
 
-
-using namespace sql;
 using namespace std;
 
-UNPACKER_DBManager::UNPACKER_DBManager(const Unpacker_DBConfig &un_settings){
-    settings = un_settings;
-};
-
-UNPACKER_DBManager::UNPACKER_DBManager(const std::shared_ptr<UNPACKER_DBManager> & dbm){
-    settings = dbm->get_settings();
-    con = NULL;
-    ensure_database_connection();
+UNPACKER_DBManager::UNPACKER_DBManager(const DBSettings &settings_, const UnpackerFolders & folders_):DBManager(settings_){
+    folders = folders_;
+    prepare_queries();
 }
 
-Unpacker_DBConfig UNPACKER_DBManager::get_settings(){
-    return settings;
+UNPACKER_DBManager::UNPACKER_DBManager(const std::shared_ptr<UNPACKER_DBManager> & dbm):DBManager(dbm->get_settings()){
+    folders = dbm->get_folders();
+    prepare_queries();
 }
 
-void UNPACKER_DBManager::ensure_database_connection(){
-    bool connected = con != NULL && con->isValid(); //(con->isValid() || con->reconnect());
-    if (connected)
-        return;
+UnpackerFolders UNPACKER_DBManager::get_folders(){
+    return folders;
+}
 
-    UNPACKER_DBManager::driver = get_driver_instance();
-    UNPACKER_DBManager::con = shared_ptr<Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
-    // Connect to the MySQL keys database
-    con->setSchema(settings.db_database);
-
+void UNPACKER_DBManager::prepare_queries(){
     //con->createStatement()->execute("set sql_log_bin = 0;");
-    con->createStatement()->execute("set foreign_key_checks = 0;");
+    //con->createStatement()->execute("set foreign_key_checks = 0;");
 
     // Create prepared Statements
-    get_analyzable_cert_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT version, fingerprint, certificate, hex(certificate) as hexcert "
-                                         "FROM gpg_keyserver WHERE is_unpacked = 0 LIMIT ?"));
+    get_analyzable_cert_stmt = prepare_query("SELECT version, fingerprint, certificate "
+                                         "FROM gpg_keyserver WHERE is_unpacked = 0 LIMIT ?");
     
-    get_signature_by_index = shared_ptr<PreparedStatement>(con->prepareStatement("SELECT id "
-                                         "FROM Signatures WHERE r = (?) and s = (?)"));
+    get_signature_by_index = prepare_query("SELECT id "
+                                         "FROM Signatures WHERE r = (?) and s = (?)");
     
-    insert_error_comments = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT INTO Unpacker_errors "
-                                         "(version, fingerprint, error) VALUES (?, ?, ?);"));
+    insert_error_comments = prepare_query("INSERT INTO Unpacker_errors "
+                                         "(version, fingerprint, error) VALUES (?, ?, ?);");
     
-    set_key_not_analyzable = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE gpg_keyserver "
-                                         "SET is_unpacked = -1 WHERE version = (?) and fingerprint = unhex(?)"));
+    set_key_not_analyzable = prepare_query("UPDATE gpg_keyserver "
+                                         "SET is_unpacked = -1 WHERE version = (?) and fingerprint = unhex(?)");
 
-    set_unpacking_status_stmt = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE gpg_keyserver SET is_unpacked = 3 WHERE version = (?) and fingerprint = (?)"));
+    set_unpacking_status_stmt = prepare_query("UPDATE gpg_keyserver SET is_unpacked = 3 WHERE version = (?) and fingerprint = (?)");
     
-    update_issuing_fingerprint = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN Pubkey on issuingKeyId = KeyId SET issuingFingerprint = fingerprint where isnull(issuingFingerprint) and issuingKeyId = KeyId;"));
-    update_issuing_username = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN UserID on issuingFingerprint = fingerprint SET issuingUsername = name where isnull(issuingUsername) and issuingFingerprint = fingerprint;"));
-    update_expired = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures SET isExpired = 1 WHERE expirationTime < NOW();"));
-    update_valid = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 or isRevoked = 1;"));
-    update_revoked_1 = shared_ptr<PreparedStatement>(con->prepareStatement("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
-                  "signedFingerprint, signedUsername FROM Signatures WHERE isRevocation = 1;"));
-    update_revoked_2 = shared_ptr<PreparedStatement>(con->prepareStatement("UPDATE Signatures INNER JOIN revocationSignatures on (Signatures.issuingKeyId = revocationSignatures.issuingKeyId and Signatures.signedFingerprint = revocationSignatures.signedFingerprint and Signatures.signedUsername = revocationSignatures.signedUsername) set isRevoked = 1, isValid = -1 where isRevoked = 0 and isRevocation = 0;"));
-    commit = shared_ptr<PreparedStatement>(con->prepareStatement("COMMIT;"));
+    update_issuing_fingerprint = prepare_query("UPDATE Signatures INNER JOIN Pubkey on issuingKeyId = KeyId SET issuingFingerprint = fingerprint where isnull(issuingFingerprint) and issuingKeyId = KeyId;");
+    update_issuing_username = prepare_query("UPDATE Signatures INNER JOIN UserID on issuingFingerprint = fingerprint SET issuingUsername = name where isnull(issuingUsername) and issuingFingerprint = fingerprint;");
+    update_expired = prepare_query("UPDATE Signatures SET isExpired = 1 WHERE expirationTime < NOW();");
+    update_valid = prepare_query("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 or isRevoked = 1;");
+    update_revoked_1 = prepare_query("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
+                  "signedFingerprint, signedUsername FROM Signatures WHERE isRevocation = 1;");
+    update_revoked_2 = prepare_query("UPDATE Signatures INNER JOIN revocationSignatures on (Signatures.issuingKeyId = revocationSignatures.issuingKeyId and Signatures.signedFingerprint = revocationSignatures.signedFingerprint and Signatures.signedUsername = revocationSignatures.signedUsername) set isRevoked = 1, isValid = -1 where isRevoked = 0 and isRevocation = 0;");
+    commit = prepare_query("COMMIT;");
 
 }
 
@@ -86,7 +74,7 @@ std::pair<std::string, std::string> UNPACKER_DBManager::insert_signature_stmt = 
                                      "signedFingerprint = UNHEX(@hexsignedFingerprint), r = UNHEX(@hexr), regex = nullif(@vregex, ''), "
                                      "s = UNHEX(@hexs), hashHeader = UNHEX(@hexhashHeader), issuingUsername = nullif(FROM_BASE64(@vissuingUsername), ''), "
                                      "signedHash = UNHEX(@hexsignedHash), expirationTime = nullif(@vexpirationTime, ''), "
-                                     "keyExpirationTime = nullif(@vkeyExpirationTime, ''), flags = UNHEX(@hexflags);");
+                                     "keyExpirationTime = nullif(@vkeyExpirationTime, ''), flags = nullif(UNHEX(@hexflags), '');");
 
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_userID_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE UserID FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
@@ -128,7 +116,7 @@ UNPACKER_DBManager::~UNPACKER_DBManager(){
 vector<UNPACKER_DBStruct::gpg_keyserver_data> UNPACKER_DBManager::get_certificates(const unsigned long &l) {
     vector<UNPACKER_DBStruct::gpg_keyserver_data> certificates;
     get_analyzable_cert_stmt->setString(1, to_string(l));
-    result = shared_ptr<ResultSet>(get_analyzable_cert_stmt->executeQuery());
+    std::unique_ptr<DBResult> result = get_analyzable_cert_stmt->execute();
     while(result->next()){
         UNPACKER_DBStruct::gpg_keyserver_data tmp_field = {
                 .version = result->getInt("version"),
@@ -141,19 +129,13 @@ vector<UNPACKER_DBStruct::gpg_keyserver_data> UNPACKER_DBManager::get_certificat
 }
 
 bool UNPACKER_DBManager::existSignature(const UNPACKER_DBStruct::signatures &s){
-    std::istream *r_sign = new istringstream(s.r);
-    std::istream *s_sign = new istringstream(s.s);
     try {
-        get_signature_by_index->setBlob(1, r_sign);
-        get_signature_by_index->setBlob(2, s_sign);
-        result = shared_ptr<ResultSet>(get_signature_by_index->executeQuery());
-        delete r_sign;
-        delete s_sign;
+        get_signature_by_index->setBlob(1, s.s);
+        get_signature_by_index->setBlob(2, s.r);
+        std::unique_ptr<DBResult> result = get_signature_by_index->execute();
         return result->next();
     }catch (exception &e){
         syslog(LOG_CRIT, "get_signature_by_index FAILED, there may be a double signature in the database! - %s", e.what());
-        delete r_sign;
-        delete s_sign;
         return false;
     }
 }
@@ -161,9 +143,9 @@ bool UNPACKER_DBManager::existSignature(const UNPACKER_DBStruct::signatures &s){
 void UNPACKER_DBManager::set_as_not_analyzable(const int &version, const string &fingerprint, const string &comment) {
     try{
         insert_error_comments->setInt(1, version);
-        insert_error_comments->setBigInt(2, fingerprint);
+        insert_error_comments->setString(2, fingerprint);
         insert_error_comments->setString(3, comment);
-        insert_error_comments->executeQuery();
+        insert_error_comments->execute();
     }catch (exception &e){
         syslog(LOG_CRIT, "insert_error_comments FAILED, the key will not have some comments - %s", e.what());
     }
@@ -177,7 +159,7 @@ void UNPACKER_DBManager::set_as_not_analyzable(const int &version, const string 
             fp = hexlify(fingerprint);
         }
         set_key_not_analyzable->setString(2, fp);
-        set_key_not_analyzable->executeQuery();
+        set_key_not_analyzable->execute();
 
     }catch (exception &e){
         syslog(LOG_CRIT, "set_key_not_analyzable FAILED, the key will result not UNPACKED in the database! - %s", e.what());
@@ -335,9 +317,9 @@ void UNPACKER_DBManager::insertCSV(const string &f){
 }
 
 void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
+    check_database_connection();
     unsigned int backoff = 1;
     unsigned int num_retries = 0;
-    shared_ptr<Statement> query(con->createStatement());
     std::string statement;
     switch (table){
         case Utils::PUBKEY:
@@ -356,7 +338,7 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
             statement = insert_userAtt_stmt.first + f + insert_userAtt_stmt.second;
             break;
         case Utils::UNPACKED:
-            query->execute(create_unpacker_tmp_table);
+            execute_query(create_unpacker_tmp_table);
             statement = insert_unpacked_stmt.first + f + insert_unpacked_stmt.second;
             break;
         case Utils::UNPACKER_ERRORS:
@@ -366,9 +348,9 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
 
     do{
         try{
-            query->execute(statement);
+            execute_query(statement);
             if (table == Utils::UNPACKED){
-                query->execute(update_gpg_keyserver);
+                execute_query(update_gpg_keyserver);
             }
             backoff = 0;
         }catch(exception &e){
@@ -398,7 +380,7 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
                 case Utils::UNPACKED:
                         syslog(LOG_CRIT, "insert_unpacked_stmt FAILED, the key will result NOT UNPACKED in the database! - %s",
                                           e.what());
-                        query->execute(drop_unpacker_tmp_table);
+                        execute_query(drop_unpacker_tmp_table);
                         break;
                 case Utils::UNPACKER_ERRORS:
                         syslog(LOG_CRIT, "insert_unpackerErrors_stmt FAILED, the error of the unpacking will not be in the database! - %s",
@@ -409,7 +391,7 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
         }
     } while (backoff > 0 && num_retries < 5);
     if (backoff > 0){
-        Utils::put_in_error(settings.unpacker_error_folder, f, table);
+        Utils::put_in_error(folders.error_folder, f, table);
     }
     try{
         remove(f.c_str());
@@ -473,6 +455,6 @@ void UNPACKER_DBManager::openCSVFiles(){
     for (const auto &it: Utils::FILENAME){
         UNPACKER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(
                 it.first,
-                ofstream(Utils::get_file_name(settings.unpacker_tmp_folder, it.first, this_thread::get_id()), ios_base::app)));
+                ofstream(Utils::get_file_name(folders.tmp_folder, it.first, this_thread::get_id()), ios_base::app)));
     }
 }
