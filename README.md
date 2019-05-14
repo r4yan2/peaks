@@ -39,7 +39,7 @@ apt-get install -y build-essential m4 curl python cmake git libcurl4-openssl-dev
 NTL, GMP and OpenPGP can be installed running
 
 ```bash
-./compile_libraries.sh release full
+TARGET=Release ./compile_libraries.sh
 ```
 
 ### Database Initialization

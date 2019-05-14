@@ -9,8 +9,12 @@ __exists() {
 get="fetch";
 ! __exists fetch && get="curl -OL";
 
-starting_path=$PWD;
-cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
+PEAKS_PATH=$PWD;
+NCPU=`cat /proc/cpuinfo | grep processor | wc -l`;
+if [ -z "$TARGET" ];
+then
+    TARGET="Release"
+fi
 
 if [ ! -d lib/gmp ];
 then
@@ -59,27 +63,29 @@ then
 
     cd gmp-6.1.2
     patch -p 1 < ../gmp-6.1.2.patch
-    if [ "$1" == "debug" ];
+    PREFIX=$PEAKS_PATH"/lib/gmp"
+    if [ "$TARGET" == "Debug" ];
     then
-        ./configure --prefix=$starting_path/lib/gmp --disable-shared # --enable-cxx CXXFLAGS="-g -O2 -march=native" --disable-shared
-    elif [ "$1" == "release" ];
+        CFLAGS="-g3 -march=native"
+    elif [ "$TARGET" == "Release" ];
     then
-        ./configure --prefix=$starting_path/lib/gmp --disable-static CFLAGS="-Ofast -march=native"
-    elif [ "$1" == "docker" ];
+        CFLAGS="-Ofast -march=native"
+    elif [ "$TARGET" == "Docker" ];
     then
-        ./configure --prefix=$starting_path/lib/gmp --disable-static CFLAGS="-Ofast"
+        CFLAGS="-Os -march=x86-64 -mtune=generic"
     else
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
     fi
-    make -j$cpus
-    if [ "$3" == "check" ];
+    ./configure --prefix=$PREFIX CFLAGS=$CFLAGS
+    make -j$NCPU
+    if [ -n "$CHECK" ];
     then
-        make check -j$cpus
+        make check -j$NCPU
     fi
     make install
     
-    cd $starting_path
+    cd $PEAKS_PATH
     
     echo 'Removing GMP sources'
 
@@ -118,27 +124,29 @@ then
     fi
 
     cd ntl-10.5.0/src
-    if [ "$1" == "debug" ]
+    PREFIX=$PEAKS_PATH"/lib/ntl"
+    if [ "$TARGET" == "Debug" ]
     then
-        ./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on "CXXFLAGS=-g -march=native" PREFIX=$starting_path/lib/ntl/ GMP_PREFIX=$starting_path/lib/gmp
-    elif [ "$1" == "release" ]
+        CXXFLAGS="-g -march=native"
+    elif [ "$TARGET" == "Release" ]
     then
-        ./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on "CXXFLAGS=-O3 -march=native -fopenmp -D_GLIBCXX_PARALLEL" PREFIX=$starting_path/lib/ntl/ GMP_PREFIX=$starting_path/lib/gmp
-    elif [ "$1" == "docker" ]
+        CXXFLAGS="-O3 -march=native -fopenmp -D_GLIBCXX_PARALLEL"
+    elif [ "$TARGET" == "Docker" ]
     then
-        ./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on "CXXFLAGS=-O3 -fopenmp -D_GLIBCXX_PARALLEL" PREFIX=$starting_path/lib/ntl/ GMP_PREFIX=$starting_path/lib/gmp
+        CXXFLAGS="-Os -march=x86-64 -mtune=generic -fopenmp -D_GLIBCXX_PARALLEL"
     else
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
     fi
-    make -j$cpus
-    if [ "$3" == "check" ];
+    ./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on $CXXFLAGS PREFIX=$PREFIX GMP_PREFIX=$PEAKS_PATH/lib/gmp
+    make -j$NCPU
+    if [ -n "$CHECK" ];
     then
-        make check -j$cpus
+        make check -j$NCPU
     fi
     make install
 
-    cd $starting_path
+    cd $PEAKS_PATH
 
     echo 'Removing NTL sources'
 
@@ -164,32 +172,47 @@ then
     cd cppcms-1.2.1
     mkdir build
     cd build
-    if [ "$1" == "debug" ]
+    PREFIX=$PEAKS_PATH"/lib/cppcms"
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX ..
+    make -j$NCPU
+    if [ -n "$CHECK" ]
     then
-        cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$starting_path/lib/cppcms/ ..
-    elif [ "$1" == "release" ]
-    then
-        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$starting_path/lib/cppcms/ ..
-    elif [ "$1" == "docker" ]
-    then
-        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$starting_path/lib/cppcms/ ..
-    else
-        echo "ERROR! Option not recognized, use debug or release to specify the purpose."
-        exit;
-    fi
-    make -j$cpus
-    if [ "$3" == "check" ]
-    then
-        make test -j$cpus
+        make test -j$NCPU
     fi
     make install
 
-    cd $starting_path
+    cd $PEAKS_PATH
 
     echo 'Removing CPPCMS sources'
 
     rm -rf cppcms*
 
+fi
+
+if [ ! -d lib/mariadbpp ]
+then
+
+    PREFIX=$PEAKS_PATH"/lib/mariadbpp"
+
+    echo 'Compiling Mariadb Cpp connector'
+
+    if [ ! -d mariadbpp ];
+    then
+        git clone --recursive https://github.com/viaduck/mariadbpp
+    fi
+
+    cd mariadbpp
+    mkdir build
+    cd build
+    cmake -DCMAKE_INSTALL_PREFIX=$PREFIX ..
+    make -j$NCPU
+    make install
+
+    cd $PEAKS_PATH
+
+    echo 'Removing sources'
+
+    rm -rf mariadbpp/
 fi
 
 if [ -d OpenPGP ]
@@ -198,7 +221,7 @@ then
     echo 'Compiling OpenPGP'
 
     cd OpenPGP
-    make -j$cpus gpg-compatible
+    make -j$NCPU gpg-compatible
     
-    cd $starting_path
+    cd $PEAKS_PATH
 fi
