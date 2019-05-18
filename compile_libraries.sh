@@ -127,18 +127,24 @@ then
     PREFIX="$PEAKS_PATH"/lib/ntl
     if [ "$TARGET" == "Debug" ]
     then
-        CXXFLAGS="-g -march=native"
+        CXXFLAGS="-g3 -march=native"
+        NATIVE="on"
+        TUNE="auto"
     elif [ "$TARGET" == "Release" ]
     then
-        CXXFLAGS="-O3 -march=native -fopenmp -D_GLIBCXX_PARALLEL"
+        CXXFLAGS="-O3 -fopenmp -D_GLIBCXX_PARALLEL"
+        NATIVE="on"
+        TUNE="auto"
     elif [ "$TARGET" == "Docker" ]
     then
-        CXXFLAGS="-Os -march=x86-64 -mtune=generic -fopenmp -D_GLIBCXX_PARALLEL"
+        CXXFLAGS="-Os -march=x86-64 -fopenmp -D_GLIBCXX_PARALLEL"
+        NATIVE="off"
+        TUNE="x86"
     else
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
     fi
-    ./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on CXXFLAGS="$CXXFLAGS" PREFIX="$PREFIX" GMP_PREFIX="$PEAKS_PATH"/lib/gmp
+    ./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on CXXFLAGS="$CXXFLAGS" NATIVE="$NATIVE" TUNE="$TUNE" PREFIX="$PREFIX" GMP_PREFIX="$PEAKS_PATH"/lib/gmp
     make -j$NCPU
     if [ -n "$CHECK" ];
     then

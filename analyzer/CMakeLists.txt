@@ -6,26 +6,3 @@ add_definitions(-Dmpz_raw_64)
 set(SOURCE_FILES DBManager.cc analyzer.cc DBStruct.h Math_Support.cc EC_point.cc ED_point.cc Elliptic_Curve.cc Edward_Curve.cc fastGCD.cc utils.cc Curve_point.h Curve.h)
 
 add_library(analyzer ${SOURCE_FILES})
-
-set(OpenPGP_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../OpenPGP)
-include_directories(${OpenPGP_DIRECTORY})
-link_directories(${OpenPGP_DIRECTORY})
-
-set(LIB_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../lib)
-
-set(NTL_DIR ${LIB_DIRECTORY}/ntl)
-include_directories(${NTL_DIR}/include)
-link_directories(${NTL_DIR}/lib)
-
-set(GMP_PARCHED_DIR ${LIB_DIRECTORY}/gmp)
-include_directories(${GMP_PARCHED_DIR}/include)
-link_directories(${GMP_PARCHED_DIR}/lib)
-
-
-target_link_libraries(analyzer ${OpenPGP_DIRECTORY}/libOpenPGP.a)
-target_link_libraries(analyzer ${NTL_DIR}/lib/libntl.a)
-target_link_libraries(analyzer ${GMP_PARCHED_DIR}/lib/libgmp.so)
-target_link_libraries(analyzer ${Boost_LIBRARIES}) 
-target_link_libraries(analyzer mysqlcppconn) 
-target_link_libraries(analyzer bz2)
-target_link_libraries(analyzer z)
