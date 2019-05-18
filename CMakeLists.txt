@@ -54,7 +54,7 @@ if(${DBMANAGER} STREQUAL "MARIADBCPP")
     add_compile_definitions(USE_MARIADB_CPP)
     set(MARIADBCPP_DIRECTORY ${LIB_DIR}/mariadbpp)
     include_directories(${MARIADBCPP_DIRECTORY}/include)
-    include_directories(/usr/include/mariadb)
+    include_directories(/usr/include/mysql)
 endif()
 
 find_package(Boost REQUIRED 
