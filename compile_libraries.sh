@@ -63,7 +63,7 @@ then
 
     cd gmp-6.1.2
     patch -p 1 < ../gmp-6.1.2.patch
-    PREFIX=$PEAKS_PATH"/lib/gmp"
+    PREFIX="$PEAKS_PATH"/lib/gmp
     if [ "$TARGET" == "Debug" ];
     then
         CFLAGS="-g3 -march=native"
@@ -77,7 +77,7 @@ then
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
     fi
-    ./configure --prefix=$PREFIX CFLAGS=$CFLAGS
+    ./configure --prefix="$PREFIX" CFLAGS="$CFLAGS"
     make -j$NCPU
     if [ -n "$CHECK" ];
     then
@@ -85,7 +85,7 @@ then
     fi
     make install
     
-    cd $PEAKS_PATH
+    cd "$PEAKS_PATH"
     
     echo 'Removing GMP sources'
 
@@ -124,7 +124,7 @@ then
     fi
 
     cd ntl-10.5.0/src
-    PREFIX=$PEAKS_PATH"/lib/ntl"
+    PREFIX="$PEAKS_PATH"/lib/ntl
     if [ "$TARGET" == "Debug" ]
     then
         CXXFLAGS="-g -march=native"
@@ -138,7 +138,7 @@ then
         echo "ERROR! Option not recognized, use debug or release to specify the purpose."
         exit;
     fi
-    ./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on $CXXFLAGS PREFIX=$PREFIX GMP_PREFIX=$PEAKS_PATH/lib/gmp
+    ./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on CXXFLAGS="$CXXFLAGS" PREFIX="$PREFIX" GMP_PREFIX="$PEAKS_PATH"/lib/gmp
     make -j$NCPU
     if [ -n "$CHECK" ];
     then
@@ -146,7 +146,7 @@ then
     fi
     make install
 
-    cd $PEAKS_PATH
+    cd "$PEAKS_PATH"
 
     echo 'Removing NTL sources'
 
@@ -172,8 +172,8 @@ then
     cd cppcms-1.2.1
     mkdir build
     cd build
-    PREFIX=$PEAKS_PATH"/lib/cppcms"
-    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX ..
+    PREFIX="$PEAKS_PATH"/lib/cppcms
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PREFIX" ..
     make -j$NCPU
     if [ -n "$CHECK" ]
     then
@@ -181,7 +181,7 @@ then
     fi
     make install
 
-    cd $PEAKS_PATH
+    cd "$PEAKS_PATH"
 
     echo 'Removing CPPCMS sources'
 
@@ -192,7 +192,7 @@ fi
 if [ ! -d lib/mariadbpp ]
 then
 
-    PREFIX=$PEAKS_PATH"/lib/mariadbpp"
+    PREFIX="$PEAKS_PATH"/lib/mariadbpp
 
     echo 'Compiling Mariadb Cpp connector'
 
@@ -204,11 +204,11 @@ then
     cd mariadbpp
     mkdir build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$PREFIX ..
+    cmake -DCMAKE_INSTALL_PREFIX="$PREFIX" ..
     make -j$NCPU
     make install
 
-    cd $PEAKS_PATH
+    cd "$PEAKS_PATH"
 
     echo 'Removing sources'
 
