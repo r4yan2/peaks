@@ -33,6 +33,9 @@ public:
         dispatcher().assign("/add", &Pks::add, this);
         mapper().assign("add", "/add");
 
+        dispatcher().assign("/stats", &Pks::stats, this);
+        mapper().assign("stats", "/stats");
+
         dispatcher().assign("", &Pks::homepage, this);
         mapper().assign("");
 
@@ -57,6 +60,10 @@ public:
      * method assigned to collect key from the client
      */
     void add();
+    /**
+     * method assigned to collect and display stats on the current instance
+     */
+    void stats();
 
 private:
     std::unique_ptr<CGI_DBManager> dbm;

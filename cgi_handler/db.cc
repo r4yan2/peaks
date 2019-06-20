@@ -96,6 +96,8 @@ void CGI_DBManager::prepare_queries(){
                                        "SignatureStatus WHERE signature_id = (?) and vulnerabilityCode < 100;");
 
     get_by_hash_stmt = prepare_query("SELECT certificate FROM gpg_keyserver WHERE hash = (?);");
+    
+    get_pnodes_stmt = prepare_query("SELECT node_key, num_elements, leaf FROM ptree");
 }
 
 // Database class destructor
@@ -508,4 +510,22 @@ string CGI_DBManager::get_key_by_hash(const string &hash) {
         syslog(LOG_WARNING, "Hash not found: requested not existing hashing during recon: %s", hash.c_str());
     }
     return out;
+}
+
+vector<pnode> CGI_DBManager::get_pnodes(){
+    vector<pnode> res;
+    try{
+        std::unique_ptr<DBResult> result = get_pnodes_stmt->execute();
+        while (result->next()){
+            pnode node = pnode{
+                .node_key = result->getString("node_key"),
+                .num_elements = result->getInt("num_elements"),
+                .leaf = result->getBoolean("leaf")
+            };
+            res.push_back(node);
+        }
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not fetch nodes from the DB: %s", e.what());
+    }
+    return res;
 }

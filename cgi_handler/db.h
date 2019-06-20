@@ -14,6 +14,14 @@ const int SUCCESS = 0;
 const int ERROR = -1;
 const int KEY_NOT_FOUND = -2;
 
+/**
+ * helper struct to store the nodes data
+ */
+struct pnode{
+    std::string node_key;
+    int num_elements;
+    bool leaf;
+};
 
 /**
  * helper struct to store the values coming from the database
@@ -121,6 +129,13 @@ public:
 
     std::string get_key_by_hash(const std::string &hash);
 
+    /**
+     * Recover nodes information
+     * from the prefix tree table 
+     * @return vector containing nodes information
+     */
+    std::vector<pnode> get_pnodes();
+
 private:
 	std::shared_ptr<DBQuery>
 			shortid_stmt, 
@@ -140,7 +155,8 @@ private:
             vindex_subkey_fp_stmt, 
 			vindex_key_vuln_stmt, 
 			vindex_sign_vuln_stmt, 
-			get_by_hash_stmt;
+			get_by_hash_stmt,
+            get_pnodes_stmt;
     
 	std::string hexToUll(const std::string &hex) {
         unsigned long long ullKey = std::stoull(hex, nullptr, 16);
