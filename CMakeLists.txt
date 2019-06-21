@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
 project(peaks)
-enable_testing()
 
 set(CMAKE_CXX_STANDARD 14)
 
@@ -118,3 +117,5 @@ add_subdirectory(recon_daemon)
 add_subdirectory(unpacker)
 add_subdirectory(analyzer)
 add_subdirectory(dump)
+add_subdirectory(test)
+
