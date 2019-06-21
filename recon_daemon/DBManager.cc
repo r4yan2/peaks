@@ -122,7 +122,9 @@ std::vector<std::string> Recon_mysql_DBManager::fetch_removed_elements(){
     return hashes;
 }
 
-Recon_memory_DBManager::Recon_memory_DBManager(const DBSettings & dbsettings, const std::string & tmp_folder_) : RECON_DBManager(dbsettings, tmp_folder_){
+Recon_dummy_DBManager::Recon_dummy_DBManager(const DBSettings & db_settings, const std::string & tmp_folder_){}
+
+Recon_memory_DBManager::Recon_memory_DBManager(const DBSettings & dbsettings, const std::string & tmp_folder_) : RECON_DBManager(dbsettings, tmp_folder_), Recon_dummy_DBManager(dbsettings, tmp_folder_){
     prepare_queries();
 }
 
@@ -155,12 +157,12 @@ void Recon_memory_DBManager::unlockTables(){
     }
 }
 
-void Recon_memory_DBManager::insert_node(const RECON_DBStruct::node &n){
+void Recon_dummy_DBManager::insert_node(const RECON_DBStruct::node &n){
     syslog(LOG_DEBUG, "inserting node %s into memory DB", n.key.c_str());
     memory_storage.insert( std::make_pair(n.key, std::make_tuple(n.svalues, n.num_elements, n.leaf, n.elements)) );
   }
   
-void Recon_memory_DBManager::update_node(const RECON_DBStruct::node &n){
+void Recon_dummy_DBManager::update_node(const RECON_DBStruct::node &n){
     try{
         memory_storage.at(n.key) = std::make_tuple(n.svalues, n.num_elements, n.leaf, n.elements);
     }catch(std::exception &e){
@@ -168,7 +170,7 @@ void Recon_memory_DBManager::update_node(const RECON_DBStruct::node &n){
     }
 }
 
-RECON_DBStruct::node Recon_memory_DBManager::get_node(const std::string k){
+RECON_DBStruct::node Recon_dummy_DBManager::get_node(const std::string k){
     RECON_DBStruct::node n;
     n.key = k;
     try{
@@ -190,7 +192,7 @@ std::vector<std::string> Recon_memory_DBManager::get_all_hash(){
     return hashes;
 }
 
-void Recon_memory_DBManager::delete_node(const std::string k){
+void Recon_dummy_DBManager::delete_node(const std::string k){
     syslog(LOG_DEBUG, "deleting node %s from memory DB", k.c_str());
   try{
         memory_storage.erase(k);
@@ -230,4 +232,3 @@ void Recon_memory_DBManager::commit_memtree(){
         syslog(LOG_CRIT, "commit of the ptree to database failed!\nthe ptree will not be saved into DB because %s", e.what());
     }
 }
-

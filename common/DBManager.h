@@ -124,6 +124,9 @@ class DBManager {
         #endif
         
     public:
+
+        DBManager(){};
+
         /** @brief Database connector constructor
          * init the databasse connector with the settings that
          * will be used to reach the database

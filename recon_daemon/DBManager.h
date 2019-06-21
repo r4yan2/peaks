@@ -18,12 +18,26 @@ public:
     /** Constructor
      * @param settings Settings for the database
      */
+    RECON_DBManager(){};
     RECON_DBManager(const DBSettings & db_settings, const std::string & tmp_folder_);
     ~RECON_DBManager(){};
 
+    /** recover a node from the database
+     * @param key key of the node to recover
+     * @return node struct corresponding to the found node
+     */
     virtual RECON_DBStruct::node get_node(const std::string key) = 0;
+    /** insert node into db
+     * @param n node to insert
+     */
     virtual void insert_node(const RECON_DBStruct::node &n) = 0;
+    /** update node already present in db
+     * @param n node to update
+     */
     virtual void update_node(const RECON_DBStruct::node &n) = 0;
+    /** delete node from db
+     * @param key key of the node to delete
+     */
     virtual void delete_node(const std::string key) = 0;
     virtual bool check_key(const std::string key) = 0;
     virtual std::vector<std::string> fetch_removed_elements() = 0;
@@ -48,6 +62,36 @@ protected:
 	std::ofstream csv_file;
 };
 
+class Recon_dummy_DBManager: public virtual RECON_DBManager{
+    public:
+        Recon_dummy_DBManager(){};
+        Recon_dummy_DBManager(const DBSettings & db_settings, const std::string & tmp_folder_);
+        ~Recon_dummy_DBManager(){};
+
+        RECON_DBStruct::node get_node(const std::string key);
+        void insert_node(const RECON_DBStruct::node &n);
+        void update_node(const RECON_DBStruct::node &n);
+        void delete_node(const std::string key);
+        virtual bool check_key(const std::string key){
+            throw std::runtime_error("Not implemented error");
+        };
+        virtual std::vector<std::string> fetch_removed_elements(){
+            throw std::runtime_error("Not implemented error");
+        };
+        virtual std::vector<std::string> get_all_hash(){
+            throw std::runtime_error("Not implemented error");
+        };
+        virtual void commit_memtree(){
+            throw std::runtime_error("Not implemented error");
+        };
+        virtual void prepare_queries(){
+            throw std::runtime_error("Not implemented error");
+        };
+
+    protected:
+        std::map< std::string, std::tuple<std::string, int, bool, std::string> > memory_storage;
+};
+
 /**
  * Actual class for the MySQL database connector
  */
@@ -65,9 +109,6 @@ class Recon_mysql_DBManager: public RECON_DBManager{
      */
     RECON_DBStruct::node get_node(const std::string key);
 
-    /** insert node into db
-     * @param n node to insert
-     */
     void insert_node(const RECON_DBStruct::node &n);
 
     /** update node already present in db
@@ -121,33 +162,12 @@ private:
 	std::pair<std::string,std::string> insert_ptree_stmt;
 };
 
-class Recon_memory_DBManager: public RECON_DBManager {
+class Recon_memory_DBManager: public Recon_dummy_DBManager {
 public:
     Recon_memory_DBManager(const DBSettings & db_settings, const std::string & tmp_folder_);
 
     /** @brief prepare queries */
     void prepare_queries();
-
-    /** recover a node from the database
-     * @param key key of the node to recover
-     * @return node struct corresponding to the found node
-     */
-    RECON_DBStruct::node get_node(const std::string key);
-
-    /** insert node into db
-     * @param n node to insert
-     */
-    void insert_node(const RECON_DBStruct::node &n);
-
-    /** update node already present in db
-     * @param n node to update
-     */
-    void update_node(const RECON_DBStruct::node &n);
-
-    /** delete node from db
-     * @param key key of the node to delete
-     */
-    void delete_node(const std::string key);
 
     /** fetch all hashes from gpg_keyserver table, used
      * to build ptree
@@ -175,7 +195,6 @@ public:
     std::vector<std::string> fetch_removed_elements();
 private:
 
-    std::map< std::string, std::tuple<std::string, int, bool, std::string> > memory_storage;
     std::shared_ptr<DBQuery> 
         get_all_hash_stmt,
         check_key_stmt;
