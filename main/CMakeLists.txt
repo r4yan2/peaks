@@ -1,4 +1,4 @@
-add_executable(peaks peaks.cc)
+add_executable(peaks main.cc peaks.cc)
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
 set(STRIP "peaks_stripped")

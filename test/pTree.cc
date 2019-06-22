@@ -1,11 +1,13 @@
-#define BOOST_TEST_MODULE ptree
-#include <boost/test/included/unit_test.hpp>
+#define BOOST_TEST_DYN_LINK
+#include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
 #include <NTL/ZZ_p.h>
 #include "../recon_daemon/pTreeDB.h"
 #include "../main/peaks.h"
 
 using namespace boost::unit_test;
+
+BOOST_AUTO_TEST_SUITE(ptree)
 
 struct test_global_fixture{
 
@@ -111,4 +113,5 @@ BOOST_AUTO_TEST_CASE(ptree_test_remove)
     BOOST_CHECK_EQUAL( tree.get_node("")->get_num_elements() , 0 );
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()
