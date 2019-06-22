@@ -3,7 +3,7 @@ add_test(NAME peaks-test
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/bin/peaks-test )
 
-add_executable(peaks-test pTree.cc)
+add_executable(peaks-test main.cc ../main/peaks.cc pTree.cc Utils.cc Bitset.cc)
 
 target_link_libraries(peaks-test ${Boost_LIBRARIES})
 target_link_libraries(peaks-test ${libntl})
@@ -24,5 +24,4 @@ if(${DBMANAGER} STREQUAL "MARIADBCPP")
         target_link_libraries(peaks-test mariadb)
     endif()
 endif()
-
 

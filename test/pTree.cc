@@ -1,9 +1,5 @@
-#define BOOST_TEST_DYN_LINK
-#include <boost/test/unit_test.hpp>
-#include <boost/program_options.hpp>
-#include <NTL/ZZ_p.h>
+#include "common.h"
 #include "../recon_daemon/pTreeDB.h"
-#include "../main/peaks.h"
 
 using namespace boost::unit_test;
 
