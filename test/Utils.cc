@@ -47,9 +47,9 @@ BOOST_AUTO_TEST_CASE( test_bytes_to_zz )
 
 BOOST_AUTO_TEST_CASE( test_hex_to_zz )
 {
-    std::string hash = "2a";
+    std::string hash = "4fc00a69e4";
     ZZ_p res = hex_to_zz(hash);
-    BOOST_CHECK_EQUAL(res, ZZ_p(42));
+    BOOST_CHECK_EQUAL(res, ZZ_p(342524324324));
 }
 
 BOOST_AUTO_TEST_CASE( test_zz_to_hex )

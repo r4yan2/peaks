@@ -1,36 +1,34 @@
 #include "Bitset.h"
 
-Bitset::Bitset(){
-    n_bits = 0;
-    bytes.clear();
+Bitset::Bitset():
+    bytes(),
+    n_bits()
+{}
+
+Bitset::Bitset(int nbits):
+    bytes(),
+    n_bits(nbits)
+{
+    int bytes_size;
+    if (nbits%8 == 0)
+        bytes_size = nbits/8;
+    else
+        bytes_size = nbits/8 + 1;
+    bytes.resize(bytes_size);
+    bzero(bytes.data(), bytes_size);
 }
 
-Bitset::Bitset(int nbits){
-    n_bits = nbits;
-    int bytes_size = (nbits%8 == 0) ? nbits/8 : nbits/8 + 1;
-	if (nbits > 0){
-    	bytes.resize(bytes_size);
-    	bzero(bytes.data(), bytes_size);
-	}
-}
-
-Bitset::Bitset(const NTL::ZZ_p &num){
+Bitset::Bitset(const NTL::ZZ_p &num):
+    Bitset(NumBits(num.modulus()))
+{
     NTL::ZZ znum = NTL::rep(num);
-    bytes.resize(NumBytes(znum));
-    bzero(bytes.data(), bytes.size());
-    n_bits = NumBits(znum);
-    /*
-    for (int i=0; i<n_bits; i++)
-        if (bit(znum, n_bits - i - 1) == 1)
-		    set(i);
-    */
     BytesFromZZ(bytes.data(), znum, bytes.size());
 }
 
-Bitset::Bitset(const bytestype &newbytes){
-    n_bits = newbytes.size() * 8;
-    bytes = newbytes;
-}
+Bitset::Bitset(const bytestype &newbytes):
+    bytes(newbytes),
+    n_bits(newbytes.size()*8)
+{}
 
 Bitset::Bitset(const std::string &bitstring){
     n_bits = bitstring.size();
@@ -99,12 +97,12 @@ void Bitset::clear(int bitpos){
 }
 
 std::string Bitset::to_string() const{
-    std::ostringstream res;
+    std::string res;
     for (int i=0; i<n_bits; i++){
         if (test(i))
-            res << 1;
+            res.append("1");
         else
-            res << 0;
+            res.append("0");
     }
-    return res.str();
+    return res;
 }

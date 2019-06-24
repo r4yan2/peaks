@@ -34,31 +34,15 @@ NTL::ZZ_p hex_to_zz(const std::string &hash){
     NTL::ZZ_p elem(0);
     std::reverse(inthash.begin(), inthash.end());
     
-    //if (recon_settings.sks_compliant == 1){
-        for (size_t i=0; i < inthash.size(); i++){
-            elem = elem * (2<<7) + inthash[i];
-        }
-        /*
-    }else{
-        for (size_t i=0; i < inthash.size(); i++)
-            elem += (2<<(7*i)) * inthash[i];
-    }
-    */
+    for (size_t i=0; i < inthash.size(); i++)
+        elem += power(NTL::ZZ_p(256), (i)) * inthash[i];
     return elem;
 }
 
 NTL::ZZ_p bytes_to_zz(const std::vector<unsigned char> &bytes){
     NTL::ZZ_p elem;
     //std::reverse(bytes.begin(), bytes.end());
-
-    //if (recon_settings.sks_compliant == 1){
-        elem = NTL::conv<NTL::ZZ_p>(NTL::ZZFromBytes(bytes.data(), bytes.size()));
-    /*
-    }else{
-        for (size_t i=0; i < bytes.size(); i++)
-            elem += (2<<(7*i)) * (uint8_t) bytes[i];
-    }
-    */
+    elem = NTL::conv<NTL::ZZ_p>(NTL::ZZFromBytes(bytes.data(), bytes.size()));
     return elem;
 
 }
