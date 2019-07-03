@@ -240,7 +240,7 @@ then
     $get http://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.bz2
     tar -xf boost_1_69_0.tar.bz2
     cd boost_1_69_0/
-    ./bootstrap.sh --prefix="$PREFIX" --with-libraries=system,filesystem,program_options
+    ./bootstrap.sh --prefix="$PREFIX" --with-libraries=system,filesystem,program_options,test
     ./b2 link=static install
 
     cd "$PEAKS_PATH"
