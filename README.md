@@ -23,6 +23,7 @@ git submodule update --init --recursive
 	* System
 	* Filesystem
 	* Program Options
+    * Unit Test Framework
 * cppcms
     * pcre development files
     * zlib development files
@@ -33,7 +34,7 @@ git submodule update --init --recursive
 **On Debian/Ubuntu you can install all dependencies with**
 
 ```bash
-apt-get install -y build-essential m4 curl python cmake git libcurl4-openssl-dev libpcre3-dev libicu-dev libgcrypt11-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libmysqlcppconn-dev
+apt-get install -y build-essential m4 curl python cmake git libcurl4-openssl-dev libpcre3-dev libicu-dev libgcrypt11-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libboost-test-dev libmysqlcppconn-dev
 ```
 
 NTL, GMP and OpenPGP can be installed running
@@ -44,11 +45,7 @@ TARGET=Release ./compile_libraries.sh
 
 ### Database Initialization
 
-Use provided schema.sql to initialize MySQL
-
-**WARNING to MariaDB users**
-
-I've encountered a bug using MariaDB client connector, which I currently have not investigated, so it is HIGHLY advised to use MySQL as database backend
+Use provided schema.sql to initialize the database, you can choose between MySQL or MariaDB but you will need to compile peaks accordingly
 
 ### Peaks Keyserver
 
@@ -56,9 +53,14 @@ To compile the keyserver:
 
 ```bash
 mkdir build && cd build/ \
-&& cmake -DCMAKE_BUILD_TYPE=Release .. \
+&& cmake -DCMAKE_BUILD_TYPE=Release -DBManager=<database> .. \
 && make -j<insert_your_favourite_number_here>
 ```
+
+where <database> will be:
+
+* MYSQL in case of a MySQL installation
+* MARIADBCPP in case of a MariaDB installation
 
 The binary will output in the **/bin** subdirectory
 
