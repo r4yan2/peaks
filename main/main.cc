@@ -67,17 +67,18 @@ int main(int argc, char* argv[]){
 
         bool parsed_config = false;
         for (auto filename: filenames){
-            try{
-                parse_config(filename, vm);
-                parsed_config = true;
-                break;
-            }
-            catch(std::runtime_error& e){
-                continue;
-            }
+                std::cout << "searching config file " << filename << std::endl;
+                std::ifstream cFile(filename);
+                if (cFile.is_open()){
+                    parse_config(cFile, vm);
+                    parsed_config = true;
+                    break;
+                }
         }
 
-        if (!(parsed_config))
+        if (parsed_config)
+            std::cout << "config file found!" << std::endl;
+        else
             exit(0);
 
         std::signal(SIGINT, signalHandler);

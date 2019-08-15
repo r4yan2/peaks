@@ -1,47 +1,29 @@
 #include "common.h"
 #include "../recon_daemon/pTreeDB.h"
 
-using namespace boost::unit_test;
+BOOST_TEST_GLOBAL_FIXTURE( test_global_fixture );
 
-BOOST_AUTO_TEST_SUITE(ptree)
+po::variables_map test_global_fixture::vm;
 
-struct test_global_fixture{
-
-    test_global_fixture(){
-    
-    BOOST_TEST_MESSAGE( "setup global fixture" );
-    po::variables_map vm;
-    parse_config( "./peaks_config", vm );
-
-    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
-    std::vector<NTL::ZZ_p> points = RECON_Utils::Zpoints(vm["num_samples"].as<int>());
-
-    ptree_settings = {
-        vm["mbar"].as<int>(),
-        vm["bq"].as<int>(),
-        vm["max_ptree_nodes"].as<int>(),
-        vm["ptree_thresh_mult"].as<int>(),
-        vm["num_samples"].as<int>(),
-        points,
-        vm["split_threshold"].as<int>(),
-        vm["join_threshold"].as<int>(),
-        vm["sks_bitstring"].as<int>()
-    };
-
-    }
-
-    ~test_global_fixture(){}
-    
-    static Ptree_config ptree_settings;
-};
-
-Ptree_config test_global_fixture::ptree_settings = {};
+BOOST_AUTO_TEST_SUITE(RECON_PTREE)
 
 struct ptree_fixture{
     ptree_fixture(){
 
     std::shared_ptr<Recon_dummy_DBManager> dbm = std::make_shared<Recon_dummy_DBManager>();
-    tree = Ptree(dbm, test_global_fixture::ptree_settings);
+    Ptree_config ptree_settings = {
+        test_global_fixture::vm["mbar"].as<int>(),
+        test_global_fixture::vm["bq"].as<int>(),
+        test_global_fixture::vm["max_ptree_nodes"].as<int>(),
+        test_global_fixture::vm["ptree_thresh_mult"].as<int>(),
+        test_global_fixture::vm["num_samples"].as<int>(),
+        RECON_Utils::Zpoints(test_global_fixture::vm["num_samples"].as<int>()),
+        test_global_fixture::vm["split_threshold"].as<int>(),
+        test_global_fixture::vm["join_threshold"].as<int>(),
+        test_global_fixture::vm["sks_bitstring"].as<int>()
+    };
+
+    tree = Ptree(dbm, ptree_settings);
     tree.create();
     }
 
@@ -51,7 +33,6 @@ struct ptree_fixture{
     Ptree tree;
 };
 
-BOOST_TEST_GLOBAL_FIXTURE( test_global_fixture );
 BOOST_FIXTURE_TEST_SUITE( ptree, ptree_fixture )
 
 BOOST_AUTO_TEST_CASE(ptree_test_create)

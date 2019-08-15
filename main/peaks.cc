@@ -62,65 +62,57 @@ void help(){
     exit(0);
 }
 
-void parse_config(std::string filename, po::variables_map &vm){
-    std::cout << "searching config file " << filename << std::endl;
-    std::ifstream cFile (filename);
-    if (cFile.is_open())
-    {
-        std::cout << "config file found!" << std::endl;
-        po::options_description config("Configuration");
-        config.add_options()
-            ("mbar", po::value<int>())
-            ("bq", po::value<int>())
-            ("max_ptree_nodes", po::value<int>())
-            ("ptree_thresh_mult", po::value<int>())
-            ("P_SKS_STRING", po::value<std::string>())
-            ("reconciliation_timeout", po::value<int>())
-            ("peaks_version", po::value<std::string>())
-            ("peaks_recon_port", po::value<int>())
-            ("peaks_http_port", po::value<int>())
-            ("peaks_filters", po::value<std::string>())
-            ("name", po::value<std::string>())
-            ("gossip_interval", po::value<int>())
-            ("max_read_len_shift", po::value<int>())
-            ("max_recover_size", po::value<int>())
-            ("default_timeout", po::value<int>())
-            ("max_request_queue_len", po::value<int>())
-            ("request_chunk_size", po::value<int>())
-            ("max_outstanding_recon_req", po::value<int>())
-            ("sks_bitstring", po::value<int>())
-            ("async_timeout_sec", po::value<int>())
-            ("async_timeout_usec", po::value<int>())
-            ("ignore_known_bug", po::value<int>())
-            ("unpack_on_import", po::value<int>())
-            ("max_unpacker_limit", po::value<unsigned int>())
+void parse_config(std::istream& conf, po::variables_map &vm){
+    po::options_description config("Configuration");
+    config.add_options()
+        ("mbar", po::value<int>()->default_value(5))
+        ("bq", po::value<int>()->default_value(2))
+        ("max_ptree_nodes", po::value<int>()->default_value(1000))
+        ("ptree_thresh_mult", po::value<int>()->default_value(10))
+        ("P_SKS_STRING", po::value<std::string>()->default_value("530512889551602322505127520352579437339"))
+        ("reconciliation_timeout", po::value<int>()->default_value(45))
+        ("peaks_version", po::value<std::string>()->default_value("1.1.6"))
+        ("peaks_recon_port", po::value<int>()->default_value(11372))
+        ("peaks_http_port", po::value<int>()->default_value(11373))
+        ("peaks_filters", po::value<std::string>()->default_value("yminsky.dedup,yminsky.merge"))
+        ("name", po::value<std::string>()->default_value("peaks_recon"))
+        ("gossip_interval", po::value<int>()->default_value(60))
+        ("max_read_len_shift", po::value<int>()->default_value(24))
+        ("max_recover_size", po::value<int>()->default_value(1500))
+        ("default_timeout", po::value<int>()->default_value(300))
+        ("max_request_queue_len", po::value<int>()->default_value(60000))
+        ("request_chunk_size", po::value<int>()->default_value(100))
+        ("max_outstanding_recon_req", po::value<int>()->default_value(100))
+        ("sks_bitstring", po::value<int>()->default_value(0))
+        ("async_timeout_sec", po::value<int>()->default_value(1))
+        ("async_timeout_usec", po::value<int>()->default_value(0))
+        ("ignore_known_bug", po::value<int>()->default_value(1))
+        ("max_unpacker_limit", po::value<unsigned int>()->default_value(10000))
+        ("unpack_on_import", po::value<int>()->default_value(0))
 
-            ("db_user", po::value<std::string>())
-            ("db_host", po::value<std::string>())
-            ("db_database", po::value<std::string>())
-            ("db_password", po::value<std::string>()->default_value(""))
-            ("membership_config", po::value<std::string>())
-            ("cppcms_config", po::value<std::string>())
-            ("default_dump_path", po::value<std::string>())
-            ("analyzer_tmp_folder", po::value<std::string>())
-            ("analyzer_error_folder", po::value<std::string>())
-            ("analyzer_gcd_folder", po::value<std::string>())
-            ("unpacker_tmp_folder", po::value<std::string>())
-            ("unpacker_error_folder", po::value<std::string>())
-            ("recon_tmp_folder", po::value<std::string>())
-            ("import_tmp_folder", po::value<std::string>())
-            ("import_error_folder", po::value<std::string>())
-            ;
-        po::store(po::parse_config_file(cFile, config, false), vm);
-        vm.insert(std::make_pair("sks_zp_bytes", po::variable_value(17, false)));
-        vm.insert(std::make_pair("hashquery_len", po::variable_value(16, false)));
-        vm.insert(std::make_pair("num_samples", po::variable_value(vm["mbar"].as<int>() + 1, false)));
-        vm.insert(std::make_pair("split_threshold", po::variable_value(vm["ptree_thresh_mult"].as<int>() * vm["mbar"].as<int>(), false)));
-        vm.insert(std::make_pair("join_threshold", po::variable_value(vm["split_threshold"].as<int>() / 2, false)));
-        vm.insert(std::make_pair("max_read_len", po::variable_value(1 << vm["max_read_len_shift"].as<int>(), false)));
+        ("db_host", po::value<std::string>()->default_value("127.0.0.1"))
+        ("db_user", po::value<std::string>()->default_value("root"))
+        ("db_database", po::value<std::string>()->default_value("gpg_keyserver"))
+        ("db_password", po::value<std::string>()->default_value(""))
+        ("membership_config", po::value<std::string>()->default_value("/etc/peaks/memebership"))
+        ("cppcms_config", po::value<std::string>()->default_value("/etc/peaks/config.js"))
+        ("default_dump_path", po::value<std::string>()->default_value("/tmp/pgp_dump"))
+        ("analyzer_tmp_folder", po::value<std::string>()->default_value("/tmp/analyzer/"))
+        ("analyzer_error_folder", po::value<std::string>()->default_value("/tmp/analyzer_errors/"))
+        ("analyzer_gcd_folder", po::value<std::string>()->default_value("/tmp/analyzer_gcd/"))
+        ("unpacker_tmp_folder", po::value<std::string>()->default_value("/tmp/unpacker/"))
+        ("unpacker_error_folder", po::value<std::string>()->default_value("/tmp/unpacker_errors/"))
+        ("recon_tmp_folder", po::value<std::string>()->default_value("/tmp/recon/"))
+        ("import_tmp_folder", po::value<std::string>()->default_value("/tmp/dump_import/"))
+        ("import_error_folder", po::value<std::string>()->default_value("/tmp/dumpimport_errors/"))
+        ;
 
-    }
-    else {
-        throw std::runtime_error("Couldn't open config file for reading");
-    }
+    po::store(po::parse_config_file(conf, config, true), vm);
+    vm.insert(std::make_pair("sks_zp_bytes", po::variable_value(17, false)));
+    vm.insert(std::make_pair("hashquery_len", po::variable_value(16, false)));
+    vm.insert(std::make_pair("num_samples", po::variable_value(vm["mbar"].as<int>() + 1, false)));
+    vm.insert(std::make_pair("split_threshold", po::variable_value(vm["ptree_thresh_mult"].as<int>() * vm["mbar"].as<int>(), false)));
+    vm.insert(std::make_pair("join_threshold", po::variable_value(vm["split_threshold"].as<int>() / 2, false)));
+    vm.insert(std::make_pair("max_read_len", po::variable_value(1 << vm["max_read_len_shift"].as<int>(), false)));
+
 }

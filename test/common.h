@@ -4,15 +4,21 @@
 #include "../main/peaks.h"
 #include <NTL/ZZ_p.h>
 using namespace NTL;
-struct test_global_fixture{
-    
-    test_global_fixture(){
+using namespace boost::unit_test;
 
-    boost::program_options::variables_map vm;
-    parse_config( "./peaks_config", vm );
-    ZZ_p::init(conv<ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
+struct test_global_fixture{
+
+    test_global_fixture(){
+    
+    std::istringstream config("");
+
+    parse_config( config, vm );
+
+    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
+
     }
 
     ~test_global_fixture(){}
+    
+    static po::variables_map vm;
 };
-

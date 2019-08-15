@@ -13,5 +13,5 @@ void help();
  * @param filename string which hold the name of the config file
  * @param vm variables_map of boost::program_options, because command line by default overrides config file
  */
-void parse_config(std::string filename, po::variables_map &vm);
+void parse_config(std::istream&, po::variables_map&);
 

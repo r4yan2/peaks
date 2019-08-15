@@ -2,8 +2,6 @@
 #include "common.h"
 
 using namespace RECON_Utils;
-using namespace NTL;
-using namespace boost::unit_test;
 
 BOOST_AUTO_TEST_SUITE(RECON_UTILS)
 
