@@ -117,5 +117,7 @@ add_subdirectory(recon_daemon)
 add_subdirectory(unpacker)
 add_subdirectory(analyzer)
 add_subdirectory(dump)
-add_subdirectory(test)
 
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    add_subdirectory(test)
+endif()

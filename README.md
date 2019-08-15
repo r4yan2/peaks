@@ -57,7 +57,7 @@ mkdir build && cd build/ \
 && make -j<insert_your_favourite_number_here>
 ```
 
-where <database> will be:
+where \<database\> will be:
 
 * MYSQL in case of a MySQL installation
 * MARIADBCPP in case of a MariaDB installation
