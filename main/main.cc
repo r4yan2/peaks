@@ -185,8 +185,8 @@ int main(int argc, char* argv[]){
         std::cout << "Wrong option parameter " << e.what() << std::endl;
         help();
     } 
-    catch(boost::exception& e){
-        std::cout << "Caught exception" << boost::diagnostic_information(e) << std::endl;
+    catch(...){
+        help();
     }
 }
 
