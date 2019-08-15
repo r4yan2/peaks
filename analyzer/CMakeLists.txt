@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.5.1)
 project(analyzer)
 
 add_definitions(-Dmpz_raw_64)
