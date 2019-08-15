@@ -1,18 +1,5 @@
 add_executable(peaks main.cc peaks.cc)
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "Release")
-set(STRIP "peaks_stripped")
-add_custom_command(TARGET peaks POST_BUILD
-    COMMAND strip -o peaks_stripped peaks
-    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-    COMMENT "Running strip on binary")
-endif ()
-
-add_custom_command(TARGET peaks POST_BUILD
-    COMMAND sha1sum peaks
-    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-    COMMENT "Running checksum on binary")
-
 target_link_libraries(peaks import)
 target_link_libraries(peaks recon_daemon)
 target_link_libraries(peaks unpacker)

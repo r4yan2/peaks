@@ -216,3 +216,11 @@ Now will follow a list of the configuration options that could be modified from 
 |analyzer_error_folder | /tmp/analyzer_error|
 |unpacker_error_folder | /tmp/unpacker_error|
 |analyzer_gcd_folder | /tmp/gcd_tmp_folder/ |
+
+### Running tests
+
+Tests can be compiled passing the appropriate parameter to cmake
+
+`cmake -DTEST=ON`
+
+test will be generated under bin/peaks-test

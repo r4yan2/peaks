@@ -249,6 +249,7 @@ then
     then
         echo 'Removing sources'
         rm -r boost_1_69_0/
+        rm boost_1_69_0.tar.bz2
     fi
 fi
 

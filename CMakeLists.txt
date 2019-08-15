@@ -9,6 +9,24 @@ if(NOT DEFINED DBMANAGER)
     set(DBMANAGER "MARIADBCPP")
 endif()
 
+if(NOT DEFINED TEST)
+    set(TEST "OFF")
+endif()
+
+if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
+add_custom_command(TARGET peaks POST_BUILD
+    COMMAND strip peaks
+    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+    COMMENT "Running strip on binary")
+endif ()
+
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+add_custom_command(TARGET peaks POST_BUILD
+    COMMAND sha1sum peaks
+    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+    COMMENT "Running checksum on binary")
+endif ()
+
 add_definitions(-DGPG_COMPATIBLE)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -march=native -g3 -O0")
@@ -118,6 +136,6 @@ add_subdirectory(unpacker)
 add_subdirectory(analyzer)
 add_subdirectory(dump)
 
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+if(${TEST} STREQUAL "ON")
     add_subdirectory(test)
 endif()
