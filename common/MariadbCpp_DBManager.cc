@@ -49,7 +49,8 @@ void DBQuery::setBlob(const int pos, const std::string & s){
 }
 
 void DBQuery::setBlob(const int pos, std::istream * s_ptr){
-    stmt->set_blob(pos-1, std::shared_ptr<std::istream>(s_ptr));
+    std::shared_ptr<std::istream> ss(s_ptr);
+    stmt->set_blob(pos-1, ss);
 }
 
 void DBQuery::setInt(int pos, int value){

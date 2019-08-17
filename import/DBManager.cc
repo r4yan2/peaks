@@ -107,13 +107,9 @@ bool IMPORT_DBManager::existSignature(const DBStruct::signatures &s){
         get_signature_by_index->setBlob(1, r_sign);
         get_signature_by_index->setBlob(2, s_sign);
         std::unique_ptr<DBResult> result = get_signature_by_index->execute();
-        delete r_sign;
-        delete s_sign;
         return result->next();
     }catch (exception &e){
         syslog(LOG_CRIT, "get_signature_by_index FAILED, there may be a double signature in the database! - %s", e.what());
-        delete r_sign;
-        delete s_sign;
         return false;
     }
 }
