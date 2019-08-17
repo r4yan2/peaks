@@ -13,23 +13,10 @@ if(NOT DEFINED TEST)
     set(TEST "OFF")
 endif()
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
-add_custom_command(TARGET peaks POST_BUILD
-    COMMAND strip peaks
-    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-    COMMENT "Running strip on binary")
-endif ()
-
-if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-add_custom_command(TARGET peaks POST_BUILD
-    COMMAND sha1sum peaks
-    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-    COMMENT "Running checksum on binary")
-endif ()
-
 add_definitions(-DGPG_COMPATIBLE)
+add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -march=native -g3 -O0")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -march=native -g3 -rdynamic -O0")
 set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -march=native -Ofast")
 set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -march=x86-64 -mtune=generic -Os -no-pie")

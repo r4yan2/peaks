@@ -45,3 +45,20 @@ endif()
 
 target_link_libraries(peaks ${booster_lib})
 target_link_libraries(peaks ${libgmp})
+
+if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
+add_custom_command(TARGET peaks POST_BUILD
+    COMMAND strip peaks
+    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+    COMMENT "Running strip on binary")
+endif ()
+
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+add_custom_command(TARGET peaks POST_BUILD
+    COMMAND sha1sum peaks
+    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+    COMMENT "Running checksum on binary")
+endif ()
+
+target_link_libraries(peaks dl)
+target_link_libraries(peaks backtrace)

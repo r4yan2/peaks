@@ -4,6 +4,7 @@
 #include <cstring>
 #include <thread>
 #include <csignal>
+#include <boost/stacktrace.hpp>
 
 #include "peaks.h"
 #include "../cgi_handler/pks.h"
@@ -12,7 +13,6 @@
 #include "../import/import.h"
 #include "../analyzer/analyzer.h"
 #include "../dump/dump.h"
-
 
 /** \mainpage Peaks Keyserver Documentation
  *
@@ -28,11 +28,22 @@
  */
 bool quitting = false;
 void signalHandler(int signum) {
-
-    quitting = true;
+    switch(signum){
+        case SIGINT:
+            quitting=true;
+            break;
+        case SIGSEGV:
+            std::cerr << boost::stacktrace::stacktrace()<< std::endl;
+        default:
+            fprintf(stderr, "Error: unkown signal caught!\n");
+            exit(1);
+    }
 }
 
 int main(int argc, char* argv[]){
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGSEGV, signalHandler);
+        
 
     try{
 	    po::options_description global("Global options");
@@ -81,8 +92,6 @@ int main(int argc, char* argv[]){
         else
             exit(0);
 
-        std::signal(SIGINT, signalHandler);
-        
         if (cmd == "serve"){
             serve(vm, parsed);
 	    }
