@@ -45,7 +45,7 @@ TARGET=Release ./compile_libraries.sh
 
 ### Database Initialization
 
-Use provided schema.sql to initialize the database, you can choose between MySQL or MariaDB but you will need to compile peaks accordingly
+Use provided schema.sql to initialize the database, you can choose between MySQL or MariaDB but you will need to **compile peaks accordingly**
 
 ### Peaks Keyserver
 
@@ -73,7 +73,7 @@ The main **peaks** executable accept the following commands:
 * serve - serve the pgp infrastructure through the web interface
 * recon - start reconing with other peers
 * unpack - divide and analyze the stored certificates in the actual key material
-* analyze - analyze the key material to find known vulnerabilities
+* analyze - analyze the key material to find known vulnerabilities (**WARNING**: this will increase your database size and you will have no benefits from using this command)
 
 passing the *-h* flag will give the list of accepted options
 
@@ -83,14 +83,14 @@ passing the *-h* flag will give the list of accepted options
 
 Peaks use the following config files:
 
-* peaks_config (main config)
+* peaks\_config (main config)
 * config.js (web server config)
 * membership (needed to establish connection for recon)
 
 Make sure you have the main config file in the same folder of the peaks binary or in these other two places:
 
-* /var/lib/peaks/peaks_config
-* /etc/peaks/peaks_config
+* /var/lib/peaks/peaks\_config
+* /etc/peaks/peaks\_config
 
 From the main config is possible to specify the position of the other two. Please take a look into the dedicated section to know more about the config, in particular you need to change the database configuration before actually using peaks
 
@@ -98,12 +98,12 @@ From the main config is possible to specify the position of the other two. Pleas
 
 To have a smooth ride, it's avised to perform some optimization to the database. Since we actually have more than 5M certificates to import MySQL need to be prepared accordingly by tuning:
 
-* innodb_buffer_pool_size (make up to 50% of total RAM)
-* innodb_log_file_size (make 1/4 of *buffer_pool_size*)
-* innodb_log_buffer_size (possibly closer to *log_file_size*)
-* innodb_doublewrite = 0
-* innodb_support_xa = 0
-* innodb_flush_log_at_trx_commit = 0
+* innodb\_buffer\_pool\_size (make up to 50% of total RAM)
+* innodb\_log\_file\_size (make 1/4 of *buffer_pool_size*)
+* innodb\_log\_buffer\_size (possibly closer to *log_file_size*)
+* innodb\_doublewrite = 0
+* innodb\_support\_xa = 0
+* innodb\_flush\_log\_at\_trx\_commit = 0
 
 Also is necessary to change the following config value to use the integrated web server
 
@@ -122,7 +122,17 @@ SET foreign_key_checks = 0;
 
 ### Initializing
 
-To initialize the database use the following commands:
+Initializing the keyserver is composed of 3 steps:
+
+* Importing key
+* Building the prefix-tree
+
+#### Importing keys
+
+Since we have a huge number of pgp keys out in the wild, importing takes very
+huge effort from the database and it's very time consuming, so it is advised to
+take advantage of the fastimport options and then running the unpacker in the
+background
 
 ```
 ./peaks import -p path-to-keydump --fastimport
@@ -138,7 +148,7 @@ To generate the single-key dump from sks you can use the following command
 sks dump 1 /destination/directory [name-prefix]
 ```
 
-### Ptree building
+#### Ptree building
 
 After succesfully importing the certificate you need to generate the ptree to recon with other keyservers
 
@@ -148,7 +158,16 @@ After succesfully importing the certificate you need to generate the ptree to re
 
 ## Usage
 
-To keep-up with other keyservers you need to start the reconciliation daemon
+To keep-up with other keyservers you need to start the daemon(s) provided with
+peaks:
+
+* reconciliation daemon
+* unpacker daemon
+* server
+* (optional) if you are a security researcher you might also be intrested to
+  the analyzer, otherwise just pretend that such command does not exists
+
+To start reconciling
 
 ```bash
 ./peaks recon
@@ -158,6 +177,13 @@ To be able to query peaks from the web interface (and to allow other keyserver t
 
 ```bash
 ./peaks serve
+```
+
+To run the daemon for the unpacking of key material (needed for searching the
+keys from the web interface)
+
+```bash
+./peaks unpack
 ```
 
 ## Configuration options
@@ -224,3 +250,13 @@ Tests can be compiled passing the appropriate parameter to cmake
 `cmake -DTEST=ON`
 
 test will be generated under bin/peaks-test
+
+## Guidelines for commit
+
+Short non tedius guidelines for commit titles, do whatever you want with the
+message but try to explain why the commit was needed at least.
+
+[FIX] fixing stuff
+[CHG] changin stuff
+[IMP] new implementation
+[DEL] deleting stuff
