@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(ptree_test_create)
 {
     BOOST_TEST_MESSAGE( "test create" );
     // the root node should be empty
-    BOOST_CHECK_EQUAL( tree.get_node("")->get_num_elements() , 0 );
+    BOOST_CHECK_EQUAL( tree.get_node(bitset())->get_num_elements() , 0 );
     BOOST_CHECK_EQUAL( tree.get_root()->elements().size() , 0 );
 }
 
@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(ptree_test_insert)
         NTL::ZZ_p num(i);
         tree.insert(num);
     }
-    BOOST_CHECK_EQUAL( tree.get_node("")->get_num_elements() , 1000 );
+    BOOST_CHECK_EQUAL( tree.get_node(bitset())->get_num_elements() , 1000 );
 }
 
 BOOST_AUTO_TEST_CASE(ptree_test_insert_hash)
@@ -82,12 +82,12 @@ BOOST_AUTO_TEST_CASE(ptree_test_remove)
         NTL::ZZ_p num(i);
         tree.insert(num);
     }
-    BOOST_REQUIRE_EQUAL( tree.get_node("")->get_num_elements(), 1000 );
+    BOOST_REQUIRE_EQUAL( tree.get_node(bitset())->get_num_elements(), 1000 );
     for (int i=100; i<1100; i++){
         NTL::ZZ_p num(i);
         tree.remove(num);
     }
-    BOOST_CHECK_EQUAL( tree.get_node("")->get_num_elements() , 0 );
+    BOOST_CHECK_EQUAL( tree.get_node(bitset())->get_num_elements() , 0 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

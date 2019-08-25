@@ -80,12 +80,26 @@ class Bitset{
         /** Put to 0 the bit at the given index
          * @param bitpos index to toggle
          */
-        void clear(int bitpos);
+        void clear(int bitpos, bool nothrow=false);
 
         /** Get a string representation of the bitstring as 0,1 sequence
          * @return the string representation
          */
 	    std::string to_string() const;
+
+        /** Get a numeric (int) representation of the bitstring
+         * NOTE: the representation is calculated FROM LEFT TO RIGHT, so more
+         * like a bigint notation
+         * @return the integer representation
+         */
+        int to_int() const;
+
+        /** Get a slice of the bitstring
+         * @param start starting index of the bitstring
+         * @param end ending index of the bitstring
+         * @return resulting Bitstring
+         */
+        Bitset slice(int start, int end) const;
 };
 
 #endif

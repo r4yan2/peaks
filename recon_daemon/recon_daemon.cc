@@ -108,10 +108,10 @@ Recon::Recon(po::variables_map &vm){
 
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
     const DBSettings db_settings = {
-        vm["db_host"].as<std::string>(),
-        vm["db_user"].as<std::string>(),
-        vm["db_password"].as<std::string>(),
-        vm["db_database"].as<std::string>()
+        .db_user = vm["db_user"].as<std::string>(),
+        .db_password = vm["db_password"].as<std::string>(),
+        .db_host = vm["db_host"].as<std::string>(),
+        .db_database = vm["db_database"].as<std::string>()
     };
     std::shared_ptr<Recon_mysql_DBManager> dbm = std::make_shared<Recon_mysql_DBManager>(db_settings, vm["recon_tmp_folder"].as<std::string>());
     std::vector<NTL::ZZ_p> points = RECON_Utils::Zpoints(vm["num_samples"].as<int>());

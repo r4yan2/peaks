@@ -21,6 +21,8 @@ typedef std::shared_ptr<Pnode> pnode_ptr;
 //typedef std::shared_ptr<Ptree> ptree_ptr;
 typedef Ptree* ptree_ptr;
 
+bitset generate_child_key(const bitset&, int, int);
+
 /** Node class, inherit bunch of methods from Ptree and inherit the possibility to share 'this' reference with new nodes
  */
 class Pnode: public std::enable_shared_from_this<Pnode>{
@@ -29,7 +31,7 @@ private:
     Ptree* tree;
 
     /** node key is the identifier of the node */
-    std::string node_key;
+    bitset node_key;
 
     /** node svalues are used to perform linear interpolation upon ReconRequestPoly */
     std::vector<NTL::ZZ_p> node_svalues;
@@ -56,7 +58,7 @@ public:
     /** setter for node key
      * @param key new_key for the node (this is setted once upon node creating)
      */
-    void set_node_key(const std::string &key);
+    void set_node_key(const bitset& key);
 
     /** setter for svalues
      * @param svalues new svalues for the node
@@ -81,7 +83,7 @@ public:
     /** getter for node key
      * @return key as string
      */
-    std::string get_node_key() const;
+    bitset get_node_key() const;
 
     /** getter for the node svalues
      * @return std vector of node svalues
@@ -141,6 +143,7 @@ public:
     int next_sks(const bitset &bs, int depth);
     /** helper for next (calculated as hockeypuck would) */
     int next_hockeypuck(const bitset &bs, int depth);
+    int next_peaks(const bitset &bs, int depth);
 
     /** get the pointer to the parent node 
      * @return reference to parent node
@@ -203,7 +206,7 @@ public:
 
     void db_insert(RECON_DBStruct::node &n);
     void db_update(RECON_DBStruct::node &n);
-    void db_delete(std::string &node_key);
+    void db_delete(const bitset& node_key);
 
     /** Getter for root node
      * @return pointer to root node
@@ -232,7 +235,7 @@ public:
      * @param key key of the node to search
      * @return pointer to fetched node if found
      */
-    pnode_ptr get_node(const std::string &key);
+    pnode_ptr get_node(const bitset& key);
 
     /** check if a certain key is in the DB
      * @param key key to check
@@ -255,7 +258,7 @@ public:
      * @param child_index is the index of the child with respect to the other child (max index = 2^mbar)
      * @return pointer to the new child
      */
-    pnode_ptr new_child(const std::string &parent_key_string, int child_index);
+    pnode_ptr new_child(const bitset& parent_key, int child_index);
 
     /** search for the nearest parent of the given key, up to the root
      * @param key key to search in the tree

@@ -18,11 +18,13 @@ Bitset::Bitset(int nbits):
     bzero(bytes.data(), bytes_size);
 }
 
-Bitset::Bitset(const NTL::ZZ_p &num):
-    Bitset(NumBits(num.modulus()))
+Bitset::Bitset(const NTL::ZZ_p &num)
 {
     NTL::ZZ znum = NTL::rep(num);
-    BytesFromZZ(bytes.data(), znum, bytes.size());
+    bytestype vec(NTL::NumBytes(znum));
+    BytesFromZZ(vec.data(), znum, vec.size());
+    bytes = vec;
+    n_bits = NumBits(num.modulus());
 }
 
 Bitset::Bitset(const bytestype &newbytes):
@@ -55,23 +57,27 @@ bytestype Bitset::rep() const{
 void Bitset::resize(int new_bitsize){
     int byte_pos = new_bitsize/8;
     int bit_pos = new_bitsize%8;
-    int old_size = bytes.size();
     int new_size = byte_pos;
     if (bit_pos > 0)
         new_size += 1;
     bytes.resize(new_size);
-    if (new_size > old_size)
-        for (int i=old_size; i<new_size; i++)
-            bytes[i] = 0x00;
-    if (bit_pos != 0){
-        int mask = ~((1 << (8-bit_pos))-1);
-        bytes[byte_pos] &= mask;
+    int start, end;
+    if (new_bitsize > n_bits){
+        start = n_bits;
+        end = new_bitsize;
+    } else {
+        start = new_bitsize;
+        end = n_bits;
     }
     n_bits = new_bitsize;
+    for (int i=start; i<end; i++)
+        clear(i, true);
 }
 
 bool Bitset::test(int bitpos) const{
-    if (bitpos > n_bits){
+    if (bitpos < 0)
+        bitpos += n_bits;
+    else if (bitpos > n_bits){
         syslog(LOG_CRIT, "Required to test a bit (%d) outside the bitstring of size %d", bitpos, n_bits);
         throw std::runtime_error("testing a bit outside the bitstring");
     }
@@ -81,28 +87,43 @@ bool Bitset::test(int bitpos) const{
 }
 
 void Bitset::set(int bitpos){
-    if (bitpos > n_bits)
+    if (bitpos < 0)
+        bitpos += n_bits;
+    else if (bitpos > n_bits)
         throw std::exception();
     int byte_pos = bitpos/8;
     int bit_pos = bitpos%8;
     bytes[byte_pos] |= (1 << (8 - bit_pos - 1));
 }
 
-void Bitset::clear(int bitpos){
-    if (bitpos > n_bits)
-        throw std::exception();
+void Bitset::clear(int bitpos, bool nothrow){
+    if (bitpos < 0)
+        bitpos += n_bits;
+    else if ((bitpos > n_bits) and (!nothrow))
+        throw std::runtime_error("clearing a bit outside the bitstring");
     int byte_pos = bitpos/8;
     int bit_pos = bitpos%8;
     bytes[byte_pos] &= ~(1 << (8 - bit_pos - 1));
 }
 
 std::string Bitset::to_string() const{
-    std::string res;
+    std::string res = "";
+    for (int i=0; i<n_bits; i++)
+        res.append( test(i) ? "1" : "0" );
+    return res;
+}
+
+int Bitset::to_int() const{
+    int res = 0;
     for (int i=0; i<n_bits; i++){
-        if (test(i))
-            res.append("1");
-        else
-            res.append("0");
+        if (test(i)) res += 1<<i;
     }
     return res;
+}
+
+Bitset Bitset::slice(int start, int end) const{
+    Bitset newbs(end-start);
+    for (int i=start, j=0; i < end; i++, j++)
+        if (test(i)) newbs.set(j);
+    return newbs;
 }

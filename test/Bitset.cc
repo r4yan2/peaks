@@ -27,9 +27,15 @@ BOOST_AUTO_TEST_CASE( test_constructor_2 ){
     //Bitset::Bitset(const NTL::ZZ_p &num)
     Bitset test_2(ZZ_p(42));
     BOOST_CHECK_EQUAL(test_2.size(), NumBits(NTL::ZZ_p::modulus()));
+    BOOST_CHECK_EQUAL(test_2.to_string(), "101010");
+
+    Bitset test_3(ZZ_p(32847));
+    BOOST_CHECK_EQUAL(test_3.to_string(), "1000000001001111");
+
 }
 
 BOOST_AUTO_TEST_CASE( test_constructor_3 ){
+    //Bitset::Bitset(const bytestype &newbytes):
     ZZ_p test(999999);
     bytestype test_data(NumBytes(rep(test)));
     BytesFromZZ(test_data.data(), rep(test), test_data.size());

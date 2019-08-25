@@ -32,10 +32,13 @@ NTL::ZZ_p hex_to_zz(const std::string &hash){
         inthash.push_back(16 * ASCIIHexToInt[int(hash[i])] + ASCIIHexToInt[int(hash[i+1])]);
 
     NTL::ZZ_p elem(0);
-    std::reverse(inthash.begin(), inthash.end());
+    /* Actually this should be reversed, but if you do it will not work
+     * anymore
+     */
+    //std::reverse(inthash.begin(), inthash.end());
     
     for (size_t i=0; i < inthash.size(); i++)
-        elem += power(NTL::ZZ_p(256), (i)) * inthash[i];
+        elem += NTL::power(NTL::ZZ_p(256), (i)) * inthash[i];
     return elem;
 }
 
