@@ -80,6 +80,7 @@ class Peer{
         ReconImporter di;
 
         Message_config msg_config;
+
     public:
         /** 
          * constructor take a ptree on which operate

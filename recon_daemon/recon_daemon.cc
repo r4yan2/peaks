@@ -82,8 +82,7 @@ void build(po::variables_map &vm){
     exit(0);
 }
 
-//PEAKS_RECON_DAEMON settings;
-void recon(po::variables_map &vm){
+Recon::Recon(po::variables_map &vm){
 
     std::cout << "Starting recon_daemon" << std::endl;
     int log_option;
@@ -165,14 +164,19 @@ void recon(po::variables_map &vm){
         vm["gossip_interval"].as<int>(),
         vm["max_recover_size"].as<int>()
     };
+
+    server = vm.count("server-only");
+    client = vm.count("client-only");
     ReconImporter di = ReconImporter(vm);
-    Peer peer = Peer(tree, peer_settings, conn_settings, di, msg_settings);
-    if (vm.count("server-only"))
-        peer.start_server();
-    else if (vm.count("client-only"))
-        peer.start_client();
+    peer = std::make_unique<Peer>(tree, peer_settings, conn_settings, di, msg_settings);
+}
+
+void Recon::run(){
+    if (server)
+        peer->start_server();
+    else if (client)
+        peer->start_client();
     else
-        peer.start();
-    exit(0);
+        peer->start();
 }
 

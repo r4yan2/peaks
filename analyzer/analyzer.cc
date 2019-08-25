@@ -21,11 +21,7 @@ using namespace ANALYZER_DBStruct;
 using namespace Math_Support;
 using namespace ANALYZER_Utils;
 
-Analyzer::Analyzer(std::shared_ptr<ANALYZER_DBManager> & dbptr){
-    dbm = dbptr;
-}
-
-int analyzer(po::variables_map &vm){
+Analyzer::Analyzer(po::variables_map &vm){
 
     int log_option;
     int log_upto;
@@ -48,17 +44,16 @@ int analyzer(po::variables_map &vm){
     openlog("pgp_analyzer", log_option, LOG_USER);
     setlogmask(log_upto);
     syslog(LOG_NOTICE, "Analyzer daemon is starting up!");
-    unsigned int nThreads = thread::hardware_concurrency() / 2 + 1;
-    unsigned int limit = vm["max_unpacker_limit"].as<unsigned int>();
-    unsigned int key_per_thread;
+    nThreads = thread::hardware_concurrency() / 2 + 1;
+    limit = vm["max_unpacker_limit"].as<unsigned int>();
 
-    const DBSettings db_settings = {
+    db_settings = {
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
         vm["db_host"].as<std::string>(),
         vm["db_database"].as<std::string>()
     };
-    const AnalyzerFolders folders = {
+    folders = {
         vm["analyzer_tmp_folder"].as<std::string>(),
         vm["analyzer_error_folder"].as<std::string>(),
         vm["analyzer_gcd_folder"].as<std::string>()
@@ -79,8 +74,6 @@ int analyzer(po::variables_map &vm){
 
     shared_ptr<ANALYZER_DBManager> dbm = make_shared<ANALYZER_DBManager>(db_settings, folders);
 
-    Analyzer a = Analyzer(dbm);
-
     syslog(LOG_INFO, "Starting pubkey analysis");
     if(vm.count("threads"))
         nThreads = vm["threads"].as<unsigned int>();
@@ -97,6 +90,9 @@ int analyzer(po::variables_map &vm){
     else
         key_per_thread = 1 + ((limit - 1)/nThreads); 
      
+}
+
+void Analyzer::run(){
  
     vector<ANALYZER_DBStruct::pubkey> pk = dbm->get_pubkey(limit);
     bool exist_rsa = false;
@@ -114,7 +110,7 @@ int analyzer(po::variables_map &vm){
         for (unsigned int j = 0; i < pk.size() && j < key_per_thread; j++, i++){
             pks.push_back(pk[i]);
         }
-        pool->Add_Job([=] { return a.analyze_pubkeys(pks); });
+        pool->Add_Job([=] { return analyze_pubkeys(pks); });
     }
 
     pool->Stop_Filling_UP();
@@ -133,7 +129,7 @@ int analyzer(po::variables_map &vm){
     syslog(LOG_INFO, "Starting RSA modulus analysis");
 
     if (!pk.empty() && exist_rsa){
-        a.analyze_RSA_modulus_common_factor(dbm, nThreads);
+        analyze_RSA_modulus_common_factor(dbm, nThreads);
     }
 
     syslog(LOG_INFO, "Writing analyzed pubkeys in DB");
@@ -155,7 +151,7 @@ int analyzer(po::variables_map &vm){
         for (unsigned int j = 0; i < ss.size() && j < key_per_thread; i++, j++){
             sss.push_back(ss[i]);
         }
-        pool->Add_Job([=] { return a.analyze_signatures(sss); });
+        pool->Add_Job([=] { return analyze_signatures(sss); });
     }
 
     pool->Add_Job([=] { return dbm->write_repeated_r_csv(); });
@@ -173,10 +169,7 @@ int analyzer(po::variables_map &vm){
     dbm->insertCSV(ANALYZER_Utils::get_files(folders.analyzer_tmp_folder, ANALYZER_Utils::ANALYZED_SIGNATURE), ANALYZER_Utils::ANALYZED_SIGNATURE);
 
     syslog(LOG_NOTICE, "Analyzer daemon is stopping!");
-
-    return 0;
 }
-
 
 
 void Analyzer::analyze_pubkeys(const vector<ANALYZER_DBStruct::pubkey> &pks) const {

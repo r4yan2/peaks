@@ -10,15 +10,17 @@ namespace po = boost::program_options;
 
 class Analyzer {
 public:
-    Analyzer(std::shared_ptr<ANALYZER_DBManager> &dbptr);
+    Analyzer(po::variables_map &vm);
+    void run();
     void analyze_pubkeys(const std::vector<ANALYZER_DBStruct::pubkey> &pks) const;
     void analyze_signatures(const std::vector<ANALYZER_DBStruct::signatures> &ss) const;
 
     void analyze_RSA_modulus_common_factor(const std::shared_ptr<ANALYZER_DBManager> &dbm, const unsigned int &nThreads);
 
 private:
-    DBSettings settings;
+    DBSettings db_settings;
     AnalyzerFolders folders;
+    unsigned int nThreads,limit,key_per_thread;
 
     std::shared_ptr<ANALYZER_DBManager> dbm;
     void analyze_pubkey(ANALYZER_DBStruct::pubkey pk, const std::shared_ptr<ANALYZER_DBManager> &dbm) const;
@@ -34,8 +36,5 @@ private:
     bool check_signature(const ANALYZER_DBStruct::signatures &sign, const std::shared_ptr<ANALYZER_DBManager> &dbm) const;
 
 };
-
-int analyzer(po::variables_map &vm);
-
 
 #endif //ANALYZER_ANALYZER_H

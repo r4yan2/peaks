@@ -12,7 +12,14 @@
 
 namespace po = boost::program_options;
 void build(po::variables_map &vm);
-void recon(po::variables_map &vm);
+class Recon{
+    private:
+        std::unique_ptr<Peer> peer;
+        int server, client;
+    public:
+        Recon(po::variables_map &vm);
+        void run();
+};
 /** calculate Zpoints for the current number of samples */
 std::vector<NTL::ZZ_p> Zpoints(int num_samples);
 

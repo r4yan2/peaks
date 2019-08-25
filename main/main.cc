@@ -26,24 +26,29 @@
  
 /** signal handler when SIGINT or SIGTERM are catched
  */
+bool sleeping = false;
 bool quitting = false;
 void signalHandler(int signum) {
     switch(signum){
         case SIGINT:
-            quitting=true;
+        case SIGTERM:
+            if (sleeping)
+                exit(0);
+            else
+                quitting = true;
             break;
         case SIGSEGV:
-            std::cerr << boost::stacktrace::stacktrace()<< std::endl;
-        default:
-            fprintf(stderr, "Error: unkown signal caught!\n");
+            std::cerr << boost::stacktrace::stacktrace() << std::endl;
             exit(1);
+        default:
+            syslog(LOG_WARNING, "Error: unkown signal caught: %d", signum);
     }
 }
 
 int main(int argc, char* argv[]){
     std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
     std::signal(SIGSEGV, signalHandler);
-        
 
     try{
 	    po::options_description global("Global options");
@@ -138,15 +143,15 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(unpack_desc).run(), vm);
-            do{
-            	Unpacker::unpacker(vm);
-                int slept = 0;
-                while (!quitting and slept < vm["gossip_interval"].as<int>()){
-                    slept += 1;
-        		    std::this_thread::sleep_for(std::chrono::seconds{1});
-			    }
+            Unpacker unpacker(vm);
+            while(true){
+                if (quitting)
+                    exit(0);
+            	unpacker.run();
+                sleeping = true;
+        		std::this_thread::sleep_for(std::chrono::seconds{vm["gossip_interval"].as<int>()});
+                sleeping = false;
             }
-			while(!(quitting));
         }
         else if (cmd == "analyze"){
             po::options_description analyzer_desc("analyzer options");
@@ -157,13 +162,16 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(analyzer_desc).run(), vm);
-			while(!(quitting)){
-            	analyzer(vm);
+            Analyzer analyzer(vm);
+            
+            while(true){
                 if (quitting)
-                    break;
+                    exit(0);
+            	analyzer.run();
+                sleeping = true;
         		std::this_thread::sleep_for(std::chrono::seconds{vm["gossip_interval"].as<int>()});
-			}
-
+                sleeping = false;
+            }
         }
         else if (cmd == "recon"){
             po::options_description recon_desc("recon options");
@@ -174,7 +182,8 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(recon_desc).run(), vm);	
-            recon(vm);
+            Recon recon(vm);
+            recon.run();
             }
         else{
                 std::cout << "Unrecognized command " << cmd << std::endl;
