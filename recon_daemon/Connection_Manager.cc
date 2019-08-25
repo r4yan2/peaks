@@ -363,58 +363,64 @@ void Connection_Manager::write_message(Buffer &buffer, Message* m, bool wrap){
     if (wrap)
         partial_buffer.push_back((unsigned char)m->type);
     switch(m->type){
-        case Msg_type::ReconRequestPoly:{
-                                            ((ReconRequestPoly*)m)->marshal(partial_buffer);
-                                            delete ((ReconRequestPoly*) m);
-                                            break;
-                                        }
-        case Msg_type::ReconRequestFull:{
-                                            ((ReconRequestFull*)m)->marshal(partial_buffer);
-                                            delete ((ReconRequestFull*) m);
-                                            break;
-                                        }
-        case Msg_type::Elements:{
-                                    ((Elements*)m)->marshal(partial_buffer);
-                                    delete ((Elements*) m);
-                                    break;
-                                }
-        case Msg_type::FullElements:{
-                                    ((FullElements*)m)->marshal(partial_buffer);
-                                    delete ((FullElements*) m);
-                                    break;
-                                    }
-        case Msg_type::Error:{
-                                     ((Error*)m)->marshal(partial_buffer);
-                                     delete ((Error*) m);
-                                     break;
-                                 }
-        case Msg_type::DBRequest:{
-                                     ((DBRequest*)m)->marshal(partial_buffer);
-                                     delete ((DBRequest*) m);
-                                     break;
-                                 }
-        case Msg_type::DBReply:{
-                                   ((DBReply*)m)->marshal(partial_buffer);
-                                   delete ((DBReply*) m);
-                                   break;
-                               }
-        case Msg_type::Peer_config:{
-                                       ((Peer_config*)m)->marshal(partial_buffer);
+        case Msg_type::ReconRequestPoly:
+            ((ReconRequestPoly*)m)->marshal(partial_buffer);
+            delete ((ReconRequestPoly*) m);
+            break;
+                                        
+        case Msg_type::ReconRequestFull:
+            ((ReconRequestFull*)m)->marshal(partial_buffer);
+            delete ((ReconRequestFull*) m);
+            break;
+
+        case Msg_type::Elements:
+            ((Elements*)m)->marshal(partial_buffer);
+            delete ((Elements*) m);
+            break;
+                                
+        case Msg_type::FullElements:
+            ((FullElements*)m)->marshal(partial_buffer);
+            delete ((FullElements*) m);
+            break;
+                                    
+        case Msg_type::SyncFail:
+            ((SyncFail*)m)->marshal(partial_buffer);
+            delete ((SyncFail*) m);
+            break;
+
+        case Msg_type::Error:
+            ((Error*)m)->marshal(partial_buffer);
+            delete ((Error*) m);
+            break;
+                                 
+        case Msg_type::DBRequest:
+            ((DBRequest*)m)->marshal(partial_buffer);
+            delete ((DBRequest*) m);
+            break;
+                                 
+        case Msg_type::DBReply:
+            ((DBReply*)m)->marshal(partial_buffer);
+            delete ((DBReply*) m);
+            break;
+                               
+        case Msg_type::Peer_config:
+            ((Peer_config*)m)->marshal(partial_buffer);
                                        //delete ((Peer_config*) m);
-                                       break;
-                                   }
-        case Msg_type::Config_mismatch:{
-                                           ((Config_mismatch*)m)->marshal(partial_buffer);
-                                           delete ((Config_mismatch*) m);
-                                           break;
-                                       }
-        case Msg_type::Config_ok:{
-                                     ((Config_ok*)m)->marshal(partial_buffer);
-                                     delete ((Config_ok*) m);
-                                     break;
-                                      }
+            break;
+                                   
+        case Msg_type::Config_mismatch:
+            ((Config_mismatch*)m)->marshal(partial_buffer);
+            delete ((Config_mismatch*) m);
+            break;
+                                       
+        case Msg_type::Config_ok:
+            ((Config_ok*)m)->marshal(partial_buffer);
+            delete ((Config_ok*) m);
+            break;
+                                      
         default:
-                                 break;
+            syslog(LOG_ERR, "Unrecognized Message %d", m->type);
+            break;
     }
     if (wrap)
         partial_buffer.write_self_len();

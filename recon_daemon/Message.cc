@@ -2,7 +2,7 @@
 
 
 void ReconRequestPoly::marshal(Buffer &buf){
- 
+    syslog(LOG_DEBUG, "Sending Recon Request Poly for %s", prefix.to_string().c_str());
     buf.write_bitset(prefix);
     buf.write_int(size);
     buf.write_zz_array(samples);
@@ -12,12 +12,14 @@ void ReconRequestPoly::unmarshal(Buffer &buf){
      prefix = buf.read_bitset();
      size = buf.read_int();
      samples = buf.read_zz_array();
+     syslog(LOG_DEBUG, "Receiving Recon Request Poly for %s", prefix.to_string().c_str());
 
      //DEBUG
      //std::string test = prefix.to_string();
 }
 
 void ReconRequestFull::marshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Sending Recon Request Full for %s", prefix.to_string().c_str());
     buf.write_bitset(prefix);
     buf.write_zset(elements);
 }
@@ -25,37 +27,48 @@ void ReconRequestFull::marshal(Buffer &buf){
 void ReconRequestFull::unmarshal(Buffer &buf){
     prefix = buf.read_bitset();
     elements = buf.read_zset();
+    syslog(LOG_DEBUG, "Sending Recon Request Full for %s", prefix.to_string().c_str());
 }
 
 void Elements::marshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Sending Elements");
     buf.write_zset(elements);
 }
 
 void Elements::unmarshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Receiving Elements");
     elements = buf.read_zset();
 }
 
 void FullElements::marshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Sending Full Elements");
     buf.write_zset(elements);
 }
 
 void FullElements::unmarshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Receiving Full Elements");
     elements = buf.read_zset();
 }
 
-void SyncFail::marshal(Buffer &buf){}
+void SyncFail::marshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Sending Sync Fail");
+}
 
-void SyncFail::unmarshal(Buffer &buf){}
+void SyncFail::unmarshal(Buffer &buf){
+}
 
-void Done::marshal(Buffer &buf){}
+void Done::marshal(Buffer &buf){
+}
 
 void Done::unmarshal(Buffer &buf){}
 
-void Flush::marshal(Buffer &buf){}
+void Flush::marshal(Buffer &buf){
+}
 
 void Flush::unmarshal(Buffer &buf){}
 
 void Error::marshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Sending Error");
     buf.write_string(text);
 }
 
@@ -64,6 +77,7 @@ void Error::unmarshal(Buffer &buf){
 }
 
 void DBRequest::marshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Sending DBRequest");
     buf.write_string(text);
 }
 
@@ -72,6 +86,7 @@ void DBRequest::unmarshal(Buffer &buf){
 }
 
 void DBReply::marshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Sending DBReply");
     buf.write_string(text);
 }
 
@@ -84,6 +99,7 @@ void Peer_config::marshal(Buffer &buf){
      * 5 is the number of field into Peer_config
      * + length of other
      */
+    syslog(LOG_DEBUG, "Sending Peer config");
     buf.write_int(5 + other.size());
     buf.write_string("version");
     buf.write_string(version);
@@ -107,6 +123,7 @@ void Peer_config::marshal(Buffer &buf){
 }
 
 void Peer_config::unmarshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Receiving Peer config");
      std::string key;
      std::uint32_t val = 0;
      std::string value;
@@ -136,11 +153,13 @@ void Peer_config::unmarshal(Buffer &buf){
 }
 
 void Config_mismatch::marshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Sending Config Mismatch");
     buf.write_string(failed);
     buf.write_string(reason);
 }
 
 void Config_ok::marshal(Buffer &buf){
+    syslog(LOG_DEBUG, "Sending Config ok");
     buf.write_string(passed);
 }
 
