@@ -220,9 +220,41 @@ bool Connection_Manager::read_n_bytes(void *buf, std::size_t n, bool tmp_socket,
             ret = recv(tmpfd, cbuf + offset, n - offset, signal);
         else
             ret = recv(sockfd, cbuf + offset, n - offset, signal);
-        if (ret < 0 && (errno != EINTR || errno != EWOULDBLOCK || errno != EAGAIN)) {
-            // IOException
-            syslog(LOG_DEBUG, "IOException on recv, sorry but it is normal during recon as server");
+        if (ret < 0){
+            std::string errmsg = "";
+            switch(errno){
+                //EAGAIN have the same number as EWOULDBLOCK, but for portability should be checked separately
+                case EWOULDBLOCK:
+				        errmsg = "Receive operation would block, try to raise the timeout";
+                        break;
+                case EBADF:
+				        errmsg = "The given socket is an invalid descriptor";
+                        break;
+                case ECONNREFUSED:
+				        errmsg = "A remote host refused to allow the network connection (typically because it is not running the requested service).";
+                        break;
+				case EFAULT:
+				        errmsg = "The receive buffer pointer(s) point outside the process's address space.";
+                        break;
+                case EINTR:
+				        errmsg = "The receive was interrupted by delivery of a signal before any data were available; see signal(7).";
+                        break;
+                case EINVAL:
+				        errmsg = "Invalid argument passed.";
+                        break;
+                case ENOMEM:
+				        errmsg = "Could not allocate memory for recvmsg().";
+                        break;
+                case ENOTCONN:
+				        errmsg = "The socket is associated with a connection-oriented protocol and has not been connected";
+                        break;
+                case ENOTSOCK:
+				        errmsg = "The argument sockfd does not refer to a socket.";
+                        break;
+                default:
+                        errmsg = "Unkown error on recv";
+            }
+            syslog(LOG_DEBUG, "%s (%d)", errmsg.c_str(), errno);
             throw std::invalid_argument(strerror(errno));
         } else if (ret == 0) {
             // No data available
