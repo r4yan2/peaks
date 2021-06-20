@@ -8,7 +8,7 @@ Be sure to download the full repo (including submodules)
 git clone --recursive https://github.com/r4yan2/peaks.git
 ```
 
-or if you have just downloaded the repository without the submodule
+or if you have just downloaded the zip archive of this repository without the submodule
 
 ```bash
 cd peaks/
@@ -34,35 +34,49 @@ git submodule update --init --recursive
 **On Debian/Ubuntu you can install all dependencies with**
 
 ```bash
-apt-get install -y build-essential m4 curl python cmake git libcurl4-openssl-dev libpcre3-dev libicu-dev libgcrypt11-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libboost-test-dev libmysqlcppconn-dev
+apt-get install -y build-essential m4 curl python git libcurl4-openssl-dev libpcre3-dev libicu-dev libgcrypt20-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libboost-test-dev libmysqlcppconn-dev
 ```
+
+### Compiling
+
+Actual compiling can be done via `scons` (**Recommended**) or `cmake`
+
+### Scons 
+
+To use `Scons` as build system first of all you need to install it via
+```bash
+apt install scons
+```
+or 
+```bash
+pip install scons
+```
+Then, in the project main folder run `scons -jN` where N is the number of cpu to use, it will take care of the rest
+
+### Cmake
+
 
 NTL, GMP and OpenPGP can be installed running
 
 ```bash
-TARGET=Release ./compile_libraries.sh
+BUILD=Release ./compile_libraries.sh
 ```
-
-### Database Initialization
-
-Use provided schema.sql to initialize the database, you can choose between MySQL or MariaDB but you will need to **compile peaks accordingly**
-
-### Peaks Keyserver
 
 To compile the keyserver:
 
 ```bash
 mkdir build && cd build/ \
-&& cmake -DCMAKE_BUILD_TYPE=Release -DBManager=<database> .. \
+&& cmake -DCMAKE_BUILD_TYPE=Release .. \
 && make -j<insert_your_favourite_number_here>
 ```
 
-where \<database\> will be:
-
-* MYSQL in case of a MySQL installation
-* MARIADBCPP in case of a MariaDB installation
-
 The binary will output in the **/bin** subdirectory
+
+### Database Initialization
+
+Use provided schema.sql to initialize the database
+
+`mysql -u <user> -p < schema.sql`
 
 ## Usage
 
@@ -220,6 +234,8 @@ Now will follow a list of the configuration options that could be modified from 
 
 ### Database settings
 
+This settings might be changed according to your setup
+
 |Name|Brief Explanation|
 |----|-----------------|
 |db_host |   database host   |
@@ -229,19 +245,15 @@ Now will follow a list of the configuration options that could be modified from 
 
 ### File and folders settings     
 
+This settings might be changed according to your needs
+
 |Name|Default Value|
 |----|-----------------|
 |membership_config | /etc/peaks/membership|
 |cppcms_config | /etc/peaks/config.js |
 |default_dump_path | /tmp/pgp_dump/ |
-|dumpimport_tmp_folder | /tmp/dump_import/ |
-|dumpimport_error_folder | /tmp/dumpimport_errors/ |
-|analyzer_tmp_folder | /tmp/analyzer/ |
-|unpacker_tmp_folder | /tmp/unpacker/|
-|recon_tmp_folder | /tmp/recon/           |
-|analyzer_error_folder | /tmp/analyzer_error|
-|unpacker_error_folder | /tmp/unpacker_error|
-|analyzer_gcd_folder | /tmp/gcd_tmp_folder/ |
+|tmp_folder | /tmp/peaks_tmp |
+|error_folder | /tmp/peaks_errors |
 
 ### Running tests
 
@@ -256,7 +268,7 @@ test will be generated under bin/peaks-test
 Short non tedius guidelines for commit titles, do whatever you want with the
 message but try to explain why the commit was needed at least.
 
-[FIX] fixing stuff
-[CHG] changin stuff
-[IMP] new implementation
-[DEL] deleting stuff
+* [FIX] fixing stuff
+* [CHG] changin stuff
+* [IMP] new implementation
+* [DEL] deleting stuff

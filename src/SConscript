@@ -1,0 +1,5 @@
+import os
+
+Import('env', 'Glob', 'cpppath', 'Program', 'libpath')
+SConscript(dirs='cgi_handler', name='SConscript', exports={'env':env,'Glob': Glob})
+Program('peaks', Glob('**/*.cpp'), LIBPATH=libpath, RPATH=libpath)

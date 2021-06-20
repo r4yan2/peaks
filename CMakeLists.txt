@@ -5,10 +5,6 @@ set(CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_CXX_FLAGS "-DGPG_COMPATIBLE -Wall -pthread -lstdc++ -pipe")
 
-if(NOT DEFINED DBMANAGER)
-    set(DBMANAGER "MARIADBCPP")
-endif()
-
 if(NOT DEFINED TEST)
     set(TEST "OFF")
 endif()
@@ -19,7 +15,7 @@ add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -march=native -g3 -rdynamic -O0")
 set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -march=native -Ofast")
-set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -march=x86-64 -mtune=generic -Os -no-pie")
+set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -march=x86-64 -mtune=generic -Os")
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
     SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -31,38 +27,21 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 
 set(OPENPGP_DIR ${CMAKE_SOURCE_DIR}/OpenPGP)
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
-set(NTL_DIR ${LIB_DIR}/ntl)
-set(BOOST_ROOT ${LIB_DIR}/boost)
-set(CPPCMS_DIR ${LIB_DIR}/cppcms)
-set(GMP_DIR ${LIB_DIR}/gmp)
-set(IMPORT_DIRECTORY ${CMAKE_SOURCE_DIR}/import)
-set(DUMP_DIRECTORY ${CMAKE_SOURCE_DIR}/dump)
-set(CGI_HANDLER_DIRECTORY ${CMAKE_SOURCE_DIR}/cgi_handler)
-set(UNPACKER_DIRECTORY ${CMAKE_SOURCE_DIR}/unpacker)
-set(COMMON_DIRECTORY ${CMAKE_SOURCE_DIR}/common)
+set(BIN_DIR ${CMAKE_SOURCE_DIR}/lib/bin)
+set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
+set(LIBRARY_DIR ${CMAKE_SOURCE_DIR}/lib/lib)
+set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/lib/include)
 
-if(${DBMANAGER} STREQUAL "MYSQL")
-    set(SOURCE_DB Mysql_DBManager.cc)
-    add_compile_definitions(USE_MYSQL)
-endif()
+set(IMPORT_DIR ${CMAKE_SOURCE_DIR}/src/import)
+set(DUMP_DIR ${CMAKE_SOURCE_DIR}/src/dump)
+set(CGI_HANDLER_DIR ${CMAKE_SOURCE_DIR}/src/cgi_handler)
+set(UNPACKER_DIR ${CMAKE_SOURCE_DIR}/src/unpacker)
+set(COMMON_DIR ${CMAKE_SOURCE_DIR}/src/common)
+set(RECON_DIR ${CMAKE_SOURCE_DIR}/src/recon_daemon)
+set(MAIN_DIR ${CMAKE_SOURCE_DIR}/src/main)
+set(ANALYZER_DIR ${CMAKE_SOURCE_DIR}/src/analyzer)
 
-if(${DBMANAGER} STREQUAL "MARIADBC")
-    set(SOURCE_DB MariadbC_DBManager.cc)
-    add_compile_definitions(USE_MARIADB_C)
-endif()
-
-
-if(${DBMANAGER} STREQUAL "MARIADBCPP")
-    set(SOURCE_DB MariadbCpp_DBManager.cc)
-    add_compile_definitions(USE_MARIADB_CPP)
-    set(MARIADBCPP_DIR ${LIB_DIR}/mariadbpp)
-    include_directories(${MARIADBCPP_DIR}/include)
-    include_directories(/usr/include/mysql)
-    find_library(mariadbpp
-        NAMES libmariadbclientpp.a
-        HINTS ${MARIADBCPP_DIR}/lib/
-        )
-endif()
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 find_package(Boost REQUIRED 
     unit_test_framework 
@@ -72,27 +51,29 @@ find_package(Boost REQUIRED
     )
 find_library(cppcms_lib
     NAMES libcppcms.so libcppcms.a
-    HINTS ${CPPCMS_DIR}/lib/
+    HINTS ${LIBRARY_DIR}
     )
 find_library(booster_lib
     NAMES libbooster.so libbooster.a
-    HINTS ${CPPCMS_DIR}/lib/
+    HINTS ${LIBRARY_DIR}
     )
 
 find_library(libopenpgp
     NAMES libOpenPGP.a
-    HINTS ${OPENPGP_DIR}/
+    HINTS ${LIBRARY_DIR}
     )
 
 find_library(libgmp
-    NAMES libgmp.so libgmp.a
-    HINTS ${GMP_DIR}/lib/
+    NAMES libgmp.a
+    PATHS ${LIBRARY_DIR} NO_DEFAULT_PATH
     )
+message(STATUS "GMP libraries:      ${libgmp}")
 
 find_library(libntl
     NAMES libntl.a
-    HINTS ${NTL_DIR}/lib
+    HINTS ${LIBRARY_DIR}
     )
+
 if(${CMAKE_BUILD_TYPE} STREQUAL "Docker")
 find_library(libnghttp2
     NAMES libnghttp2.a
@@ -103,25 +84,27 @@ find_library(libmariadb
     HINTS ${LIB_DIR}/mariadb/lib/mariadb/
     )
 endif()
-include_directories(${OPENPGP_DIR})
-include_directories(${CPPCMS_DIR}/include)
-include_directories(${IMPORT_DIRECTORY})
-include_directories(${BOOST_ROOT}/include)
-include_directories(${GMP_DIR}/include)
-include_directories(${NTL_DIR}/include)
-include_directories(${CGI_HANDLER_DIRECTORY})
-include_directories(${UNPACKER_DIRECTORY})
-include_directories(${DUMP_DIRECTORY})
-include_directories(${COMMON_DIRECTORY})
 
-add_subdirectory(common)
-add_subdirectory(main)
-add_subdirectory(cgi_handler)
-add_subdirectory(import)
-add_subdirectory(recon_daemon)
-add_subdirectory(unpacker)
-add_subdirectory(analyzer)
-add_subdirectory(dump)
+include_directories(${INCLUDE_DIR})
+include_directories(${SRC_DIR})
+include_directories(${OPENPGP_DIR})
+include_directories(${COMMON_DIR})
+include_directories(${IMPORT_DIR})
+include_directories(${CGI_HANDLER_DIR})
+include_directories(${UNPACKER_DIR})
+include_directories(${DUMP_DIR})
+include_directories(${MAIN_DIR})
+include_directories(${ANALYZER_DIR})
+include_directories(${RECON_DIR})
+
+add_subdirectory(${IMPORT_DIR})
+add_subdirectory(${CGI_HANDLER_DIR})
+add_subdirectory(${UNPACKER_DIR})
+add_subdirectory(${DUMP_DIR})
+add_subdirectory(${COMMON_DIR})
+add_subdirectory(${ANALYZER_DIR})
+add_subdirectory(${RECON_DIR})
+add_subdirectory(${MAIN_DIR})
 
 if(${TEST} STREQUAL "ON")
     add_subdirectory(test)

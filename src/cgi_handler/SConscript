@@ -1,0 +1,19 @@
+import os
+Import('env', 'Glob')
+TEMPLATES_FOLDER = "templates"
+TEMPLATES = Glob('templates/*.tmpl')
+CPPCMS_CC = os.path.join(os.environ['PWD'], 'lib/bin', 'cppcms_tmpl_cc')
+env.Command('mitpgpskin.cpp', TEMPLATES, '%s -o $TARGET $SOURCE' % (CPPCMS_CC,))
+
+#set(TEMPLATES ${TEMPLATES_FOLDER}/certificate.tmpl ${TEMPLATES_FOLDER}/index.tmpl ${TEMPLATES_FOLDER}/homepage.tmpl ${TEMPLATES_FOLDER}/vindex.tmpl)
+#
+#set(CPPCMS_TMPL_CC ${LIB_DIR}/bin/cppcms_tmpl_cc)
+#
+#add_custom_command(
+#        OUTPUT mitpgpskin.cpp
+#        COMMAND ${CPPCMS_TMPL_CC} ${TEMPLATES} -o mitpgpskin.cpp
+#        DEPENDS ${TEMPLATES}
+#        )
+#
+#
+#

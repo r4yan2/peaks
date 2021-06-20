@@ -6,8 +6,7 @@ USE `gpg_keyserver`;
 -- Table structure for table `KeyStatus`
 --
 
-DROP TABLE IF EXISTS `KeyStatus`;
-CREATE TABLE `KeyStatus` (
+CREATE TABLE IF NOT EXISTS `KeyStatus` (
   `version` tinyint(3) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
   `vulnerabilityCode` tinyint(4) NOT NULL,
@@ -19,8 +18,7 @@ CREATE TABLE `KeyStatus` (
 -- Table structure for table `Pubkey`
 --
 
-DROP TABLE IF EXISTS `Pubkey`;
-CREATE TABLE `Pubkey` (
+CREATE TABLE IF NOT EXISTS `Pubkey` (
   `keyId` bigint(20) unsigned NOT NULL,
   `version` tinyint(3) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
@@ -51,8 +49,7 @@ CREATE TABLE `Pubkey` (
 -- Table structure for table `SignatureStatus`
 --
 
-DROP TABLE IF EXISTS `SignatureStatus`;
-CREATE TABLE `SignatureStatus` (
+CREATE TABLE IF NOT EXISTS `SignatureStatus` (
   `signature_id` int(10) unsigned NOT NULL,
   `vulnerabilityCode` tinyint(4) NOT NULL,
   `vulnerabilityDescription` varchar(250) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -63,8 +60,7 @@ CREATE TABLE `SignatureStatus` (
 -- Temporary table structure for view `Signature_no_issuing_fp`
 --
 
-DROP VIEW IF EXISTS `Signature_no_issuing_fp`;
-CREATE VIEW `Signature_no_issuing_fp` AS SELECT 
+CREATE VIEW IF NOT EXISTS `Signature_no_issuing_fp` AS SELECT 
  1 AS `id`,
  1 AS `fp`;
 
@@ -72,8 +68,7 @@ CREATE VIEW `Signature_no_issuing_fp` AS SELECT
 -- Table structure for table `Signatures`
 --
 
-DROP TABLE IF EXISTS `Signatures`;
-CREATE TABLE `Signatures` (
+CREATE TABLE IF NOT EXISTS `Signatures` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `type` smallint(5) unsigned NOT NULL,
   `pubAlgorithm` smallint(5) unsigned NOT NULL,
@@ -131,8 +126,7 @@ CREATE TABLE `Signatures` (
 -- Table structure for table `Unpacker_errors`
 --
 
-DROP TABLE IF EXISTS `Unpacker_errors`;
-CREATE TABLE `Unpacker_errors` (
+CREATE TABLE IF NOT EXISTS `Unpacker_errors` (
   `version` tinyint(3) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
   `error` text COLLATE utf8mb4_unicode_ci NOT NULL
@@ -142,8 +136,7 @@ CREATE TABLE `Unpacker_errors` (
 -- Table structure for table `UserAttribute`
 --
 
-DROP TABLE IF EXISTS `UserAttribute`;
-CREATE TABLE `UserAttribute` (
+CREATE TABLE IF NOT EXISTS `UserAttribute` (
   `id` int(11) NOT NULL,
   `fingerprint` binary(20) NOT NULL,
   `name` varchar(750) CHARACTER SET utf8 NOT NULL,
@@ -157,8 +150,7 @@ CREATE TABLE `UserAttribute` (
 -- Table structure for table `UserID`
 --
 
-DROP TABLE IF EXISTS `UserID`;
-CREATE TABLE `UserID` (
+CREATE TABLE IF NOT EXISTS `UserID` (
   `ownerkeyID` bigint(20) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
   `name` varchar(750) NOT NULL,
@@ -170,23 +162,10 @@ CREATE TABLE `UserID` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Table structure for table `broken_keys`
---
-
-DROP TABLE IF EXISTS `broken_keys`;
-CREATE TABLE `broken_keys` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `certificate` longblob,
-  `log` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11366 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
 -- Table structure for table `gpg_keyserver`
 --
 
-DROP TABLE IF EXISTS `gpg_keyserver`;
-CREATE TABLE `gpg_keyserver` (
+CREATE TABLE IF NOT EXISTS `gpg_keyserver` (
   `version` tinyint(3) unsigned NOT NULL,
   `ID` bigint(20) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
@@ -205,8 +184,7 @@ CREATE TABLE `gpg_keyserver` (
 -- Temporary table structure for view `key_primary_userID`
 --
 
-DROP VIEW IF EXISTS `key_primary_userID`;
-CREATE VIEW `key_primary_userID` AS SELECT 
+CREATE VIEW IF NOT EXISTS `key_primary_userID` AS SELECT 
  1 AS `version`,
  1 AS `fingerprint`,
  1 AS `name`,
@@ -217,8 +195,7 @@ CREATE VIEW `key_primary_userID` AS SELECT
 -- Table structure for table `removed_hash`
 --
 
-DROP TABLE IF EXISTS `removed_hash`;
-CREATE TABLE `removed_hash` (
+CREATE TABLE IF NOT EXISTS `removed_hash` (
   `hash` varchar(255) NOT NULL,
   PRIMARY KEY (`hash`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -227,8 +204,7 @@ CREATE TABLE `removed_hash` (
 -- Table structure for table `revocationSignatures`
 --
 
-DROP TABLE IF EXISTS `revocationSignatures`;
-CREATE TABLE `revocationSignatures` (
+CREATE TABLE IF NOT EXISTS `revocationSignatures` (
   `issuingKeyId` bigint(20) unsigned NOT NULL DEFAULT '0',
   `signedFingerprint` binary(20) NOT NULL DEFAULT '\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0',
   `signedUsername` varchar(750) NOT NULL DEFAULT '',
@@ -239,8 +215,7 @@ CREATE TABLE `revocationSignatures` (
 -- Table structure for table `selfSignaturesMetadata`
 --
 
-DROP TABLE IF EXISTS `selfSignaturesMetadata`;
-CREATE TABLE `selfSignaturesMetadata` (
+CREATE TABLE IF NOT EXISTS `selfSignaturesMetadata` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `type` smallint(5) unsigned NOT NULL,
   `pubAlgorithm` smallint(5) unsigned NOT NULL,
@@ -264,8 +239,7 @@ CREATE TABLE `selfSignaturesMetadata` (
   KEY `version` (`version`,`issuingFingerprint`,`trustLevel`,`isPrimaryUserId`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10701766 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `ptree`;
-CREATE TABLE `ptree` (
+CREATE TABLE IF NOT EXISTS `ptree` (
   `node_key` VARCHAR(200) NOT NULL,
   `node_svalues` BLOB NOT NULL,
   `num_elements` INT NOT NULL,
@@ -285,12 +259,12 @@ DELIMITER ;;
 -- WHERE issuingKeyId = new.KeyId and isnull(issuingFingerprint);
 -- END;;
 
-CREATE TRIGGER `save_hash` 
+CREATE TRIGGER IF NOT EXISTS `save_hash` 
 AFTER DELETE ON `gpg_keyserver` 
 FOR EACH ROW 
 INSERT IGNORE INTO removed_hash VALUES(OLD.hash);;
 
-CREATE TRIGGER update_issuing_username
+CREATE TRIGGER IF NOT EXISTS `update_issuing_username`
 AFTER INSERT ON UserID
 FOR EACH ROW
 BEGIN
@@ -299,7 +273,7 @@ SET issuingUsername = new.name
 WHERE issuingFingerprint = new.fingerprint and isnull(issuingUsername);
 END;;
 
-CREATE TRIGGER update_revoked_1
+CREATE TRIGGER IF NOT EXISTS `update_revoked_1`
 AFTER INSERT ON Signatures
 FOR EACH ROW
 BEGIN
@@ -311,7 +285,7 @@ END;;
 
 DELIMITER ;
 
-CREATE EVENT update_expired ON SCHEDULE EVERY 1 DAY
+CREATE EVENT IF NOT EXISTS `update_expired` ON SCHEDULE EVERY 1 DAY
 COMMENT 'update isExpired attribute on Signatures'
 DO UPDATE Signatures SET isExpired = 1, isValid = -1 WHERE expirationTime < NOW();
 
