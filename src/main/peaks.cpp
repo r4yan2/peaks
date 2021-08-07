@@ -15,7 +15,6 @@ void help(){
     std::cout << std::endl;
 
     std::cout << "  serve \t\tStart the webserver process" << std::endl;
-    std::cout << "    -c, --config \tspecify config file for cppcms" << std::endl;
     std::cout << std::endl;
 
     std::cout << "  build \t\tBuild the prefix-tree" << std::endl;
@@ -71,10 +70,11 @@ void parse_config(std::istream& conf, po::variables_map &vm){
         ("ptree_thresh_mult", po::value<int>()->default_value(10))
         ("P_SKS_STRING", po::value<std::string>()->default_value("530512889551602322505127520352579437339"))
         ("reconciliation_timeout", po::value<int>()->default_value(45))
-        ("peaks_version", po::value<std::string>()->default_value("1.1.6"))
-        ("peaks_recon_port", po::value<int>()->default_value(11372))
-        ("peaks_http_port", po::value<int>()->default_value(11373))
-        ("peaks_filters", po::value<std::string>()->default_value("yminsky.dedup,yminsky.merge"))
+        ("version", po::value<std::string>()->default_value("1.1.6"))
+        ("recon_port", po::value<int>()->default_value(11372))
+        ("http_port", po::value<int>()->default_value(11373))
+        ("pks_bind_ip", po::value<std::string>()->default_value("127.0.0.1"))
+        ("filters", po::value<std::string>()->default_value("yminsky.dedup,yminsky.merge"))
         ("name", po::value<std::string>()->default_value("peaks_recon"))
         ("gossip_interval", po::value<int>()->default_value(60))
         ("max_read_len_shift", po::value<int>()->default_value(24))

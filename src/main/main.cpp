@@ -68,7 +68,7 @@ int main(int argc, char* argv[]){
         ("help,h", "Print this help message")
         ("debug,d", "Turn on debug output")
         ("stdout,s", "Turn on debug on stdout")
-        ("config, c", po::value<std::string>(), "Specify path of the config file (Default is in the same directory of peaks executable)")
+        ("config,c", po::value<std::string>(), "Specify path of the config file (Default is in the same directory of peaks executable)")
         ("command", po::value<std::string>()->required(), "command to execute")
         ("subargs", po::value<std::vector<std::string> >(), "Arguments for command");
 
@@ -110,7 +110,8 @@ int main(int argc, char* argv[]){
             exit(0);
 
         if (cmd == "serve"){
-            serve(vm, parsed);
+            Context::context().vm = vm;
+            serve(vm);
 	    }
         else if (cmd == "build"){
             //po::options_description build_desc("build options");

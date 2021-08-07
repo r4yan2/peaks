@@ -19,6 +19,7 @@
 #include <Packets/Key.h>
 #include <common/errors.h>
 #include "PacketReader.h"
+#include <common/config.h>
 
 
 using namespace std;
@@ -35,6 +36,36 @@ const string ENTRY = "</pre><hr /><pre> \n"
 constexpr unsigned int str2int(const char* str, int h = 0) {
     return !str[h] ? 5381 : (str2int(str, h+1)*33) ^ str[h];
 }
+
+Pks::Pks(cppcms::service &srv): cppcms::application(srv)
+{
+
+        const DBSettings db_config = {
+            Context::context().vm["db_user"].as<std::string>(),
+            Context::context().vm["db_password"].as<std::string>(),
+            Context::context().vm["db_host"].as<std::string>(),
+            Context::context().vm["db_database"].as<std::string>()
+        };
+
+        dbm = std::make_shared<CGI_DBManager>(db_config);
+
+        dispatcher().assign("/lookup", &Pks::lookup, this);
+        mapper().assign("lookup", "/lookup");
+
+        dispatcher().assign("/hashquery", &Pks::hashquery, this);
+        mapper().assign("hashquery", "/hashquery");
+
+        dispatcher().assign("/add", &Pks::add, this);
+        mapper().assign("add", "/add");
+
+        dispatcher().assign("/stats", &Pks::stats, this);
+        mapper().assign("stats", "/stats");
+
+        dispatcher().assign("", &Pks::homepage, this);
+        mapper().assign("");
+
+        mapper().root("/pks");
+    }
 
 void Pks::lookup() {
     // Retrieve and parse querystring
@@ -529,27 +560,12 @@ string Pks::genEntry(DB_Key *keyInfo) {
                                userID.c_str());
 }
 
-void serve(po::variables_map &vm, po::parsed_options &parsed){
-   po::options_description serve_desc("serve options");
-   std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-   if (std::find(opts.begin(), opts.end(), "-c") == opts.end()){
-       opts.push_back("-c");
-       opts.push_back(vm["cppcms_config"].as<std::string>());
-   }
-   std::vector<char *> new_argv;
-   std::transform(opts.begin(), opts.end(), std::back_inserter(new_argv), [](const std::string s) -> char* {
-           char *pc = new char[s.size() + 1];
-           std::strcpy(pc, s.c_str());
-           return pc;
-           }
-           );
-
-    const DBSettings cgi_settings = {
-        vm["db_user"].as<std::string>(),
-        vm["db_password"].as<std::string>(),
-        vm["db_host"].as<std::string>(),
-        vm["db_database"].as<std::string>()
-    };
+void serve(po::variables_map &vm){
+    cppcms::json::value cfg;
+    cfg["service"]["api"] = "http";
+    cfg["service"]["port"] = vm["http_port"].as<int>();
+    cfg["service"]["ip"] = vm["pks_bind_ip"].as<std::string>();
+    cfg["http"]["script_names"][0] = "/pks";
 
     int log_option;
     int log_upto;
@@ -574,8 +590,8 @@ void serve(po::variables_map &vm, po::parsed_options &parsed){
  
     syslog(LOG_NOTICE, "peaks server is starting up!");
     try {
-        cppcms::service srv(opts.size(), &new_argv[0]);
-        srv.applications_pool().mount(cppcms::applications_factory<Pks>(cgi_settings));
+        cppcms::service srv(cfg);
+        srv.applications_pool().mount(cppcms::applications_factory<Pks>());
         srv.run();
     }
     catch(std::exception const &e) {

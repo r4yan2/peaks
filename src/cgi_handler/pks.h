@@ -16,32 +16,12 @@ namespace pks{
 /**
  *  main method to launch the server part
  *  @param vm map of configuration options
- *  @param parsed original command line parsed
  */
-void serve(po::variables_map &vm, po::parsed_options &parsed);
+void serve(po::variables_map &vm);
 
 class Pks : public cppcms::application {
 public:
-    Pks(cppcms::service &srv, const DBSettings & db_config) : cppcms::application(srv) {
-        dbm = std::make_unique<CGI_DBManager>(db_config);
-
-        dispatcher().assign("/lookup", &Pks::lookup, this);
-        mapper().assign("lookup", "/lookup");
-
-        dispatcher().assign("/hashquery", &Pks::hashquery, this);
-        mapper().assign("hashquery", "/hashquery");
-
-        dispatcher().assign("/add", &Pks::add, this);
-        mapper().assign("add", "/add");
-
-        dispatcher().assign("/stats", &Pks::stats, this);
-        mapper().assign("stats", "/stats");
-
-        dispatcher().assign("", &Pks::homepage, this);
-        mapper().assign("");
-
-        mapper().root("/pks");
-    }
+    Pks(cppcms::service &srv);
     ~Pks() {
     }
 
@@ -67,7 +47,7 @@ public:
     void stats();
 
 private:
-    std::unique_ptr<CGI_DBManager> dbm;
+    std::shared_ptr<CGI_DBManager> dbm;
     void get(const std::string& id);
     void index(const std::string& id);
     std::string genEntry(DB_Key *keyInfo);
