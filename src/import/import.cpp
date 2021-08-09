@@ -10,16 +10,6 @@ namespace peaks{
 namespace import{
 ReconImporter::ReconImporter(){
 }
-ReconImporter::ReconImporter(po::variables_map &vm){
-    db_settings = {
-        vm["db_user"].as<std::string>(),
-        vm["db_password"].as<std::string>(),
-        vm["db_host"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
-        vm["tmp_folder"].as<std::string>(),
-        vm["error_folder"].as<std::string>(),
-    };
-}
 
 ReconImporter::~ReconImporter(){}
 
@@ -44,22 +34,20 @@ vector<string> ReconImporter::get_hashes(const vector<string> &files){
 
 vector<string> ReconImporter::import(vector<string> keys){
 
-    std::shared_ptr<IMPORT_DBManager> dbm = make_shared<IMPORT_DBManager>(db_settings);
-    Utils::create_folders(db_settings.tmp_folder);
-    Utils::create_folders(db_settings.error_folder);
-    Utils::remove_directory_content(db_settings.tmp_folder);
+    std::shared_ptr<IMPORT_DBManager> dbm = make_shared<IMPORT_DBManager>();
+    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
     dbm->openCSVFiles();
 
     Import::unpack_string_th(dbm, keys);
 
     dbm->lockTables();
-    vector<string> hashes = get_hashes(Utils::get_files(db_settings.tmp_folder, Utils::CERTIFICATE));
-    for (const std::string & filename: Utils::get_files(db_settings.tmp_folder, Utils::CERTIFICATE)){
+    vector<string> hashes = get_hashes(Utils::get_files(CONTEXT.dbsettings.tmp_folder, Utils::CERTIFICATE));
+    for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, Utils::CERTIFICATE)){
         dbm->insertCSV(filename, Utils::CERTIFICATE);
     }
     dbm->unlockTables();
 
-    Utils::remove_directory_content(db_settings.tmp_folder);
+    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
     return hashes;
 }
 
@@ -74,7 +62,7 @@ void Importer::import() {
     int log_option;
     int log_upto;
 
-    po::variables_map vm = peaks::Context::context().vm;
+    po::variables_map vm = CONTEXT.vm;
 
     if (vm.count("stdout")){
         std::cout << "logging to stdout" << std::endl;
@@ -108,26 +96,27 @@ void Importer::import() {
     
     std::cout << "Threads: " << nThreads << std::endl;
 
-    db_settings = {
-        vm["db_user"].as<std::string>(),
-        vm["db_password"].as<std::string>(),
-        vm["db_host"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
-        vm["tmp_folder"].as<std::string>(),
-        vm["error_folder"].as<std::string>()
-    };
+    Utils::create_folders(CONTEXT.dbsettings.tmp_folder);
+    Utils::create_folders(CONTEXT.dbsettings.error_folder);
 
-    Utils::create_folders(db_settings.tmp_folder);
-    Utils::create_folders(db_settings.error_folder);
+    std::string filename;
+    auto it = CONTEXT.vm.find("init");
+    if (it != CONTEXT.vm.end()){
+        filename = it->second.as<std::string>();
+        if (filename != "") {
+            std::make_shared<DBManager>()->init_database(filename);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for mysql to initialize DB
+        }
+    }
 
     try{
-        dbm = std::make_shared<IMPORT_DBManager>(db_settings);
+        dbm = std::make_shared<IMPORT_DBManager>();
     }catch(std::exception &e){
-        std::cout << "Unable to connect to the database" << std::endl;
+        std::cout << "Unable to connect to the database: "<< e.what() << std::endl;
         exit(0);
     }
 
-    if (Context::context().quitting) return;
+    if (CONTEXT.quitting) return;
     if (!(vm.count("import-only"))){
         boost::filesystem::path path = vm["default_dump_path"].as<std::string>();
         if(vm.count("path"))
@@ -160,17 +149,17 @@ void Importer::import() {
 
         generate_csv(files, path, nThreads, key_per_thread, vm.count("fastimport"));
     }
-    if (Context::context().quitting) return;
+    if (CONTEXT.quitting) return;
     if (!(vm.count("csv-only"))){
         std::cout << "Drop index" << std::endl;
-        dbm->drop_index_gpg_keyserver();
+        //dbm->drop_index_gpg_keyserver();
         import_csv(nThreads, selection);
         std::cout << "Rebuilding index" << std::endl;
         dbm->build_index_gpg_keyserver();
     }
     if (vm.count("noclean") == 0){
         std::cout << Utils::getCurrentTime() << "Cleaning temporary folder." << std::endl;
-        Utils::remove_directory_content(db_settings.tmp_folder);
+        Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
     }else{
         std::cout << Utils::getCurrentTime() << "Not removing temporary csv fileiles as user request." << std::endl;
     }
@@ -218,7 +207,7 @@ void Importer::import_csv(unsigned int nThreads, int selection){
             std::cout << Utils::getCurrentTime() << "\tInserting ";
             std::string s = Utils::FILENAME.at(i); 
             std::cout << s.substr(1, s.size()-5) << std::endl;
-            for (const std::string & filename: Utils::get_files(db_settings.tmp_folder, i)){
+            for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i)){
                 jobs.push_back(std::bind(Import::insert_csv, dbm, filename, i));
             }
         }
@@ -227,7 +216,7 @@ void Importer::import_csv(unsigned int nThreads, int selection){
         std::cout << Utils::getCurrentTime() << "\tInserting ";
         std::string s = Utils::FILENAME.at(selection); 
         std::cout << s.substr(1, s.size()-5) << std::endl;
-        for (const std::string & filename: Utils::get_files(db_settings.tmp_folder, selection)){
+        for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, selection)){
             jobs.push_back(std::bind(Import::insert_csv, dbm, filename, selection));
         }
     }
@@ -235,7 +224,7 @@ void Importer::import_csv(unsigned int nThreads, int selection){
     size_t nJobs = jobs.size();
     std::vector<std::thread> pool_vect(nThreads > nJobs ? nJobs : nThreads);
 
-    for (unsigned int i = 0; i < nThreads; i++){
+    for (unsigned int i = 0; i < pool_vect.size(); i++){
         pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
     }
     for (const auto &j: jobs)
@@ -247,7 +236,7 @@ void Importer::import_csv(unsigned int nThreads, int selection){
             if (th.joinable())
                 th.join();
         // DB connector is synchronous
-        if (Context::context().quitting){
+        if (CONTEXT.quitting){
             std::terminate(); //abrupt chaos
         }
         if (pool->done())

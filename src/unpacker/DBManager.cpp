@@ -10,11 +10,8 @@ using namespace std;
 namespace peaks{
 namespace unpacker{
 
-UNPACKER_DBManager::UNPACKER_DBManager(const DBSettings &settings_):DBManager(settings_){
-    prepare_queries();
-}
-
-UNPACKER_DBManager::UNPACKER_DBManager(const std::shared_ptr<UNPACKER_DBManager> & dbm):DBManager(dbm->get_settings()){
+UNPACKER_DBManager::UNPACKER_DBManager():DBManager(){
+    connect_schema();
     prepare_queries();
 }
 

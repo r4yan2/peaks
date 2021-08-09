@@ -21,8 +21,7 @@ public:
     /** Constructor
      * @param settings Settings for the database
      */
-    RECON_DBManager(){};
-    RECON_DBManager(const DBSettings & db_settings);
+    RECON_DBManager();
     ~RECON_DBManager(){};
 
     /** recover a node from the database
@@ -49,11 +48,6 @@ public:
     virtual void prepare_queries() = 0;
 protected:
     /**
-     * store the config which will be used for the actual database connection
-     */
-    Recon_DBConfig settings;
-
-    /**
      * store a pointer to the csv file which will be needed to 
      * output a csv before use the bulk load
      */
@@ -62,8 +56,7 @@ protected:
 
 class Recon_dummy_DBManager: public virtual RECON_DBManager{
     public:
-        Recon_dummy_DBManager(){};
-        Recon_dummy_DBManager(const DBSettings & db_settings);
+        Recon_dummy_DBManager();
         ~Recon_dummy_DBManager(){};
 
         DBStruct::node get_node(const std::string key);
@@ -97,9 +90,8 @@ class Recon_mysql_DBManager: public RECON_DBManager{
     public:
 
     /** Constructor
-     * @param settings Settings for the database
      */
-    Recon_mysql_DBManager(const DBSettings & db_settings);
+    Recon_mysql_DBManager();
 
     /** recover a node from the database
      * @param key key of the node to recover
@@ -162,7 +154,7 @@ private:
 
 class Recon_memory_DBManager: public Recon_dummy_DBManager {
 public:
-    Recon_memory_DBManager(const DBSettings & db_settings);
+    Recon_memory_DBManager();
 
     /** @brief prepare queries */
     void prepare_queries();

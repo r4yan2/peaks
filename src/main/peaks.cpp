@@ -22,6 +22,7 @@ void help(){
     std::cout << std::endl;
 
     std::cout << "  import \t\tImport certificates into Mysql" << std::endl;
+    std::cout << "    --init \tBefore loading keys initalize DB using specified file" << std::endl;
     std::cout << "    --threads \tSet number of threads to use" << std::endl;
     std::cout << "    --keys \t\tSet how many keys a thread has to analyze" << std::endl;
     std::cout << "    --path \t\tSet the path of the dump" << std::endl;

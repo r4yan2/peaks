@@ -1,7 +1,3 @@
-CREATE DATABASE IF NOT EXISTS `gpg_keyserver`;
-
-USE `gpg_keyserver`;
-
 --
 -- Table structure for table `KeyStatus`
 --
@@ -240,12 +236,13 @@ CREATE TABLE IF NOT EXISTS `selfSignaturesMetadata` (
 ) ENGINE=InnoDB AUTO_INCREMENT=10701766 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ptree` (
-  `node_key` VARCHAR(200) NOT NULL,
+  `node_key` VARCHAR(255) NOT NULL,
+  `key_size` INT NOT NULL,
   `node_svalues` BLOB NOT NULL,
   `num_elements` INT NOT NULL,
   `leaf` TINYINT(1) NOT NULL,
   `node_elements` BLOB NOT NULL,
-  PRIMARY KEY (`node_key`(191))
+  PRIMARY KEY (`node_key`(191), `key_size`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DELIMITER ;;

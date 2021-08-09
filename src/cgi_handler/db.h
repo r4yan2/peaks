@@ -48,11 +48,21 @@ struct userID_data{
 
 class CGI_DBManager: DBManager {
 public:
-    CGI_DBManager(const DBSettings & db_settings);
+    /**
+     * default constructor
+     */
+    CGI_DBManager();
     /**
      * default destructor
      */
     ~CGI_DBManager();
+
+    /**
+     * For the integrated web server it is necessary to have
+     * ONLY_FULL_GROUP_BY disabled in mysql. This function will check and 
+     * attempt to disable the sql mode
+     */
+    void check_sql_mode();
 
 	/**
 	 * prepare some queries

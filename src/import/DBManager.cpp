@@ -5,13 +5,13 @@
 
 #include "DBManager.h"
 #include <boost/program_options.hpp>
+#include <common/config.h>
 
 using namespace std;
 
 namespace peaks{
 namespace import{
-IMPORT_DBManager::IMPORT_DBManager(const DBSettings & settings_):
-    DBManager(settings_)
+IMPORT_DBManager::IMPORT_DBManager():DBManager()
 {
 	tables = {
         {1, "gpg_keyserver"},
@@ -22,12 +22,12 @@ IMPORT_DBManager::IMPORT_DBManager(const DBSettings & settings_):
 	    {6, "Unpacker_errors"},
 	    {7, "UserID"},
 	};
+    
+    connect_schema();
     prepare_queries();
+    Utils::create_folders(CONTEXT.dbsettings.tmp_folder);
+    Utils::create_folders(CONTEXT.dbsettings.error_folder);
 }
-
-IMPORT_DBManager::IMPORT_DBManager(const std::shared_ptr<IMPORT_DBManager> & dbm_):
-    IMPORT_DBManager(dbm_->get_settings())
-{}
 
 void IMPORT_DBManager::prepare_queries() {
     get_signature_by_index = prepare_query("SELECT id "
@@ -327,7 +327,7 @@ void IMPORT_DBManager::insertCSV(const std::string & f, const unsigned int &tabl
         }
     } while (backoff > 0 && num_retries < 5);
     if (backoff > 0){
-        Utils::put_in_error(settings.error_folder, f, table);
+        Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, table);
     }
 }
 
@@ -389,7 +389,7 @@ void IMPORT_DBManager::UpdateIsValid() {
 void IMPORT_DBManager::openCSVFiles() {
     // Open files
     for (const auto &it: Utils::FILENAME)
-		IMPORT_DBManager::file_list[it.first] = make_shared<SynchronizedFile>(Utils::get_file_name(settings.tmp_folder, it.first));
+		IMPORT_DBManager::file_list[it.first] = make_shared<SynchronizedFile>(Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, it.first));
 }
 
 }

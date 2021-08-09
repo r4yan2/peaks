@@ -3,15 +3,17 @@
 #include <sstream>
 #include <thread>
 #include "DBManager.h"
+#include <common/config.h>
 
 using namespace peaks::common;
 using namespace std;
 
 namespace peaks{
 namespace recon{
-RECON_DBManager::RECON_DBManager( const DBSettings & db_settings):
-    DBManager(db_settings)
+RECON_DBManager::RECON_DBManager():
+    DBManager()
 {
+    connect_schema();
 	tables = {
 		{1, "ptree"}
 	};
@@ -30,9 +32,10 @@ void Recon_mysql_DBManager::commit_memtree(){
     throw std::runtime_error("Cannot commit whole tree in mysql database manager");
 };
 
-Recon_mysql_DBManager::Recon_mysql_DBManager(const DBSettings & dbsettings):
-    RECON_DBManager(dbsettings)
+Recon_mysql_DBManager::Recon_mysql_DBManager():
+    RECON_DBManager()
 {
+    connect_schema();
     prepare_queries();
 }
 
@@ -128,9 +131,10 @@ std::vector<std::string> Recon_mysql_DBManager::fetch_removed_elements(){
     return hashes;
 }
 
-Recon_dummy_DBManager::Recon_dummy_DBManager(const DBSettings & db_settings){}
+Recon_dummy_DBManager::Recon_dummy_DBManager(){}
 
-Recon_memory_DBManager::Recon_memory_DBManager(const DBSettings & dbsettings) : RECON_DBManager(dbsettings), Recon_dummy_DBManager(dbsettings){
+Recon_memory_DBManager::Recon_memory_DBManager() : RECON_DBManager(), Recon_dummy_DBManager(){
+    connect_schema();
     prepare_queries();
 }
 
@@ -205,7 +209,7 @@ bool Recon_memory_DBManager::check_key(const std::string k){
 
 void Recon_memory_DBManager::commit_memtree(){
     // Open file
-    csv_file = ofstream(settings.tmp_folder + "ptree.csv");
+    csv_file = ofstream(CONTEXT.dbsettings.tmp_folder + "ptree.csv");
     try{
         for (auto const entry: memory_storage){
             csv_file << '.';
@@ -217,7 +221,7 @@ void Recon_memory_DBManager::commit_memtree(){
             csv_file << "\n";
         }
         csv_file.close();
-    	execute_query(insert_ptree_stmt.first + settings.tmp_folder + "ptree.csv" + insert_ptree_stmt.second);
+    	execute_query(insert_ptree_stmt.first + CONTEXT.dbsettings.tmp_folder + "ptree.csv" + insert_ptree_stmt.second);
     }catch (exception &e){
         syslog(LOG_CRIT, "commit of the ptree to database failed!\nthe ptree will not be saved into DB because %s", e.what());
     }

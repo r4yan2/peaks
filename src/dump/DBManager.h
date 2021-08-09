@@ -25,8 +25,7 @@ class DUMP_DBManager: public DBManager {
         dump_brokenKey_stmt;
 
 public:
-    DUMP_DBManager(const DBSettings & settings_);
-    DUMP_DBManager(DUMP_DBManager * dbm_);
+    DUMP_DBManager();
     
     /** @brief Dump content of database into CSV 
      * @param f filename of the csv to create

@@ -18,8 +18,38 @@ namespace peaks{
 namespace pks{
 
 // Database connector initialization
-CGI_DBManager::CGI_DBManager(const DBSettings & db_settings): DBManager(db_settings) {
+CGI_DBManager::CGI_DBManager(): DBManager() {
+    check_sql_mode();
+    connect_schema();
     prepare_queries();
+}
+
+void CGI_DBManager::check_sql_mode(){
+    std::shared_ptr<DBQuery> sqlmode_query = prepare_query("SELECT @@SESSION.sql_mode AS mode");
+    std::unique_ptr<DBResult> result = sqlmode_query->execute();
+    std::string mode;
+    if (result->next()){
+        mode = result->getString("mode");
+    }
+    else{
+        std::cerr << "Could not determine sql mode, refer to the README for further info" << std::endl;
+        return;
+    }
+    if (mode.find("ONLY_FULL_GROUP_BY") != std::string::npos) {
+        std::cerr << "Found sql mode ONLY_FULL_GROUP_BY active, attempting to change" << '\n';
+        execute_query("SET SESSION sql_mode=(SELECT REPLACE(@@SESSION.sql_mode,'ONLY_FULL_GROUP_BY',''))");
+        std::unique_ptr<DBResult> result = sqlmode_query->execute();
+        if (result->next()){
+            mode = result->getString("mode");
+            if (mode.find("ONLY_FULL_GROUP_BY") != std::string::npos) {
+                std::cerr << "Could not change sql mode, refer to the README for further info" << std::endl;
+                exit(1);
+            } else {
+                std::cerr << "SQL mode changed" << std::endl;
+            }
+        }
+    }
+
 }
 
 void CGI_DBManager::prepare_queries(){

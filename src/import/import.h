@@ -10,7 +10,6 @@ namespace peaks{
 namespace import{
 class Importer{
     private:
-        DBSettings db_settings;
         std::shared_ptr<IMPORT_DBManager> dbm;
     public:
         Importer();
@@ -20,7 +19,7 @@ class Importer{
          */
         void import();
         void generate_csv(std::vector<std::string> files, boost::filesystem::path &path, unsigned int nThreads, unsigned int key_per_thread, int fastimport);
-        void import_csv(unsigned int nTHreads, int fastimport);
+        void import_csv(unsigned int nTHreads, int);
         /** helper to remove content of given directory
          * @param foldername folder to clean
          */
@@ -30,10 +29,7 @@ class Importer{
 class ReconImporter{
     private:
         bool unpack;
-        DBSettings db_settings;
     public:
-
-        ReconImporter(po::variables_map &vm);
         ReconImporter();
         ~ReconImporter();
 

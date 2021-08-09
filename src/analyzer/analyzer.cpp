@@ -50,15 +50,6 @@ Analyzer::Analyzer(po::variables_map &vm){
     nThreads = thread::hardware_concurrency() / 2 + 1;
     limit = vm["max_unpacker_limit"].as<unsigned int>();
 
-    db_settings = {
-        vm["db_user"].as<std::string>(),
-        vm["db_password"].as<std::string>(),
-        vm["db_host"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
-        vm["tmp_folder"].as<std::string>(),
-        vm["error_folder"].as<std::string>(),
-    };
-
     if(ANALYZER_Utils::create_folders(db_settings.tmp_folder) == -1){
         syslog(LOG_WARNING, "Unable to create temp folder");
         exit(-1);
@@ -68,7 +59,7 @@ Analyzer::Analyzer(po::variables_map &vm){
         exit(-1);
     }
 
-    shared_ptr<ANALYZER_DBManager> dbm = make_shared<ANALYZER_DBManager>(db_settings);
+    shared_ptr<ANALYZER_DBManager> dbm = make_shared<ANALYZER_DBManager>();
 
     syslog(LOG_INFO, "Starting pubkey analysis");
     if(vm.count("threads"))

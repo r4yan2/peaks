@@ -62,31 +62,32 @@ class DBQuery {
 
 class DBManager {
     public:
-        DBSettings settings;
         std::map<int, std::string> tables;
     private:
         sql::Driver *driver;
-        std::shared_ptr<sql::Connection> con;
+        sql::Connection *con;
+        sql::ConnectOptionsMap connection_properties;
     public:
 
-        DBManager(){};
 
         /** @brief Database connector constructor
          * init the databasse connector with the settings that
          * will be used to reach the database
-         * @param settings_ DBSettings struct containing data for the connection
          */
-        DBManager(const DBSettings & settings_);
+        DBManager();
 
         /** @brief Destructor for the database connector
          * The destructor for Database connector will just close the file and connections left open
          */
         ~DBManager();
 
-        /** @brief getter for settings
-         * @return settings
+        /** @brief Ensure proper connection to the required schema
          */
-        DBSettings get_settings() const {return settings;};
+        void connect_schema();
+
+        /** @brief Ensure the required schema is present in the DB
+         */
+        void init_database(const std::string &filename);
 
         /** @brief Connect to database
          * Actual connection to the database is performed

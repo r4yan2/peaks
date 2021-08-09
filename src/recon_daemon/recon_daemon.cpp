@@ -34,16 +34,7 @@ void build(po::variables_map &vm){
         exit(1);
     }
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
-    DBSettings db_settings = {
-        vm["db_user"].as<std::string>(),
-        vm["db_password"].as<std::string>(),
-        vm["db_host"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
-        vm["tmp_folder"].as<std::string>(),
-        vm["error_folder"].as<std::string>()
-    };
-
-    std::shared_ptr<Recon_memory_DBManager> dbm = std::make_shared<Recon_memory_DBManager>(db_settings);
+    std::shared_ptr<Recon_memory_DBManager> dbm = std::make_shared<Recon_memory_DBManager>();
     int entries;
     std::vector<std::string> hashes;
     hashes = dbm->get_all_hash();
@@ -111,15 +102,7 @@ Recon::Recon(po::variables_map &vm){
     setlogmask(log_upto);
 
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str()));
-    const DBSettings db_settings = {
-        .db_user = vm["db_user"].as<std::string>(),
-        .db_password = vm["db_password"].as<std::string>(),
-        .db_host = vm["db_host"].as<std::string>(),
-        .db_database = vm["db_database"].as<std::string>(),
-        .tmp_folder = vm["tmp_folder"].as<std::string>(),
-        .error_folder = vm["error_folder"].as<std::string>()
-    };
-    std::shared_ptr<Recon_mysql_DBManager> dbm = std::make_shared<Recon_mysql_DBManager>(db_settings);
+    std::shared_ptr<Recon_mysql_DBManager> dbm = std::make_shared<Recon_mysql_DBManager>();
     std::vector<NTL::ZZ_p> points = RECON_Utils::Zpoints(vm["num_samples"].as<int>());
     const Ptree_config ptree_settings = {
         vm["mbar"].as<int>(),
@@ -150,7 +133,6 @@ Recon::Recon(po::variables_map &vm){
         vm["async_timeout_usec"].as<int>()
     };
 
-
     const Message_config msg_settings = {
         vm["max_read_len"].as<int>(),
         vm["P_SKS_STRING"].as<std::string>(),
@@ -173,7 +155,7 @@ Recon::Recon(po::variables_map &vm){
 
     server = vm.count("server-only");
     client = vm.count("client-only");
-    ReconImporter di = ReconImporter(vm);
+    ReconImporter di = ReconImporter();
     peer = std::make_unique<Peer>(tree, peer_settings, conn_settings, di, msg_settings);
 }
 

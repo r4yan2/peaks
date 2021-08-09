@@ -34,13 +34,7 @@ namespace Dump{
         
         syslog(LOG_NOTICE, "Using %d Threads", nThreads);
 
-        const DBSettings db_settings = {
-            vm["db_user"].as<std::string>(),
-            vm["db_password"].as<std::string>(),
-            vm["db_host"].as<std::string>(),
-            vm["db_database"].as<std::string>()
-        };
-        std::shared_ptr<DUMP_DBManager> dbm = std::make_shared<DUMP_DBManager>(db_settings);
+        std::shared_ptr<DUMP_DBManager> dbm = std::make_shared<DUMP_DBManager>();
 
         std::string dump_path;
         if (vm.count("outdir")){
@@ -67,9 +61,9 @@ namespace Dump{
         for (unsigned int i = Utils::CERTIFICATE; i <= Utils::USERID; i++){
             std::shared_ptr<Job> j;
             if (vm.count("outdir"))
-                j = std::make_shared<Job>([=] { (std::make_unique<DUMP_DBManager>(dbm.get()))->dumplocalCSV(i); });
+                j = std::make_shared<Job>([=] { dbm->dumplocalCSV(i); });
             else
-                j = std::make_shared<Job>([=] { (std::make_unique<DUMP_DBManager>(dbm.get()))->dumpCSV(i); });
+                j = std::make_shared<Job>([=] { dbm->dumpCSV(i); });
             pool->Add_Job(j);
         }
         

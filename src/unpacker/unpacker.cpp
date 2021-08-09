@@ -60,16 +60,7 @@ Unpacker::Unpacker(po::variables_map &vm){
         syslog(LOG_WARNING,  "Unable to create error folder");
         exit(-1);
     }
-    db_settings = {
-        vm["db_user"].as<std::string>(),
-        vm["db_password"].as<std::string>(),
-        vm["db_host"].as<std::string>(),
-        vm["db_database"].as<std::string>(),
-        vm["tmp_folder"].as<std::string>(),
-        vm["error_folder"].as<std::string>()
-    };
-
-    dbm = std::make_shared<UNPACKER_DBManager>(db_settings);
+    dbm = std::make_shared<UNPACKER_DBManager>();
     
     std::vector<std::string> error_files = Utils::dirlisting(vm["error_folder"].as<std::string>());
     if (error_files.size() > 0){
@@ -162,7 +153,7 @@ void Unpacker::run(){
                 continue;
             }
         }
-        unpacking_jobs.push_back(std::make_shared<Job>([=] {unpack_key_th(make_shared<UNPACKER_DBManager>(dbm), pks); }));
+        unpacking_jobs.push_back(std::make_shared<Job>([=] {unpack_key_th(dbm, pks); }));
         pool->Add_Job(unpacking_jobs.back());
     }
 
@@ -175,7 +166,7 @@ void Unpacker::run(){
 
     for (unsigned int i = Utils::PUBKEY; i <= Utils::UNPACKED; i++){
         for (const std::string & filename: Utils::get_files(db_settings.tmp_folder, i)){
-            std::shared_ptr<Job> j = std::make_shared<Job>([=] { (std::make_shared<UNPACKER_DBManager>(dbm))->insertCSV(filename, i); }, unpacking_jobs);
+            std::shared_ptr<Job> j = std::make_shared<Job>([=] { dbm->insertCSV(filename, i); }, unpacking_jobs);
             pool->Add_Job(j);
         }
     }

@@ -17,8 +17,7 @@ namespace import{
 class IMPORT_DBManager: public DBManager {
 public:
 
-    IMPORT_DBManager(const DBSettings  & settings_);
-    IMPORT_DBManager(const std::shared_ptr<IMPORT_DBManager> & dbm_);
+    IMPORT_DBManager();
     ~IMPORT_DBManager();
 
     bool existSignature(const DBStruct::signatures &s);

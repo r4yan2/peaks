@@ -6,15 +6,12 @@ using namespace std;
 
 namespace peaks{
 namespace dump{
-DUMP_DBManager::DUMP_DBManager(const DBSettings & settings_):
-    DBManager(settings_),
+DUMP_DBManager::DUMP_DBManager():
+    DBManager(),
     dump_path()
-{}
-
-DUMP_DBManager::DUMP_DBManager(DUMP_DBManager * dbm_): 
-    DBManager(dbm_->get_settings()),
-    dump_path(dbm_->get_dump_path())
-{}
+{
+    connect_schema();
+}
 
 void DUMP_DBManager::set_dump_path(const std::string & dump_path_){
     dump_path = dump_path_;

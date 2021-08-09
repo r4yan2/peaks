@@ -17,7 +17,7 @@ namespace peaks{
 namespace analyzer{
 class ANALYZER_DBManager: public DBManager {
 public:
-    ANALYZER_DBManager(const DBSettings & settings_);
+    ANALYZER_DBManager();
     ~ANALYZER_DBManager();
     void open_pubkey_files();
     void open_signatures_files();

@@ -40,32 +40,25 @@ constexpr unsigned int str2int(const char* str, int h = 0) {
 Pks::Pks(cppcms::service &srv): cppcms::application(srv)
 {
 
-        const DBSettings db_config = {
-            Context::context().vm["db_user"].as<std::string>(),
-            Context::context().vm["db_password"].as<std::string>(),
-            Context::context().vm["db_host"].as<std::string>(),
-            Context::context().vm["db_database"].as<std::string>()
-        };
+    dbm = std::make_shared<CGI_DBManager>();
 
-        dbm = std::make_shared<CGI_DBManager>(db_config);
+    dispatcher().assign("/lookup", &Pks::lookup, this);
+    mapper().assign("lookup", "/lookup");
 
-        dispatcher().assign("/lookup", &Pks::lookup, this);
-        mapper().assign("lookup", "/lookup");
+    dispatcher().assign("/hashquery", &Pks::hashquery, this);
+    mapper().assign("hashquery", "/hashquery");
 
-        dispatcher().assign("/hashquery", &Pks::hashquery, this);
-        mapper().assign("hashquery", "/hashquery");
+    dispatcher().assign("/add", &Pks::add, this);
+    mapper().assign("add", "/add");
 
-        dispatcher().assign("/add", &Pks::add, this);
-        mapper().assign("add", "/add");
+    dispatcher().assign("/stats", &Pks::stats, this);
+    mapper().assign("stats", "/stats");
 
-        dispatcher().assign("/stats", &Pks::stats, this);
-        mapper().assign("stats", "/stats");
+    dispatcher().assign("", &Pks::homepage, this);
+    mapper().assign("");
 
-        dispatcher().assign("", &Pks::homepage, this);
-        mapper().assign("");
-
-        mapper().root("/pks");
-    }
+    mapper().root("/pks");
+}
 
 void Pks::lookup() {
     // Retrieve and parse querystring

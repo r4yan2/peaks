@@ -1,17 +1,43 @@
 #include "DBManager.h"
+#include <boost/program_options/variables_map.hpp>
+#include <cppconn/connection.h>
 #include <sys/syslog.h>
 #include <numeric>
 #include <sstream>
+#include "config.h"
 
 namespace peaks{
 namespace common{
-DBManager::DBManager(const DBSettings & settings_):
-    settings(settings_),
+DBManager::DBManager():
     tables(),
-    driver(get_driver_instance()),
-    con(driver->connect(settings.db_host, settings.db_user, settings.db_password))
+    driver(get_driver_instance())
 {
-    con->setSchema(settings.db_database);
+    connection_properties["hostName"] = CONTEXT.dbsettings.db_host;
+    connection_properties["userName"] = CONTEXT.dbsettings.db_user;
+    connection_properties["password"] = CONTEXT.dbsettings.db_password;
+    connection_properties["CLIENT_MULTI_STATEMENTS"] = true;
+    con = driver->connect(connection_properties);
+}
+
+void DBManager::connect_schema(){
+    con->setSchema(CONTEXT.dbsettings.db_database);
+}
+
+void DBManager::init_database(const std::string &filename){
+
+    std::string dbinit = "CREATE DATABASE IF NOT EXISTS `" + CONTEXT.dbsettings.db_database + "`;";
+    execute_query(dbinit);
+    connect_schema();
+    std::ifstream inFile;
+    inFile.open(filename);
+    if (inFile.fail())
+    {
+        std::cerr << "Could not find init file for DB" << std::endl;
+    }
+    std::stringstream buffer;
+    buffer << inFile.rdbuf();
+    execute_query(buffer.str());
+    std::cerr << "Done init database" << std::endl;
 }
 
 DBManager::~DBManager(){
@@ -25,8 +51,8 @@ bool DBManager::ensure_database_connection(){
         return connected;
 
     driver = get_driver_instance();
-    con = std::shared_ptr<sql::Connection>(driver->connect(settings.db_host, settings.db_user, settings.db_password));
-    con->setSchema(settings.db_database);
+    con = driver->connect(connection_properties);
+    con->setSchema(CONTEXT.dbsettings.db_database);
     return connected;
 }
 

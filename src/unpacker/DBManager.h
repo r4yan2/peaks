@@ -37,19 +37,10 @@ public:
     /** @brief Database connector constructor
      * init the databasse connector with the settings that
      * will be used to reach the database
-     * @param un_settings settings for the database connection
      */
-    UNPACKER_DBManager(const DBSettings & settings_);
+    UNPACKER_DBManager();
 
-    /** @brief Copy constructor
-     * This copy constructor is used to parellelize
-     * load data by creating another connection
-     * istance on the fly
-     * @param dbm DBManager istance to copy
-     */
-    UNPACKER_DBManager(const std::shared_ptr<UNPACKER_DBManager> & dbm);
-
-     /** @brief Destructor for the database connector
+    /** @brief Destructor for the database connector
      * The destructor will just close the file left open
      */
     ~UNPACKER_DBManager();

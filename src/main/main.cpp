@@ -45,7 +45,7 @@ void signalHandler(int signum) {
                 exit(0);
             else{
                 std::cerr << "Shutting Down..." << std::endl;
-                Context::context().quitting = true;
+                CONTEXT.quitting = true;
             }
             break;
         case SIGSEGV:
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]){
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
     std::signal(SIGSEGV, signalHandler);
-    Context::context().quitting = false;
+    CONTEXT.quitting = false;
 
     try{
 	    po::options_description global("Global options");
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]){
             exit(0);
 
         if (cmd == "serve"){
-            Context::context().vm = vm;
+            CONTEXT.setContext(vm);
             serve(vm);
 	    }
         else if (cmd == "build"){
@@ -120,8 +120,8 @@ int main(int argc, char* argv[]){
         else if (cmd == "dump"){
             po::options_description dump_desc("dump options");
             dump_desc.add_options()
-                ("threads, t", po::value<unsigned int>(), "set number of threads")
-                ("outdir, o", po::value<std::string>(), "set output dir");
+                ("threads,t", po::value<unsigned int>(), "set number of threads")
+                ("outdir,o", po::value<std::string>(), "set output dir");
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(dump_desc).run(), vm);
@@ -130,36 +130,37 @@ int main(int argc, char* argv[]){
         else if (cmd == "import"){
             po::options_description import_desc("import options");
             import_desc.add_options()
-                ("threads, t", po::value<unsigned int>(), "set number of threads")
-                ("keys, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-                ("path, p", po::value<boost::filesystem::path>(), "path to the dump")
+                ("init", po::value<std::string>(), "Before loading keys initalize DB using specified file")
+                ("threads,t", po::value<unsigned int>(), "set number of threads")
+                ("keys,k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
+                ("path,p", po::value<boost::filesystem::path>(), "path to the dump")
                 ("csv-only", "stop certificate import after creating csv")
                 ("import-only", "start certificate import directly inserting csv into db")
-                ("fastimport, f", "fastimport")
-                ("selection, s", po::value<int>()->default_value(-1), "select which table to import")
-                ("noclean, n", "do not clean temporary folder");
+                ("fastimport,f", "fastimport")
+                ("selection,s", po::value<int>()->default_value(-1), "select which table to import")
+                ("noclean,n", "do not clean temporary folder");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(import_desc).run(), vm);
             Importer importer;
-            Context::context().vm = vm;
+            CONTEXT.setContext(vm);
             importer.import();
             }
         else if (cmd == "unpack"){
             po::options_description unpack_desc("unpack options");
             unpack_desc.add_options()
-                ("threads, t", po::value<unsigned int>(), "set number of threads")
-                ("keys, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-                ("limit, l", po::value<unsigned int>(), "set limit to how many keys to unpack per run")
-                ("recover, r", "recover");
+                ("threads,t", po::value<unsigned int>(), "set number of threads")
+                ("keys,k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
+                ("limit,l", po::value<unsigned int>(), "set limit to how many keys to unpack per run")
+                ("recover,r", "recover");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(unpack_desc).run(), vm);
             Unpacker unpacker(vm);
             while(true){
-                if (Context::context().quitting)
+                if (CONTEXT.quitting)
                     exit(0);
             	unpacker.run();
                 sleeping = true;
@@ -170,16 +171,16 @@ int main(int argc, char* argv[]){
         else if (cmd == "analyze"){
             po::options_description analyzer_desc("analyzer options");
             analyzer_desc.add_options()
-                ("threads, t", po::value<unsigned int>(), "set number of threads")
-                ("keys, k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-                ("limit, l", po::value<unsigned int>(), "set limit to how many keys to unpack per run");
+                ("threads,t", po::value<unsigned int>(), "set number of threads")
+                ("keys,k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
+                ("limit,l", po::value<unsigned int>(), "set limit to how many keys to unpack per run");
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(analyzer_desc).run(), vm);
             Analyzer analyzer(vm);
             
             while(true){
-                if (Context::context().quitting)
+                if (CONTEXT.quitting)
                     exit(0);
             	analyzer.run();
                 sleeping = true;
