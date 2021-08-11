@@ -30,23 +30,24 @@ class Bitset{
         /** constructor
          * @param nbits number of bits to initialize the array
          */
-        Bitset(int nbits);
+        explicit Bitset(int nbits);
 
         /** constructor which initialize the bitstring to the given number
          * @param z bitstring representing number
          */
-        Bitset(const NTL::ZZ_p& z);
+        explicit Bitset(const NTL::ZZ_p& z);
 
         /** copy constructior
          * @param newbytes byte vector to represent as bitstring
          */
-        Bitset(const bytestype &newbytes);
+        explicit Bitset(const bytestype &newbytes);
 
-        /** constructor from string take a string representation of bits and transpose into this type of bitstring
+        /** constructor from string take a string representation of bytes
          * @param bitstring
          */
-        Bitset(const std::string &bitstring);
+        explicit Bitset(const std::string &bitstring);
 
+        bool operator<(const Bitset & other);
 
         /** get the size of the bitstring
          * @return int size of bits of the bitstring
@@ -84,10 +85,22 @@ class Bitset{
          */
         void clear(int bitpos, bool nothrow=false);
 
+        /**
+         * Return a decoded bitstring from a string of 0,1
+         * @param string of 0/1 chars
+         * @return resulting Bitset
+         */
+        static Bitset from_string(const std::string &);
+
         /** Get a string representation of the bitstring as 0,1 sequence
          * @return the string representation
          */
-	    std::string to_string() const;
+	    static std::string to_string(const Bitset &);
+
+        /** Get a byte string representation
+         * @return the representation
+         */
+	    std::string blob() const;
 
         /** Get a numeric (int) representation of the bitstring
          * NOTE: the representation is calculated FROM LEFT TO RIGHT, so more

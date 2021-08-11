@@ -15,7 +15,6 @@
 
 namespace peaks{
 namespace recon{
-typedef Bitset bitset;
 class Pnode;
 class Ptree;
 
@@ -23,7 +22,7 @@ typedef std::shared_ptr<Pnode> pnode_ptr;
 //typedef std::shared_ptr<Ptree> ptree_ptr;
 typedef Ptree* ptree_ptr;
 
-bitset generate_child_key(const bitset&, int, int);
+Bitset generate_child_key(const Bitset&, int, int);
 
 /** Node class, inherit bunch of methods from Ptree and inherit the possibility to share 'this' reference with new nodes
  */
@@ -33,7 +32,7 @@ private:
     Ptree* tree;
 
     /** node key is the identifier of the node */
-    bitset node_key;
+    Bitset node_key;
 
     /** node svalues are used to perform linear interpolation upon ReconRequestPoly */
     std::vector<NTL::ZZ_p> node_svalues;
@@ -60,7 +59,7 @@ public:
     /** setter for node key
      * @param key new_key for the node (this is setted once upon node creating)
      */
-    void set_node_key(const bitset& key);
+    void set_node_key(const Bitset& key);
 
     /** setter for svalues
      * @param svalues new svalues for the node
@@ -85,7 +84,7 @@ public:
     /** getter for node key
      * @return key as string
      */
-    bitset get_node_key() const;
+    Bitset get_node_key() const;
 
     /** getter for the node svalues
      * @return std vector of node svalues
@@ -127,7 +126,7 @@ public:
      * @param bs, used to iterate in case the current node is full
      * @param depth current depth at which insert is performed
      */
-    void insert(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const bitset &bs, int depth);
+    void insert(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const Bitset &bs, int depth);
 
     /** push element into node_elements vector
      * @param elem new element to push back into vector
@@ -139,13 +138,13 @@ public:
      * @param depth current search depth of the ptree
      * @return index of the child node
      * */
-    int next(const bitset &bs, int depth);
+    int next(const Bitset &bs, int depth);
 
     /** helper for next (calculated as sks would) */
-    int next_sks(const bitset &bs, int depth);
+    int next_sks(const Bitset &bs, int depth);
     /** helper for next (calculated as hockeypuck would) */
-    int next_hockeypuck(const bitset &bs, int depth);
-    int next_peaks(const bitset &bs, int depth);
+    int next_hockeypuck(const Bitset &bs, int depth);
+    int next_peaks(const Bitset &bs, int depth);
 
     /** get the pointer to the parent node 
      * @return reference to parent node
@@ -157,7 +156,7 @@ public:
      * @param marray array used to update svalues
      * @param bs, used to iterate in case the current node is full
      */
-    void remove(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const bitset &bs, int depth);
+    void remove(const NTL::ZZ_p &z, const std::vector<NTL::ZZ_p> &marray, const Bitset &bs, int depth);
 
     /** split a node when the threshold is reached
      * @param depth current depth
@@ -208,7 +207,7 @@ public:
 
     void db_insert(DBStruct::node &n);
     void db_update(DBStruct::node &n);
-    void db_delete(const bitset& node_key);
+    void db_delete(const Bitset& node_key);
 
     /** Getter for root node
      * @return pointer to root node
@@ -237,7 +236,7 @@ public:
      * @param key key of the node to search
      * @return pointer to fetched node if found
      */
-    pnode_ptr get_node(const bitset& key);
+    pnode_ptr get_node(const Bitset& key);
 
     /** check if a certain key is in the DB
      * @param key key to check
@@ -260,13 +259,13 @@ public:
      * @param child_index is the index of the child with respect to the other child (max index = 2^mbar)
      * @return pointer to the new child
      */
-    pnode_ptr new_child(const bitset& parent_key, int child_index);
+    pnode_ptr new_child(const Bitset& parent_key, int child_index);
 
     /** search for the nearest parent of the given key, up to the root
      * @param key key to search in the tree
      * @return pointer to the found node
      */
-    pnode_ptr node(bitset &key);
+    pnode_ptr node(Bitset &key);
 
     /** remove a node from the ptree
      * @param z node to remove

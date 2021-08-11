@@ -4,7 +4,7 @@ namespace peaks{
 namespace recon{
 
 void ReconRequestPoly::marshal(Buffer &buf){
-    syslog(LOG_DEBUG, "Sending Recon Request Poly for %s", prefix.to_string().c_str());
+    syslog(LOG_DEBUG, "Sending Recon Request Poly for %s", Bitset::to_string(prefix).c_str());
     buf.write_bitset(prefix);
     buf.write_int(size);
     buf.write_zz_array(samples);
@@ -14,14 +14,14 @@ void ReconRequestPoly::unmarshal(Buffer &buf){
      prefix = buf.read_bitset();
      size = buf.read_int();
      samples = buf.read_zz_array();
-     syslog(LOG_DEBUG, "Receiving Recon Request Poly for %s", prefix.to_string().c_str());
+     syslog(LOG_DEBUG, "Receiving Recon Request Poly for tset::%s", Bitset::to_string(prefix).c_str());
 
      //DEBUG
      //std::string test = prefix.to_string();
 }
 
 void ReconRequestFull::marshal(Buffer &buf){
-    syslog(LOG_DEBUG, "Sending Recon Request Full for %s", prefix.to_string().c_str());
+    syslog(LOG_DEBUG, "Sending Recon Request Full for %s", Bitset::to_string(prefix).c_str());
     buf.write_bitset(prefix);
     buf.write_zset(elements);
 }
@@ -29,7 +29,7 @@ void ReconRequestFull::marshal(Buffer &buf){
 void ReconRequestFull::unmarshal(Buffer &buf){
     prefix = buf.read_bitset();
     elements = buf.read_zset();
-    syslog(LOG_DEBUG, "Sending Recon Request Full for %s", prefix.to_string().c_str());
+    syslog(LOG_DEBUG, "Sending Recon Request Full for %s", Bitset::to_string(prefix).c_str());
 }
 
 void Elements::marshal(Buffer &buf){

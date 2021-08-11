@@ -495,7 +495,6 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     int r_size = req->size;
     std::vector<NTL::ZZ_p> r_samples = req->samples;
     bitset key = req->prefix;
-    std::string prefix_str = key.to_string();
     std::shared_ptr<Pnode> node = tree.node(key);
     std::vector<NTL::ZZ_p> l_samples = node->get_node_svalues();
     int l_size = node->get_num_elements();
@@ -548,7 +547,6 @@ Communication Peer::request_full_handler(ReconRequestFull* req){
         newcomm.status = Communication_status::ERROR;
         return newcomm;
     }
-    std::string prefix_str = req->prefix.to_string();
     std::vector<NTL::ZZ_p> local_needs, remote_needs;
     std::tie(local_needs, remote_needs) = remote_set.symmetric_difference(local_set); 
 

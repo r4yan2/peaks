@@ -8,6 +8,7 @@
 #include <fstream>
 #include <map>
 #include <common/DBManager.h>
+#include <recon_daemon/Bitset.h>
 
 using namespace peaks::common;
 namespace peaks{
@@ -28,7 +29,7 @@ public:
      * @param key key of the node to recover
      * @return node struct corresponding to the found node
      */
-    virtual DBStruct::node get_node(const std::string key) = 0;
+    virtual DBStruct::node get_node(const Bitset &key) = 0;
     /** insert node into db
      * @param n node to insert
      */
@@ -40,8 +41,8 @@ public:
     /** delete node from db
      * @param key key of the node to delete
      */
-    virtual void delete_node(const std::string key) = 0;
-    virtual bool check_key(const std::string key) = 0;
+    virtual void delete_node(const Bitset &key) = 0;
+    virtual bool check_key(const std::string& key) = 0;
     virtual std::vector<std::string> fetch_removed_elements() = 0;
     virtual std::vector<std::string> get_all_hash() = 0;
     virtual void commit_memtree() = 0;
@@ -52,35 +53,6 @@ protected:
      * output a csv before use the bulk load
      */
 	std::ofstream csv_file;
-};
-
-class Recon_dummy_DBManager: public virtual RECON_DBManager{
-    public:
-        Recon_dummy_DBManager();
-        ~Recon_dummy_DBManager(){};
-
-        DBStruct::node get_node(const std::string key);
-        void insert_node(const DBStruct::node &n);
-        void update_node(const DBStruct::node &n);
-        void delete_node(const std::string key);
-        virtual bool check_key(const std::string key){
-            throw std::runtime_error("Not implemented error");
-        };
-        virtual std::vector<std::string> fetch_removed_elements(){
-            throw std::runtime_error("Not implemented error");
-        };
-        virtual std::vector<std::string> get_all_hash(){
-            throw std::runtime_error("Not implemented error");
-        };
-        virtual void commit_memtree(){
-            throw std::runtime_error("Not implemented error");
-        };
-        virtual void prepare_queries(){
-            throw std::runtime_error("Not implemented error");
-        };
-
-    protected:
-        std::map< std::string, std::tuple<std::string, int, bool, std::string> > memory_storage;
 };
 
 /**
@@ -97,7 +69,7 @@ class Recon_mysql_DBManager: public RECON_DBManager{
      * @param key key of the node to recover
      * @return node struct corresponding to the found node
      */
-    DBStruct::node get_node(const std::string key);
+    DBStruct::node get_node(const Bitset &key);
 
     void insert_node(const DBStruct::node &n);
 
@@ -109,13 +81,13 @@ class Recon_mysql_DBManager: public RECON_DBManager{
     /** delete node from db
      * @param key key of the node to delete
      */
-    void delete_node(const std::string key);
+    void delete_node(const Bitset& key);
 
     /** check if hash is present in db
      * @param key hash to check
      * @return bool if found, false otherwise
      */
-    bool check_key(std::string key);
+    bool check_key(const std::string& key);
 
     /** fetch removed hashes from gpg_keyserver 
      *  after a successful recon run. Those hashes
@@ -152,7 +124,7 @@ private:
 	std::pair<std::string,std::string> insert_ptree_stmt;
 };
 
-class Recon_memory_DBManager: public Recon_dummy_DBManager {
+class Recon_memory_DBManager: public RECON_DBManager {
 public:
     Recon_memory_DBManager();
 
@@ -169,7 +141,7 @@ public:
      * @param key hash to check
      * @return bool if found, false otherwise
      */
-    bool check_key(std::string key);
+    bool check_key(const std::string& key);
 
     /** helper to lock tables and avoid unnecessary checks during inserts
      */
@@ -183,12 +155,25 @@ public:
     
     //empty
     std::vector<std::string> fetch_removed_elements();
+
+
+    DBStruct::node get_node(const Bitset &key);
+    void insert_node(const DBStruct::node &n);
+    void update_node(const DBStruct::node &n);
+    void delete_node(const Bitset &key);
+
 private:
 
     std::shared_ptr<DBQuery> 
         get_all_hash_stmt,
         check_key_stmt;
 	std::pair<std::string,std::string> insert_ptree_stmt;
+
+    /*
+     * Map for fast memory tree access
+     * key, <node_svalues, num_elemnts, leaf, node_elements>
+     */
+    std::map<std::pair<std::string, int>, std::tuple<std::vector<NTL::ZZ_p>, int, bool, std::vector<NTL::ZZ_p>> > memory_storage;
 };
 
 

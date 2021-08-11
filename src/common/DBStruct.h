@@ -5,6 +5,8 @@
 #include <NTL/ZZ.h>
 #include <vector>
 
+#include <recon_daemon/Bitset.h>
+
 namespace peaks{
 namespace common{
 namespace DBStruct{
@@ -120,10 +122,11 @@ namespace DBStruct{
 
     struct node{
         std::string key;
-        std::string svalues;
+        int key_size;
+        std::vector<NTL::ZZ_p> svalues;
         int num_elements;
         bool leaf;
-        std::string elements;
+        std::vector<NTL::ZZ_p> elements;
     };
 
     struct Unpacker_errors {

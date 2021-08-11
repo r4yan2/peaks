@@ -35,14 +35,21 @@ Bitset::Bitset(const bytestype &newbytes):
     n_bits(newbytes.size()*8)
 {}
 
-Bitset::Bitset(const std::string &bitstring){
-    n_bits = bitstring.size();
-    int bytes_size = (n_bits%8 == 0) ? n_bits/8 : n_bits/8 + 1;
-    bytes.resize(bytes_size);
-    bzero(bytes.data(), bytes_size);
-    for (int i=0; i<n_bits; i++)
-        if (bitstring[i] == '1')
-            set(i);
+Bitset::Bitset(const std::string & src):
+    bytes(src.begin(), src.end()),
+    n_bits(bytes.size()*8)
+{}
+
+bool Bitset::operator<(const Bitset & other){
+    if (num_blocks() < other.num_blocks())
+        return true;
+    else if (other.num_blocks() < num_blocks())
+        return false;
+    for (int i=0; i<num_blocks(); i++){
+        if ((uint8_t)bytes[i] >= (uint8_t)other.rep()[i])
+            return false;
+    }
+    return true;
 }
 
 int Bitset::size() const{
@@ -109,10 +116,27 @@ void Bitset::clear(int bitpos, bool nothrow){
     bytes[byte_pos] &= ~(1 << (8 - bit_pos - 1));
 }
 
-std::string Bitset::to_string() const{
+Bitset Bitset::from_string(const std::string & bitstring){
+    Bitset res;
+    res.n_bits = bitstring.size();
+    int bytes_size = (res.n_bits%8 == 0) ? res.n_bits/8 : res.n_bits/8 + 1;
+    res.bytes.resize(bytes_size);
+    bzero(res.bytes.data(), bytes_size);
+    for (int i=0; i<res.n_bits; i++)
+        if (bitstring[i] == '1')
+            res.set(i);
+    return res;
+}
+
+std::string Bitset::to_string(const Bitset & bitstring){
     std::string res = "";
-    for (int i=0; i<n_bits; i++)
-        res.append( test(i) ? "1" : "0" );
+    for (int i=0; i<bitstring.n_bits; i++)
+        res.append( bitstring.test(i) ? "1" : "0" );
+    return res;
+}
+
+std::string Bitset::blob() const {
+    std::string res(bytes.begin(), bytes.end());
     return res;
 }
 
