@@ -114,7 +114,7 @@ int main(int argc, char* argv[]){
             serve(vm);
 	    }
         else if (cmd == "build"){
-            //po::options_description build_desc("build options");
+            CONTEXT.setContext(vm);
             build(vm);
             }
         else if (cmd == "dump"){
@@ -125,6 +125,7 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(dump_desc).run(), vm);
+            CONTEXT.setContext(vm);
             Dump::dump(vm);
         }
         else if (cmd == "import"){

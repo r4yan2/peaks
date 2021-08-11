@@ -206,7 +206,7 @@ void Importer::import_csv(unsigned int nThreads, int selection){
         for (unsigned int i = Utils::CERTIFICATE; i <= Utils::USERID; i++){
             std::cout << Utils::getCurrentTime() << "\tInserting ";
             std::string s = Utils::FILENAME.at(i); 
-            std::cout << s.substr(1, s.size()-5) << std::endl;
+            std::cout << s.substr(0, s.size()-4) << std::endl;
             for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i)){
                 jobs.push_back(std::bind(Import::insert_csv, dbm, filename, i));
             }
@@ -215,7 +215,7 @@ void Importer::import_csv(unsigned int nThreads, int selection){
     else{
         std::cout << Utils::getCurrentTime() << "\tInserting ";
         std::string s = Utils::FILENAME.at(selection); 
-        std::cout << s.substr(1, s.size()-5) << std::endl;
+        std::cout << s.substr(0, s.size()-4) << std::endl;
         for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, selection)){
             jobs.push_back(std::bind(Import::insert_csv, dbm, filename, selection));
         }

@@ -1,4 +1,5 @@
 #include "recon_daemon.h"
+#include <common/config.h>
 
 namespace peaks{
 namespace recon{
@@ -60,6 +61,8 @@ void build(po::variables_map &vm){
     tree.create();
     int progress = 0;
     for (auto hash : hashes){
+        if (CONTEXT.quitting)
+            exit(0);
         tree.insert(hash);
         progress += 1;
         if (progress%1000 == 0){

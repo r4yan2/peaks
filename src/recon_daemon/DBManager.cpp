@@ -13,7 +13,6 @@ namespace recon{
 RECON_DBManager::RECON_DBManager():
     DBManager()
 {
-    connect_schema();
 	tables = {
 		{1, "ptree"}
 	};
