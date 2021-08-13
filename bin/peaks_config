@@ -37,7 +37,6 @@ db_database = gpg_keyserver
 
 # File and folders settings
 membership_config = /etc/peaks/membership
-cppcms_config = /etc/peaks/config.js
 default_dump_path = /tmp/pgp_dump/
 tmp_folder = /tmp/peaks_unique/
 error_folder = /tmp/peaks_errors/
