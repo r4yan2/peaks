@@ -20,7 +20,7 @@ void UNPACKER_DBManager::prepare_queries(){
     //con->createStatement()->execute("set foreign_key_checks = 0;");
 
     // Create prepared Statements
-    get_analyzable_cert_stmt = prepare_query("SELECT version, fingerprint, certificate "
+    get_analyzable_cert_stmt = prepare_query("SELECT version, fingerprint, UNCOMPRESS(certificate) AS certificate "
                                          "FROM gpg_keyserver WHERE is_unpacked = 0 LIMIT ?");
     
     get_signature_by_index = prepare_query("SELECT id "

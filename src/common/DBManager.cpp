@@ -15,6 +15,7 @@ DBManager::DBManager():
     connection_properties["hostName"] = CONTEXT.dbsettings.db_host;
     connection_properties["userName"] = CONTEXT.dbsettings.db_user;
     connection_properties["password"] = CONTEXT.dbsettings.db_password;
+    connection_properties["port"] = CONTEXT.dbsettings.db_port;
     connection_properties["CLIENT_MULTI_STATEMENTS"] = true;
     con = driver->connect(connection_properties);
 }
@@ -66,7 +67,7 @@ void DBManager::lockTables(int selection){
         std::string table = tables.at(selection);
         //std::string s = std::accumulate(++tables.begin(), tables.end(), tables[0], [](std::string& a, std::string& b){return a + std::string(" WRITE, ") + b;});
 
-        std::string lockQuery = std::string("LOCK_TABLES ") + table + std::string(" WRITE");
+        std::string lockQuery = std::string("LOCK TABLES ") + table + std::string(" WRITE");
         execute_query(lockQuery);
     }catch (std::exception &e){
         syslog(LOG_WARNING, "lock_tables_stmt FAILED, the query will be slowly! - %s", e.what());

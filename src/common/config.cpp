@@ -14,6 +14,7 @@ void Context::setContext(const po::variables_map & _vm){
         vm["db_user"].as<std::string>(),
         vm["db_password"].as<std::string>(),
         vm["db_host"].as<std::string>(),
+        vm["db_port"].as<int>(),
         vm["db_database"].as<std::string>(),
         vm["tmp_folder"].as<std::string>(),
         vm["error_folder"].as<std::string>()

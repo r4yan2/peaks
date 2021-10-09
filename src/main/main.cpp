@@ -159,6 +159,7 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(unpack_desc).run(), vm);
+            CONTEXT.setContext(vm);
             Unpacker unpacker(vm);
             while(true){
                 if (CONTEXT.quitting)
@@ -178,6 +179,7 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(analyzer_desc).run(), vm);
+            CONTEXT.setContext(vm);
             Analyzer analyzer(vm);
             
             while(true){
@@ -198,6 +200,7 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(recon_desc).run(), vm);	
+            CONTEXT.setContext(vm);
             Recon recon(vm);
             recon.run();
             }

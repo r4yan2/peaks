@@ -92,6 +92,7 @@ void parse_config(std::istream& conf, po::variables_map &vm){
         ("unpack_on_import", po::value<int>()->default_value(0))
 
         ("db_host", po::value<std::string>()->default_value("127.0.0.1"))
+        ("db_port", po::value<int>()->default_value(3306))
         ("db_user", po::value<std::string>()->default_value("root"))
         ("db_database", po::value<std::string>()->default_value("gpg_keyserver"))
         ("db_password", po::value<std::string>()->default_value(""))

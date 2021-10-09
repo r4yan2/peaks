@@ -33,6 +33,7 @@ unpack_on_import = 0
 db_host = 172.18.0.2
 db_user = root
 #db_password = toor
+db_port = 3306
 db_database = gpg_keyserver
 
 # File and folders settings

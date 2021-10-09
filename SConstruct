@@ -316,7 +316,7 @@ if ARGUMENTS.get('profile'):
 
 cflags += ' ' + optflags
 
-libs = ['boost_system', 'boost_filesystem', 'boost_program_options', 'libOpenPGP', 'libntl', 'libgmp', 'pthread', 'curl', 'z', 'bz2', 'dl', 'stdc++', 'libcppcms', 'libbooster','icuuc','pcre', 'mysqlcppconn']
+libs = ['boost_system', 'boost_filesystem', 'boost_program_options', 'libOpenPGP', 'libntl', 'libgmp', 'pthread', 'curl', 'z', 'bz2', 'dl', 'stdc++', 'libcppcms', 'libbooster', 'mysqlcppconn']
 
 opts.Update(env)
 env.AppendUnique(CCFLAGS=cflags.split())

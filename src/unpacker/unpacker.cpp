@@ -111,10 +111,13 @@ void Unpacker::run(){
         for (unsigned int j = 0; i < gpg_data.size() && j < key_per_thread; j++, i++){
             Key::Ptr key;
             try{
-                key = std::make_shared<Key>(gpg_data[i].certificate);
+                key = std::make_shared<Key>();
+                key->read_raw(gpg_data[i].certificate);
                 key->set_type(PGP::PUBLIC_KEY_BLOCK);
                 key->meaningful();
                 pks.push_back(key);
+                printf ("\rProgress: %lu", pks.size());
+                fflush(stdout);
             }catch (std::error_code &ec){
                 switch (ec.value()) {
                     case static_cast<int>(KeyErrc::NotExistingVersion):

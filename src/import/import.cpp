@@ -152,7 +152,7 @@ void Importer::import() {
     if (CONTEXT.quitting) return;
     if (!(vm.count("csv-only"))){
         std::cout << "Drop index" << std::endl;
-        //dbm->drop_index_gpg_keyserver();
+        dbm->drop_index_gpg_keyserver();
         import_csv(nThreads, selection);
         std::cout << "Rebuilding index" << std::endl;
         dbm->build_index_gpg_keyserver();
@@ -161,7 +161,7 @@ void Importer::import() {
         std::cout << Utils::getCurrentTime() << "Cleaning temporary folder." << std::endl;
         Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
     }else{
-        std::cout << Utils::getCurrentTime() << "Not removing temporary csv fileiles as user request." << std::endl;
+        std::cout << Utils::getCurrentTime() << "Not removing temporary csv file as user request." << std::endl;
     }
     syslog(LOG_NOTICE, "Dump_import is stopping!");
 
@@ -232,15 +232,16 @@ void Importer::import_csv(unsigned int nThreads, int selection){
     pool->Stop_Filling_UP();
 
     while(1){
-        for (auto &th: pool_vect)
-            if (th.joinable())
-                th.join();
+        if (pool->done()){
+            for (auto &th: pool_vect)
+                if (th.joinable())
+                    th.join();
+            break;
+        }
         // DB connector is synchronous
         if (CONTEXT.quitting){
             std::terminate(); //abrupt chaos
         }
-        if (pool->done())
-            break;
     }
 
     if (selection == -1){

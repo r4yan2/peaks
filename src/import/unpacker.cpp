@@ -52,7 +52,7 @@ namespace Import {
                     while(!end){
                         try{
                             Key::Ptr key = std::make_shared<Key>();
-                            key->read_raw(buffer, pos, true);
+                            key->read_raw(buffer, pos, fast);
                             if (fast)
                                 fast_unpack(key, dbm);
                             else
@@ -98,88 +98,9 @@ namespace Import {
     }
 
     void fast_unpack(Key::Ptr &key, const shared_ptr<IMPORT_DBManager> &dbm){
-        Key::pkey pk;
         DBStruct::gpg_keyserver_data gpg_keyserver_table;
-        DBStruct::Unpacker_errors modified;
-
-        try{
-            key->set_type(PGP::PUBLIC_KEY_BLOCK);
-            //modified.version = key->version();
-            //modified.fingerprint = key->fingerprint();
-
-            //key->meaningful();
-            read_gpg_keyserver_data(key, &gpg_keyserver_table);
-            //pk = key->get_pkey();
-            //Key_Tools::makePKMeaningful(pk, modified);
-        }catch (error_code &ec){
-            switch (ec.value()) {
-                case static_cast<int>(KeyErrc::NotExistingVersion):
-                    throw std::runtime_error("Error: PGP Packet doesn't have a valid version number");
-                case static_cast<int>(KeyErrc::BadKey):
-                    syslog(LOG_WARNING, "Submitted a PGP packet of type: %d", key->get_type());
-                    throw ec;
-                case static_cast<int>(KeyErrc::NotAPublicKey):
-                    syslog(LOG_WARNING, "Submitted a private key!");
-                    throw ec;
-                case static_cast<int>(KeyErrc::NotEnoughPackets): {
-                    PGP::Packets ps = key->get_packets();
-                    if (ps.empty()) {
-                        throw std::runtime_error("No packets found inside the key");
-                    } else if (ps[0]->get_tag() != Packet::PUBLIC_KEY) {
-                        throw std::runtime_error("No primary key packet found");
-                    } else {
-                        read_gpg_keyserver_data(key, &gpg_keyserver_table);
-                        gpg_keyserver_table.error_code = ec.value();
-                        pk = Key_Tools::readPkey(key, modified);
-                    }
-                    break;
-                }
-                case static_cast<int>(KeyErrc::FirstPacketWrong):{
-                    bool found = false;
-                    Key::Packets p_list = key->get_packets();
-                    for (auto packet = p_list.begin(); packet != p_list.end(); packet++){
-                        if ((*packet)->get_tag() == Packet::PUBLIC_KEY){
-                            Packet::Tag::Ptr tempPacket = *packet;
-                            p_list.erase(packet);
-                            p_list.insert(p_list.begin(), tempPacket);
-                            key->set_packets(p_list);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found){
-                        throw std::runtime_error("No primary key packet found");
-                    }
-                }
-                case static_cast<int>(KeyErrc::SignAfterPrimary):
-                case static_cast<int>(KeyErrc::AtLeastOneUID):
-                case static_cast<int>(KeyErrc::WrongSignature):
-                case static_cast<int>(KeyErrc::NoSubkeyFound):
-                case static_cast<int>(KeyErrc::Ver3Subkey):
-                case static_cast<int>(KeyErrc::NoSubkeyBinding):
-                case static_cast<int>(KeyErrc::NotAllPacketsAnalyzed):
-                    read_gpg_keyserver_data(key, &gpg_keyserver_table);
-                    gpg_keyserver_table.error_code = ec.value();
-                    pk = Key_Tools::readPkey(key, modified);
-                    Key_Tools::makePKMeaningful(pk, modified);
-                    break;
-                case static_cast<int>(ParsingErrc::LengthLEQZero):
-                case static_cast<int>(ParsingErrc::PubkeyAlgorithmNotFound):
-                case static_cast<int>(ParsingErrc::PubkeyVersionNotFound):
-                case static_cast<int>(ParsingErrc::ParsingError):
-                case static_cast<int>(ParsingErrc::SignaturePKANotFound):
-                case static_cast<int>(ParsingErrc::SignatureHashNotFound):
-                case static_cast<int>(ParsingErrc::SignatureVersionNotFound):
-                case static_cast<int>(ParsingErrc::SignatureLengthWrong):
-                    throw std::runtime_error("Cannot parse armored: " + ec.message());
-                default:
-                    throw runtime_error("Not unpackable key: " + ec.message());
-            }
-
-        }catch(exception &e){
-            throw runtime_error(e.what());
-        }
-
+        key->set_type(PGP::PUBLIC_KEY_BLOCK);
+        read_gpg_keyserver_data(key, &gpg_keyserver_table);
         dbm->write_gpg_keyserver_csv(gpg_keyserver_table, 0);
     }
 
@@ -194,7 +115,8 @@ namespace Import {
             modified.version = key->version();
             modified.fingerprint = key->fingerprint();
 
-            key->meaningful();
+            std::shared_ptr<std::map<int, std::string>> errors = make_shared<std::map<int, std::string>>();
+            //OpenPGP::Key::meaningful(*key, errors);
             read_gpg_keyserver_data(key, &gpg_keyserver_table);
             pk = key->get_pkey();
             Key_Tools::makePKMeaningful(pk, modified);

@@ -64,10 +64,12 @@ function compile_gmp () {
             fi
             
             tar xf gmp-6.1.2.tar.bz2
+            pushd gmp-6.1.2
+            patch -p 1 < ../gmp-6.1.2.patch
+            popd
         fi
     
         cd gmp-6.1.2
-        patch -p 1 < ../gmp-6.1.2.patch
         if [ "$BUILD" == "Debug" ];
         then
             CFLAGS="-g3 -march=native"
@@ -265,3 +267,8 @@ function compile_openpgp () {
         rm -r OpenPGP/
     fi
 }
+
+compile_gmp
+compile_ntl
+compile_cppcms
+compile_openpgp

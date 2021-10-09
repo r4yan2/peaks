@@ -18,6 +18,7 @@ struct DBSettings{
     std::string db_user;
     std::string db_password;
     std::string db_host;
+    int db_port;
     std::string db_database;
     std::string tmp_folder;
     std::string error_folder;
