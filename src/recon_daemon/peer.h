@@ -78,8 +78,6 @@ class Peer{
         Recon_config settings;
         /** hold the list of peers specified in membership file */
         std::vector<peertype> membership;
-        /** Helper object to reach out the certificate importer */
-        ReconImporter di;
 
         Message_config msg_config;
 
@@ -88,7 +86,7 @@ class Peer{
          * constructor take a ptree on which operate
          * @param new_tree Init with the reference to the curren ptree
          */ 
-        Peer(Ptree &new_tree, const Recon_config &peer_settings, const Connection_config &conn_settings, ReconImporter &di, const Message_config &conf);
+        Peer(Ptree &new_tree, const Recon_config &peer_settings, const Connection_config &conn_settings, const Message_config &conf);
 
         /** choose random peer partner among the
          * one specified in membership

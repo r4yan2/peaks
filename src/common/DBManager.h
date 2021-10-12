@@ -109,6 +109,10 @@ class DBManager {
          * @return DBQuery object which allow to execute the query and fetch results
          */
         std::shared_ptr<DBQuery> prepare_query(const std::string & query);
+
+        void begin_transaction();
+        void end_transaction();
+
         void execute_query(const std::string & stmt);
 
         void lockTables(int selection=Utils::CERTIFICATE);

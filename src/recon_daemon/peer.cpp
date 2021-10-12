@@ -1,12 +1,12 @@
 #include "peer.h"
+#include <common/config.h>
 
 namespace peaks{
 namespace recon{
-Peer::Peer(Ptree &new_tree, const Recon_config & peer_settings, const Connection_config & conn_settings, ReconImporter &di_, const Message_config & conf):
+Peer::Peer(Ptree &new_tree, const Recon_config & peer_settings, const Connection_config & conn_settings, const Message_config & conf):
     cn(conn_settings),
     tree(std::move(new_tree)),
     settings(peer_settings),
-    di (di_),
     msg_config(conf)
 {
     std::ifstream f(settings.membership_config);
@@ -108,7 +108,19 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
         syslog(LOG_WARNING, "DRY RUN, exiting without inserting certificates");
         return;
     }
-    std::vector<std::string> hashes = di.import(keys);
+    //std::vector<std::string> hashes = di.import(keys);
+    
+    std::shared_ptr<IMPORT_DBManager> dbm = std::make_shared<IMPORT_DBManager>();
+    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
+    dbm->openCSVFiles();
+
+    std::vector<std::string> hashes = Import::unpack_string_th(dbm, keys);
+
+    dbm->begin_transaction();
+    for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, Utils::CERTIFICATE)){
+        dbm->insertCSV(filename, Utils::CERTIFICATE);
+    }
+
     if (hashes.size() != elements.size()){
         syslog(LOG_WARNING, "number of recovered keys does not match number of hashes recovered!");
     }
@@ -117,6 +129,7 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
         if (std::find(hashes.begin(), hashes.end(), RECON_Utils::zz_to_hex(hash)) == hashes.end())
             */
     tree.update(hashes);
+    dbm->end_transaction();
 }
 
 static size_t

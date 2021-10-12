@@ -154,6 +154,7 @@ int main(int argc, char* argv[]){
                 ("threads,t", po::value<unsigned int>(), "set number of threads")
                 ("keys,k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
                 ("limit,l", po::value<unsigned int>(), "set limit to how many keys to unpack per run")
+                ("csv-only", "stop certificate import after creating csv")
                 ("recover,r", "recover");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
@@ -166,7 +167,7 @@ int main(int argc, char* argv[]){
                     exit(0);
             	unpacker.run();
                 sleeping = true;
-        		std::this_thread::sleep_for(std::chrono::seconds{vm["gossip_interval"].as<int>()});
+        		std::this_thread::sleep_for(std::chrono::seconds{vm["unpack_interval"].as<int>()});
                 sleeping = false;
             }
         }

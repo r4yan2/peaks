@@ -22,6 +22,7 @@ class Unpacker{
     public:
 	    Unpacker(boost::program_options::variables_map &vm);
         void run();
+        void store_keymaterial();
     private:
         DBSettings db_settings;
         unsigned int nThreads,limit,key_per_thread;
@@ -29,7 +30,7 @@ class Unpacker{
 };
         void unpack_key_th(std::shared_ptr<UNPACKER_DBManager> dbm, const std::vector<OpenPGP::Key::Ptr> &pks);
         void unpack_key(const OpenPGP::Key::Ptr &key, std::shared_ptr<UNPACKER_DBManager> &dbm);
-        DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey);
+        DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey, const std::string &uatt_id="");
         DBStruct::pubkey get_publicKey_data(const OpenPGP::Packet::Tag::Ptr &p, const OpenPGP::Packet::Key::Ptr &priKey);
         DBStruct::userID get_userID_data(const OpenPGP::Packet::Tag::Ptr &user_pkt, const OpenPGP::Packet::Key::Ptr &key);
         void get_userAttributes_data(const OpenPGP::Packet::Tag::Ptr &p, DBStruct::userAtt &ua_struct);

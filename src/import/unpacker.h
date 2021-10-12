@@ -30,12 +30,13 @@ namespace import{
 namespace Import {
 
     void Import(po::variables_map &vm);
-    void unpack_string_th(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::vector<std::string> keys);
+    std::vector<std::string> unpack_string_th(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::vector<std::string> keys);
 	void insert_csv(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::string &filename, int selection);
     void unpack_dump_th(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::vector<std::string> &files, const bool &fast);
     void unpack_dump(std::ifstream &key_file, const std::shared_ptr<IMPORT_DBManager> &dbm);
     void unpack_string(std::string key, std::shared_ptr<IMPORT_DBManager> dbm);
     void fast_unpack(Key::Ptr &key, const std::shared_ptr<IMPORT_DBManager> &dbm);
+    std::string calculate_hash(const Key::Ptr &k);
     void unpack(Key::Ptr &key, const std::shared_ptr<IMPORT_DBManager> &dbm);
     DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey, const std::string &uatt_id = "");
     DBStruct::pubkey get_publicKey_data(const OpenPGP::Packet::Tag::Ptr &p, const OpenPGP::Packet::Key::Ptr &priKey);

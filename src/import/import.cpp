@@ -8,49 +8,6 @@ using namespace std::chrono_literals;
 
 namespace peaks{
 namespace import{
-ReconImporter::ReconImporter(){
-}
-
-ReconImporter::~ReconImporter(){}
-
-vector<string> ReconImporter::get_hashes(const vector<string> &files){
-    vector<string> hashes;
-    for (const auto &file: files){
-        string line;
-        string hash;
-        ifstream read(file);
-        while (getline(read, line))
-        {
-            istringstream iss(line);
-            for (int i=0; i<4; i++)
-                getline(iss, hash, ',');
-            getline(iss, hash, ',');
-            hash = hash.substr(1, hash.size()-2);
-            hashes.push_back(hash);
-        }
-    }
-    return hashes;
-}
-
-vector<string> ReconImporter::import(vector<string> keys){
-
-    std::shared_ptr<IMPORT_DBManager> dbm = make_shared<IMPORT_DBManager>();
-    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
-    dbm->openCSVFiles();
-
-    Import::unpack_string_th(dbm, keys);
-
-    dbm->lockTables();
-    vector<string> hashes = get_hashes(Utils::get_files(CONTEXT.dbsettings.tmp_folder, Utils::CERTIFICATE));
-    for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, Utils::CERTIFICATE)){
-        dbm->insertCSV(filename, Utils::CERTIFICATE);
-    }
-    dbm->unlockTables();
-
-    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
-    return hashes;
-}
-
 Importer::Importer(){};
 Importer::~Importer(){};
 
@@ -86,10 +43,7 @@ void Importer::import() {
     unsigned int key_per_thread;
     int selection = -1;
 
-    if(vm.count("fastimport"))
-        selection = Utils::CERTIFICATE;
-    else if (vm.count("selection"))
-        selection = vm["selection"].as<int>();
+    selection = Utils::CERTIFICATE;
 
     if(vm.count("threads"))
         nThreads = vm["threads"].as<unsigned int>();
@@ -202,27 +156,16 @@ void Importer::import_csv(unsigned int nThreads, int selection){
     std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
     std::vector<std::function<void ()>> jobs;
     
-    if (selection == -1){
-        for (unsigned int i = Utils::CERTIFICATE; i <= Utils::USERID; i++){
-            std::cout << Utils::getCurrentTime() << "\tInserting ";
-            std::string s = Utils::FILENAME.at(i); 
-            std::cout << s.substr(0, s.size()-4) << std::endl;
-            for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i)){
-                jobs.push_back(std::bind(Import::insert_csv, dbm, filename, i));
-            }
-        }
-    }
-    else{
-        std::cout << Utils::getCurrentTime() << "\tInserting ";
-        std::string s = Utils::FILENAME.at(selection); 
-        std::cout << s.substr(0, s.size()-4) << std::endl;
-        for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, selection)){
-            jobs.push_back(std::bind(Import::insert_csv, dbm, filename, selection));
-        }
+    std::cout << Utils::getCurrentTime() << "\tInserting ";
+    std::string s = Utils::FILENAME.at(selection); 
+    std::cout << s.substr(0, s.size()-4) << std::endl;
+    for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, selection)){
+        jobs.push_back(std::bind(Import::insert_csv, dbm, filename, selection));
     }
 
-    size_t nJobs = jobs.size();
-    std::vector<std::thread> pool_vect(nThreads > nJobs ? nJobs : nThreads);
+    //size_t nJobs = jobs.size();
+    //std::vector<std::thread> pool_vect(nThreads > nJobs ? nJobs : nThreads);
+    std::vector<std::thread> pool_vect(1);
 
     for (unsigned int i = 0; i < pool_vect.size(); i++){
         pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
@@ -243,14 +186,6 @@ void Importer::import_csv(unsigned int nThreads, int selection){
             std::terminate(); //abrupt chaos
         }
     }
-
-    if (selection == -1){
-        std::cout << Utils::getCurrentTime() << "\tUpdating issuing fingerprint in Signatures" << std::endl;
-        dbm->UpdateSignatureIssuingFingerprint();
-        std::cout << Utils::getCurrentTime() << "\tSetting revoked flag" << std::endl;
-        dbm->UpdateIsRevoked();
-    }
-
 }
 
 }

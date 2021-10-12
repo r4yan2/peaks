@@ -7,6 +7,7 @@
 #include <Misc/PKCS1.h>
 #include "unpacker.h"
 #include "Key_Tools.h"
+#include <common/config.h>
 
 namespace peaks{
 namespace unpacker{
@@ -86,6 +87,9 @@ Unpacker::Unpacker(po::variables_map &vm){
 
 void Unpacker::run(){
 
+    // resume session if any
+    store_keymaterial(); 
+    
     std::vector<DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
     limit = gpg_data.size();
 
@@ -114,7 +118,6 @@ void Unpacker::run(){
                 key = std::make_shared<Key>();
                 key->read_raw(gpg_data[i].certificate);
                 key->set_type(PGP::PUBLIC_KEY_BLOCK);
-                key->meaningful();
                 pks.push_back(key);
                 printf ("\rProgress: %lu", pks.size());
                 fflush(stdout);
@@ -159,7 +162,22 @@ void Unpacker::run(){
         unpacking_jobs.push_back(std::make_shared<Job>([=] {unpack_key_th(dbm, pks); }));
         pool->Add_Job(unpacking_jobs.back());
     }
+    pool->Stop_Filling_UP();
+    for (auto &th: pool_vect){
+        while (!th.joinable()){}
+        th.join();
+    }
+    store_keymaterial();
 
+    syslog(LOG_NOTICE, "Unpacker daemon is stopping!");
+}
+
+void Unpacker::store_keymaterial(){
+    if (CONTEXT.vm.count("csv-only"))
+        return; //nothing to do
+    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
+    std::vector<std::function<void ()>> jobs;
+    std::vector<std::thread> pool_vect(1);
     int file_number;
     do{
         file_number = Utils::get_files_number(db_settings.tmp_folder);
@@ -169,31 +187,41 @@ void Unpacker::run(){
 
     for (unsigned int i = Utils::PUBKEY; i <= Utils::UNPACKED; i++){
         for (const std::string & filename: Utils::get_files(db_settings.tmp_folder, i)){
-            std::shared_ptr<Job> j = std::make_shared<Job>([=] { dbm->insertCSV(filename, i); }, unpacking_jobs);
+            std::shared_ptr<Job> j = std::make_shared<Job>([=] { dbm->insertCSV(filename, i); });
             pool->Add_Job(j);
         }
     }
 
     pool->Stop_Filling_UP();
-
-    for (auto &th: pool_vect){
-        while (!th.joinable()){}
-        th.join();
+ 
+    while(1){
+      if (pool->done()){
+          for (auto &th: pool_vect)
+              if (th.joinable())
+                  th.join();
+          break;
+      }
+      // DB connector is synchronous
+      if (CONTEXT.quitting){
+          std::terminate(); //abrupt chaos
+      }
     }
 
     dbm->UpdateSignatureIssuingFingerprint();
     //dbm->UpdateSignatureIssuingUsername();
     dbm->UpdateIsRevoked();
 
-    syslog(LOG_NOTICE, "Unpacker daemon is stopping!");
 }
 
 void unpack_key_th(std::shared_ptr<UNPACKER_DBManager> dbm, const vector<Key::Ptr> &pks){
     
     dbm->openCSVFiles();
 
+    int i = 0;
     for (const auto &pk : pks) {
         try{
+            printf ("\rProgress: %d", ++i);
+            fflush(stdout);
             unpack_key(pk, dbm);
         }catch(exception &e) {
             syslog(LOG_WARNING, "Key not analyzed due to not meaningfulness (%s). is_analyzed will be set equals to -1", e.what());
@@ -220,22 +248,52 @@ void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
     try{
         modified.version = key->version();
         modified.fingerprint = key->fingerprint();
-        key->meaningful();
+        std::shared_ptr<std::map<int, std::string>> errors = make_shared<std::map<int, std::string>>();
+        OpenPGP::Key::meaningful(*key, errors);
         pk = key->get_pkey();
         Key_Tools::makePKMeaningful(pk, modified);
     }catch (error_code &ec){
         switch (ec.value()) {
             case static_cast<int>(KeyErrc::NotExistingVersion):
+                syslog(LOG_WARNING, "Error: PGP Packet doesn't have a valid version number");
+                throw ec;
             case static_cast<int>(KeyErrc::BadKey):
+                syslog(LOG_WARNING, "Submitted a PGP packet of type: %d", key->get_type());
+                throw ec;
             case static_cast<int>(KeyErrc::NotAPublicKey):
+                syslog(LOG_WARNING, "Submitted a private key!");
+                throw ec;
             case static_cast<int>(KeyErrc::NotASecretKey):
                 throw runtime_error("Not unpackable key: " + ec.message());
             case static_cast<int>(KeyErrc::NotEnoughPackets): {
-                if (key->get_packets().empty()) {
-                    throw std::runtime_error("No packets found inside the key");
+                    PGP::Packets ps = key->get_packets();
+                    if (ps.empty()) {
+                        throw std::runtime_error("No packets found inside the key");
+                    } else if (ps[0]->get_tag() != Packet::PUBLIC_KEY) {
+                        throw std::runtime_error("No primary key packet found");
+                    } else {
+                        // TODO add error to the errors map
+                        pk = Key_Tools::readPkey(key, modified);
+                    }
+                    break;
                 }
-            }
-            case static_cast<int>(KeyErrc::FirstPacketWrong):
+            case static_cast<int>(KeyErrc::FirstPacketWrong): {
+                    bool found = false;
+                    Key::Packets p_list = key->get_packets();
+                    for (auto packet = p_list.begin(); packet != p_list.end(); packet++){
+                        if ((*packet)->get_tag() == Packet::PUBLIC_KEY){
+                            Packet::Tag::Ptr tempPacket = *packet;
+                            p_list.erase(packet);
+                            p_list.insert(p_list.begin(), tempPacket);
+                            key->set_packets(p_list);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found){
+                        throw std::runtime_error("No primary key packet found");
+                    }
+                }
             case static_cast<int>(KeyErrc::SignAfterPrimary):
             case static_cast<int>(KeyErrc::AtLeastOneUID):
             case static_cast<int>(KeyErrc::WrongSignature):
@@ -246,6 +304,16 @@ void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
                 pk = Key_Tools::readPkey(key, modified);
                 Key_Tools::makePKMeaningful(pk, modified);
                 break;
+            case static_cast<int>(ParsingErrc::LengthLEQZero):
+            case static_cast<int>(ParsingErrc::PubkeyAlgorithmNotFound):
+            case static_cast<int>(ParsingErrc::PubkeyVersionNotFound):
+            case static_cast<int>(ParsingErrc::ParsingError):
+            case static_cast<int>(ParsingErrc::SignaturePKANotFound):
+            case static_cast<int>(ParsingErrc::SignatureHashNotFound):
+            case static_cast<int>(ParsingErrc::SignatureVersionNotFound):
+            case static_cast<int>(ParsingErrc::SignatureLengthWrong):
+                throw std::runtime_error("Cannot parse: " + ec.message());
+
             default:
                 throw runtime_error("Not unpackable key: " + ec.message());
         }
@@ -289,7 +357,7 @@ void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
             if (i->first->get_tag() == Packet::USER_ATTRIBUTE){
                 uatt_id = to_string(std::distance(pk.uid_userAtt.begin(), pk.uid_userAtt.find(i->first)));
             }
-            unpackedSignatures.push_back(get_signature_data(i, primaryKey));
+            unpackedSignatures.push_back(get_signature_data(i, primaryKey, uatt_id));
         }catch (exception &e){
             modified.modified = true;
             modified.comments.push_back("Unpacking jumped due to: " + string(e.what()));
@@ -363,7 +431,7 @@ void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
     dbm->write_unpacked_csv(key, modified);
 }
 
-DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const Packet::Key::Ptr &priKey) {
+DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const Packet::Key::Ptr &priKey, const string &uatt_id) {
     DBStruct::signatures ss;
     Packet::Tag2::Ptr sig = dynamic_pointer_cast<Packet::Tag2>(sp->second);
 
@@ -380,9 +448,11 @@ DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const
         if (user->get_tag() == Packet::USER_ID){
             Packet::Tag13::Ptr u = dynamic_pointer_cast<Packet::Tag13>(user);
             ss.signedUsername = ascii2radix64(u -> get_contents());
-        }/*else{
-            ss.signedUsername = ascii2radix64("User Attribute");
-        }*/
+        }else{
+            //ss.signedUsername = ascii2radix64("User Attribute");
+            if (uatt_id != "")
+                ss.uatt_id = uatt_id;
+        }
 
         switch(sig->get_type()) {
             case Signature_Type::GENERIC_CERTIFICATION_OF_A_USER_ID_AND_PUBLIC_KEY_PACKET:

@@ -28,7 +28,6 @@ void help(){
     std::cout << "    --path \t\tSet the path of the dump" << std::endl;
     std::cout << "    --csv-only \t\tonly create temporary csv file, do not import into DB" << std::endl;
     std::cout << "    --import-only \tonly import temporary csv, do not create anything" << std::endl;
-    std::cout << "    --fastimport \tDo not unpack certificates" << std::endl;
     std::cout << "    --noclean \t\tdo not clean temporary folder" << std::endl;
 
     std::cout << std::endl;
@@ -40,6 +39,7 @@ void help(){
 
     std::cout << "  unpack \t\tUnpack certificate not analyzer during fastimport" << std::endl;
     std::cout << "    --threads \tSet number of threads to use" << std::endl;
+    std::cout << "    --csv-only \t\tonly create temporary csv file, do not import into DB" << std::endl;
     std::cout << "    --keys \t\tSet how many keys a thread has to analyze" << std::endl;
     std::cout << "    --limit \tSet the limit on key to unpack" << std::endl;
     std::cout << "    --recover \tRecover previous broken session only" << std::endl;

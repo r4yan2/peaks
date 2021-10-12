@@ -57,6 +57,23 @@ bool DBManager::ensure_database_connection(){
     return connected;
 }
 
+void DBManager::begin_transaction(){
+    try{
+        execute_query("START TRANSACTION");
+    }catch (std::exception &e){
+        syslog(LOG_WARNING, "begin transaction FAILED, data corruption may occur! - %s", e.what());
+    }
+}
+
+void DBManager::end_transaction(){
+    try{
+        execute_query("COMMIT");
+    }catch (std::exception &e){
+        syslog(LOG_WARNING, "begin transaction FAILED, data corruption may occur! - %s", e.what());
+    }
+}
+
+
 void DBManager::lockTables(int selection){
     try{
         execute_query("SET AUTOCOMMIT = 0");

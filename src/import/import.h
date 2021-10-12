@@ -26,27 +26,6 @@ class Importer{
         void remove_directory_content(const std::string &foldername);
 };
 
-class ReconImporter{
-    private:
-        bool unpack;
-    public:
-        ReconImporter();
-        ~ReconImporter();
-
-        /** Import certificates from a string of keys (useful for reconing)
-         * @param keys vector of keys as strings
-         * @return vector of hashes of processed keys
-         */
-        std::vector<std::string> import(std::vector<std::string> keys);
-        
-        /** get hashes from processed keys
-         * @param files to know from which file fetch the key
-         * @return vector of strings which contains the hashes
-         */
-        std::vector<std::string> get_hashes(const std::vector<std::string> &files);
-
-};
-
 }
 }
 #endif

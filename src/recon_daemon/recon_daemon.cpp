@@ -158,8 +158,7 @@ Recon::Recon(po::variables_map &vm){
 
     server = vm.count("server-only");
     client = vm.count("client-only");
-    ReconImporter di = ReconImporter();
-    peer = std::make_unique<Peer>(tree, peer_settings, conn_settings, di, msg_settings);
+    peer = std::make_unique<Peer>(tree, peer_settings, conn_settings, msg_settings);
 }
 
 void Recon::run(){
