@@ -5,6 +5,7 @@
 #include <cppcms/url_dispatcher.h>
 #include <cppcms/url_mapper.h>
 #include <cppcms/applications_pool.h>
+#include <cppcms/rpc_json.h>
 #include "db.h"
 #include "db_key.h"
 #include <boost/program_options.hpp>
@@ -18,6 +19,14 @@ namespace pks{
  *  @param vm map of configuration options
  */
 void serve(po::variables_map &vm);
+
+
+class json_service: public cppcms::rpc::json_rpc_server{
+public:
+    json_service(cppcms::service &srv);
+    void get_stats(std::string what);
+};
+
 
 class Pks : public cppcms::application {
 public:
@@ -51,6 +60,7 @@ private:
     void get(const std::string& id);
     void index(const std::string& id);
     std::string genEntry(DB_Key *keyInfo);
+    void generating_cert_stats(std::map<std::string, std::string> & stats);
 
     void post(const std::string &temp);
 

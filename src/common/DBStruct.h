@@ -97,6 +97,7 @@ namespace DBStruct{
         std::string ownerkeyID = "";
         std::string fingerprint = "";
         std::string name = "";
+        std::string email = "";
     };
 
     struct userAtt{

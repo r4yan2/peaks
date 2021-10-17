@@ -51,6 +51,9 @@ namespace content  {
         submit_form submit;
         remove_form remove;
     };
+    struct stats : public cppcms::base_content{
+    };
+
 
 };
 

@@ -11,7 +11,7 @@ namespace pr {
     bool manageMerge(OpenPGP::PublicKey::Ptr key, std::shared_ptr<std::istream> & query);
 
     void read_gpg_keyserver_data(const OpenPGP::Key::Ptr &k, gpg_keyserver_data *gk);
-    userID_data read_userID_data(const OpenPGP::Key::Ptr &k, const OpenPGP::Packet::Tag13::Ptr &u);
+    userID read_userID_data(const OpenPGP::Key::Ptr &k, const OpenPGP::Packet::Tag13::Ptr &u);
 
     std::string get_ascii_arm(const std::string &armor_key);
 

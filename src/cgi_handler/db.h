@@ -3,48 +3,20 @@
 
 #include <forward_list>
 #include <vector>
+#include <common/DBStruct.h>
 #include "db_key.h"
 #include "utils.h"
 #include <common/DBManager.h>
+#include <set>
 
 using namespace peaks::common;
+using namespace peaks::common::DBStruct;
 namespace peaks {
 namespace pks{
 
 const int SUCCESS = 0;
 const int ERROR = -1;
 const int KEY_NOT_FOUND = -2;
-
-/**
- * helper struct to store the nodes data
- */
-struct pnode{
-    std::string node_key;
-    int num_elements;
-    bool leaf;
-};
-
-/**
- * helper struct to store the values coming from the database
- */
-struct gpg_keyserver_data{
-    int version;
-    std::string ID;
-    std::string fingerprint;
-    std::string certificate;
-    int error_code;
-    std::string hash;
-};
-
-/**
- * helper struct to store the values coming from the database
- */
-struct userID_data{
-    std::string ownerkeyID;
-    std::string fingerprint;
-    std::string name;
-    std::string email;
-};
 
 class CGI_DBManager: DBManager {
 public:
@@ -127,7 +99,7 @@ public:
 	 * with the new userID data
 	 * @param uid new data
 	 */
-    void insert_user_id(const userID_data &uid);
+    void insert_user_id(const userID &uid);
 
 	/** 
 	 * Verbose index query entrypoint
@@ -139,13 +111,17 @@ public:
     void insert_broken_key(const std::string &cert, const std::string &comment);
 
     std::string get_key_by_hash(const std::string &hash);
+    std::set<int> get_certificates_with_attributes();
+    std::vector<DBStruct::userAtt> get_user_attributes();
 
     /**
      * Recover nodes information
      * from the prefix tree table 
      * @return vector containing nodes information
      */
-    std::vector<pnode> get_pnodes();
+    std::vector<node> get_pnodes();
+    std::string get_from_cache(const std::string &key, bool &expired);
+    void store_in_cache(const std::string &key, const std::string &value);
 
 private:
 	std::shared_ptr<DBQuery>
@@ -167,7 +143,10 @@ private:
 			vindex_key_vuln_stmt, 
 			vindex_sign_vuln_stmt, 
 			get_by_hash_stmt,
-            get_pnodes_stmt;
+            get_pnodes_stmt,
+            get_certificates_with_attributes_stmt,
+            get_from_cache_stmt,
+            store_in_cache_stmt;
     
 	std::string hexToUll(const std::string &hex) {
         unsigned long long ullKey = std::stoull(hex, nullptr, 16);

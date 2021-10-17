@@ -18,7 +18,7 @@ void pr::readPublicKeyPacket(const string &arm, peaks::pks::CGI_DBManager *dbm){
     PublicKey::Ptr key(new PublicKey(arm));
 
     gpg_keyserver_data gk = {};
-    vector<userID_data> uids;
+    vector<userID> uids;
     bool exist = false;
 
     cout << "Reading data..." << endl;
@@ -177,7 +177,7 @@ string pr::concat(const PGP::Packets &packet_list){
     return out;
 }
 
-userID_data pr::read_userID_data(const Key::Ptr &k, const Packet::Tag13::Ptr &u){
+userID pr::read_userID_data(const Key::Ptr &k, const Packet::Tag13::Ptr &u){
     std::regex mail_regex(
             "(?:(?:[^<>()\\[\\].,;:\\s@\"]+(?:\\.[^<>()\\[\\].,;:\\s@\"]+)*)|\".+\")@(?:(?:[^<>()‌​\\[\\].,;:\\s@\"]+\\.)+[^<>()\\[\\].,;:\\s@\"]{2,})");
     // get Email
@@ -188,7 +188,7 @@ userID_data pr::read_userID_data(const Key::Ptr &k, const Packet::Tag13::Ptr &u)
     if (user.size() < 5000 && std::regex_search(user.c_str(), match, mail_regex)){
         email = string(match[0].first + 1, match[0].first + strlen(match[0].first) - 1);
     }
-    userID_data uid{
+    userID uid{
             .ownerkeyID = mpitodec(rawtompi(k->keyid())),
             .fingerprint = k->fingerprint(),
             .name = ascii2radix64(u->get_contents()),

@@ -1,5 +1,7 @@
 #include "pks.h"
 #include <iostream>
+#include <memory>
+#include <sstream>
 #include <string>
 #include <cstdio>
 #include <stdlib.h>
@@ -41,6 +43,11 @@ Pks::Pks(cppcms::service &srv): cppcms::application(srv)
 {
 
     dbm = std::make_shared<CGI_DBManager>();
+
+    //attach(new json_service(srv), "/numbers", 1);
+    attach( new json_service(srv),
+            "numbers", "/numbers{1}", // mapping  
+            "/numbers(/(.*))?", 1);   // dispatching  
 
     dispatcher().assign("/lookup", &Pks::lookup, this);
     mapper().assign("lookup", "/lookup");
@@ -227,12 +234,39 @@ void Pks::get(const string& id) {
 }
 
 void Pks::stats(){
-    std::string page;
-
+    content::stats stats;
     syslog(LOG_INFO, "Serving stats");
+    render("stats", stats);
+}
+
+void Pks::generating_cert_stats(std::map<std::string, std::string> & stats){
+    set<int> userattr_id = dbm->get_certificates_with_attributes();
+}
+
+
+json_service::json_service(cppcms::service &srv):
+    cppcms::rpc::json_rpc_server(srv)
+{
+    bind("get_stats",cppcms::rpc::json_method(&json_service::get_stats,this), method_role);
+}
+
+cppcms::json::value parse_stats(const std::string &res){
+    cppcms::json::value stats;
+    if (res != ""){
+        int i = 0;
+        const char *start = res.data();
+        stats.load(start, res.end().base(), false, &i);
+    }
+    return stats;
+}
+
+cppcms::json::value ptree_stats(){
+    cppcms::json::value full_stats;
+    syslog(LOG_INFO, "Generating ptree stats");
+    std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
     int tree_heigth = 0;
     int arity = 4;
-    std::vector<pnode> nodes = dbm->get_pnodes();
+    std::vector<DBStruct::node> nodes = dbm->get_pnodes();
     std::map<size_t, std::vector<std::string>> leaf_on_lv;
     std::vector<int> elements_number;
     std::map<std::string, std::vector<size_t>> prefix_map = {
@@ -241,23 +275,46 @@ void Pks::stats(){
         {"10", {}}, 
         {"11", {}}
     };
-    for (auto const& node: nodes){
-        size_t keysize = node.node_key.size();
+    // max 50 elements per node, buckets of 10
+    std::vector<int> num_elements_buckets(5, 0);
+    int i = 0;
+    for (const auto& node: nodes){
+        size_t keysize = node.key_size;
         if (node.leaf){
-            leaf_on_lv[keysize/2].push_back(node.node_key);
+            leaf_on_lv[keysize/2].push_back(node.key);
             elements_number.push_back(node.num_elements);
+            if (node.num_elements <= 10)
+                num_elements_buckets[0] += 1;
+            else if (node.num_elements <= 20)
+                num_elements_buckets[1] += 1;
+            else if (node.num_elements <= 30)
+                num_elements_buckets[2] += 1;
+            else if (node.num_elements <= 40)
+                num_elements_buckets[3] += 1;
+            else 
+                num_elements_buckets[4] += 1;
+            for (int j=0; j < num_elements_buckets.size(); j++)
+                full_stats["num_elements_ptree_stats"][j] = num_elements_buckets[j];
+            i++;
         }
         if (keysize > 0){
-            prefix_map[node.node_key.substr(0,2)].push_back(keysize/2);
+            auto bitstring = recon::Bitset(node.key);
+            bitstring.resize(node.key_size);
+            auto keystring = recon::Bitset::to_string(bitstring);
+            prefix_map[keystring.substr(0,2)].push_back(keysize/2);
         }
         if (tree_heigth < keysize/2)
             tree_heigth = keysize/2;
     }
+
+    std::string value = full_stats["num_elements_ptree_stats"].save();
+    dbm->store_in_cache("num_elements_ptree_stats", value);
     tree_heigth++;
 
     std::vector<size_t> heigths;
-    for (auto const& it: prefix_map){
-        heigths.push_back(*max_element(it.second.begin(), it.second.end()));
+    for (const auto& it: prefix_map){
+        if (it.second.begin() != it.second.end())
+            heigths.push_back(*max_element(it.second.begin(), it.second.end()));
     }
     
     int min_heigth_subtree=0;
@@ -266,104 +323,80 @@ void Pks::stats(){
     std::vector<size_t>::iterator
         min_heigth_subtree_it,
         max_heigth_subtree_it;
-    std::tie(min_heigth_subtree_it, max_heigth_subtree_it) = minmax_element(heigths.begin(), heigths.end());
-    if (min_heigth_subtree_it != heigths.begin() or max_heigth_subtree_it != heigths.begin()){
-        min_heigth_subtree = *min_heigth_subtree_it;
-        max_heigth_subtree = *max_heigth_subtree_it;
+    if (heigths.size() > 0){
+        std::tie(min_heigth_subtree_it, max_heigth_subtree_it) = minmax_element(heigths.begin(), heigths.end());
+        if (min_heigth_subtree_it != heigths.begin() or max_heigth_subtree_it != heigths.begin()){
+            min_heigth_subtree = *min_heigth_subtree_it;
+            max_heigth_subtree = *max_heigth_subtree_it;
+        }
     }
         
     int max_num_element = 0;
     int min_num_element = 0;
+    float mean_num_element = 0.0;
+    float variance_num_element = 0.0;
     
-    std::vector<int>::iterator min_num_element_it = min_element(elements_number.begin(), elements_number.end());
-    std::vector<int>::iterator max_num_element_it = max_element(elements_number.begin(), elements_number.end());
-    if (min_num_element_it != elements_number.begin() and max_num_element_it != elements_number.begin()){
-        min_num_element = *min_num_element_it;
-        max_num_element = *max_num_element_it;
-    }
-        
-    float mean_num_element = 0;
-    for(int const& e: elements_number) 
-        mean_num_element += e;
-    mean_num_element /= elements_number.size();
+    if (elements_number.begin() != elements_number.end()){
+        std::vector<int>::iterator min_num_element_it = min_element(elements_number.begin(), elements_number.end());
+        std::vector<int>::iterator max_num_element_it = max_element(elements_number.begin(), elements_number.end());
+        if (min_num_element_it != elements_number.begin() and max_num_element_it != elements_number.begin()){
+            min_num_element = *min_num_element_it;
+            max_num_element = *max_num_element_it;
+        }    
+        //mean
+        for(const int& e: elements_number) 
+            mean_num_element += e;
+        mean_num_element /= elements_number.size();
 
-    float variance_num_element = 0;
-    for(auto &e: elements_number) 
-        variance_num_element += pow(e - mean_num_element, 2);
-    variance_num_element /= elements_number.size();
+        //variance
+        for(auto &e: elements_number) 
+            variance_num_element += pow(e - mean_num_element, 2);
+        variance_num_element /= elements_number.size();
+    }
 
     std::vector<size_t> nodes_per_lv;
     size_t inner_nodes = 1; //root node
     nodes_per_lv.push_back(1);
-    for (int lv = tree_heigth; lv < tree_heigth; lv++){
+    for (int lv = 1; lv < tree_heigth; lv++){
         size_t leaf_nodes = leaf_on_lv[lv].size();
         size_t nodes_on_cur_lv = inner_nodes * arity;
         inner_nodes = nodes_on_cur_lv - leaf_nodes;
         nodes_per_lv.push_back(nodes_on_cur_lv);
+        full_stats["node_level_ptree_stats"][lv-1] = nodes_on_cur_lv;
     }
-
-    page = Utils::stringFormat(
-            "<h1>Stats</h1>"
-                    "<h3>Ptree</h3>"
-                    "<table>"
-                    "<tr>"
-                        "<th>Field</th>"
-                        "<th>Value</th>"
-                    "</tr>"
-                    "<tr>"
-                        "<td>%s</td>"
-                        "<td>%d</td>"
-                    "</tr>"
-                    "<tr>"
-                        "<td>%s</td>"
-                        "<td>%lu</td>"
-                    "</tr>"
-                    "<tr>"
-                        "<td>%s</td>"
-                        "<td>%lu</td>"
-                    "</tr>"
-                    "<tr>"
-                        "<td>%s</td>"
-                        "<td>%d</td>"
-                    "</tr>"
-                    "<tr>"
-                        "<td>%s</td>"
-                        "<td>%d</td>"
-                    "</tr>"
-                    "<tr>"
-                        "<td>%s</td>"
-                        "<td>%f</td>"
-                    "</tr>"
-                    "<tr>"
-                        "<td>%s</td>"
-                        "<td>%f</td>"
-                    "</tr>"
-                    "<tr>"
-                        "<td>%s</td>"
-                        "<td>%d</td>"
-                    "</tr>"
-                    "<tr>"
-                        "<td>%s</td>"
-                        "<td>%d</td>"
-                    "</tr>"
-                    "<tr>"
-                        "<td>%s</td>"
-                        "<td>%s</td>"
-                    "</tr>"
-                    "</table>",
-                "Arity", arity,
-                "Total nodes number", nodes.size(),
-                "Leaf nodes", elements_number.size(),
-                "Largest leaf node", max_num_element,
-                "Smaller leaf node", min_num_element,
-                "Average leaf node", mean_num_element,
-                "Variance in leaf node size", variance_num_element,
-                "Shortest tree branch", min_heigth_subtree,
-                "Longest tree branch", max_heigth_subtree,
-                "Is tree balanced?", min_heigth_subtree==max_heigth_subtree?"True":"False"
-            );
-    response().out() << page;
+    value = full_stats["node_level_ptree_stats"].save();
+    dbm->store_in_cache("node_level_ptree_stats", value);
+    full_stats["basic_ptree_stats"]["Arity"] = to_string(arity);
+    full_stats["basic_ptree_stats"]["Total Nodes"] = to_string(nodes.size());
+    full_stats["basic_ptree_stats"]["Total Leaf nodes"] = to_string(elements_number.size());
+    full_stats["basic_ptree_stats"]["Tree Heigth"] = to_string(tree_heigth);
+    full_stats["basic_ptree_stats"]["Largest Leaf Node"] = to_string(max_num_element);
+    full_stats["basic_ptree_stats"]["Smaller Leaf Node"] = to_string(min_num_element);
+    full_stats["basic_ptree_stats"]["Average Leaf Node"] = to_string(mean_num_element);
+    full_stats["basic_ptree_stats"]["Variance in Leaf Node size"] = to_string(variance_num_element);
+    full_stats["basic_ptree_stats"]["Shortest tree branch"] = to_string(min_heigth_subtree);
+    full_stats["basic_ptree_stats"]["Longest tree branch"] = to_string(max_heigth_subtree);
+    full_stats["basic_ptree_stats"]["Is tree balanced?"] = min_heigth_subtree==max_heigth_subtree?"True":"False";
+    value = full_stats["basic_ptree_stats"].save();
+    dbm->store_in_cache("basic_ptree_stats", value);
+    return full_stats;
 }
+
+void json_service::get_stats(std::string what){
+    std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
+    bool expired = false;
+    std::string res = dbm->get_from_cache(what, expired);
+    if (res == ""){
+        cppcms::json::value all_stats = ptree_stats();
+        return_result(all_stats[what]);
+    } else {
+        cppcms::json::value stats = parse_stats(res);
+        return_result(stats);
+    }
+    if (expired)
+        ptree_stats();
+}
+
 
 void Pks::index(const string& id) {
     content::index index;
@@ -559,6 +592,11 @@ void serve(po::variables_map &vm){
     cfg["service"]["port"] = vm["http_port"].as<int>();
     cfg["service"]["ip"] = vm["pks_bind_ip"].as<std::string>();
     cfg["http"]["script_names"][0] = "/pks";
+    cfg["file_server"]["enable"] = true;
+    cfg["file_server"]["document_root"] = ".";
+    cfg["file_server"]["listing"] = true;
+    cfg["file_server"]["alias"][0]["url"] = "/scripts";
+    cfg["file_server"]["alias"][0]["path"] = "static/js";
 
     int log_option;
     int log_upto;

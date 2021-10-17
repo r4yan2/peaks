@@ -242,7 +242,13 @@ CREATE TABLE IF NOT EXISTS `ptree` (
   `num_elements` INT NOT NULL,
   `leaf` TINYINT(1) NOT NULL,
   `node_elements` BLOB NOT NULL,
-  PRIMARY KEY (`node_key`(191), `key_size`)
+  PRIMARY KEY (`node_key`(767), `key_size`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `stash` (
+    `hint` VARCHAR(255) NOT NULL,
+    `value` TEXT NOT NULL,
+    `created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DELIMITER ;;

@@ -71,7 +71,7 @@ void CGI_DBManager::prepare_queries(){
                                        "FROM UserID WHERE MATCH(name) AGAINST (? IN BOOLEAN MODE)) "
                                        "AS keys_list GROUP BY kID");
     insert_gpg_stmt = prepare_query("REPLACE INTO gpg_keyserver "
-                                       "VALUES (?, ?, ?, ?, ?, 0, 0, ?);");
+                                       "VALUES (COMPRESS(?), ?, ?, ?, ?, 0, 0, ?);");
     update_gpg_stmt = prepare_query("UPDATE gpg_keyserver SET "
                                        "certificate = COMPRESS(?), is_unpacked = 0, is_synchronized = 0, hash = (?) WHERE fingerprint = unhex(?) "
                                        "and version = (?);");
@@ -123,7 +123,12 @@ void CGI_DBManager::prepare_queries(){
 
     get_by_hash_stmt = prepare_query("SELECT UNCOMPRESS(certificate) FROM gpg_keyserver WHERE hash = (?);");
     
-    get_pnodes_stmt = prepare_query("SELECT node_key, num_elements, leaf FROM ptree");
+    get_pnodes_stmt = prepare_query("SELECT node_key, key_size, num_elements, leaf FROM ptree");
+
+    get_certificates_with_attributes_stmt = prepare_query("SELECT DISTINCT(gpg_keyserver.id) as unique_id FROM gpg_keyserver join UserAttribute on gpg_keyserver.fingerprint=UserAttribute.fingerprint");
+
+    get_from_cache_stmt = prepare_query("SELECT value, ((created + INTERVAL 7 day) < NOW()) as expired FROM stash WHERE name = (?)");
+    store_in_cache_stmt = prepare_query("INSERT INTO stash(`name`,`value`, `created`) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE `value` = (?), `created` = NOW()");
 }
 
 // Database class destructor
@@ -317,7 +322,7 @@ void CGI_DBManager::update_gpg_keyserver(const gpg_keyserver_data &gk) {
     }
 }
 
-void CGI_DBManager::insert_user_id(const userID_data &uid) {
+void CGI_DBManager::insert_user_id(const userID &uid) {
     check_database_connection();
     try {
         insert_uid_stmt->setBigInt(1, uid.ownerkeyID);
@@ -538,13 +543,26 @@ string CGI_DBManager::get_key_by_hash(const string &hash) {
     return out;
 }
 
-vector<pnode> CGI_DBManager::get_pnodes(){
-    vector<pnode> res;
+std::set<int> CGI_DBManager::get_certificates_with_attributes(){
+    set<int> res;
+    try{
+        std::unique_ptr<DBResult> result = get_certificates_with_attributes_stmt->execute();
+        while (result->next())
+            res.insert(result->getInt("unique_id"));
+    }catch(...){
+    }
+    return res;
+}
+
+
+vector<DBStruct::node> CGI_DBManager::get_pnodes(){
+    vector<DBStruct::node> res;
     try{
         std::unique_ptr<DBResult> result = get_pnodes_stmt->execute();
         while (result->next()){
-            pnode node = pnode{
-                .node_key = result->getString("node_key"),
+            DBStruct::node node = DBStruct::node{
+                .key = result->getString("node_key"),
+                .key_size = result->getInt("key_size"),
                 .num_elements = result->getInt("num_elements"),
                 .leaf = result->getBoolean("leaf")
             };
@@ -555,5 +573,34 @@ vector<pnode> CGI_DBManager::get_pnodes(){
     }
     return res;
 }
+
+std::string CGI_DBManager::get_from_cache(const std::string &key, bool &expired){
+    std::string res = "";
+    try{
+        get_from_cache_stmt->setString(1, key);
+        std::unique_ptr<DBResult> result = get_from_cache_stmt->execute();
+        while (result->next()){
+            res = result->getString("value");
+            expired = result->getBoolean("expired");
+        }
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return res;
+
+}
+
+void CGI_DBManager::store_in_cache(const std::string &key, const std::string &value){
+    try{
+        store_in_cache_stmt->setString(1, key);
+        store_in_cache_stmt->setString(2, value);
+        store_in_cache_stmt->setString(3, value);
+        std::unique_ptr<DBResult> result = store_in_cache_stmt->execute();
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not save data in the DB: %s", e.what());
+    }
+}
+
+
 }
 }
