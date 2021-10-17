@@ -236,7 +236,7 @@ CREATE TABLE IF NOT EXISTS `selfSignaturesMetadata` (
 ) ENGINE=InnoDB AUTO_INCREMENT=10701766 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ptree` (
-  `node_key` VARCHAR(255) NOT NULL,
+  `node_key` BLOB NOT NULL,
   `key_size` INT NOT NULL,
   `node_svalues` BLOB NOT NULL,
   `num_elements` INT NOT NULL,

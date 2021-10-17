@@ -86,7 +86,7 @@ void IMPORT_DBManager::prepare_queries() {
 
     std::pair<std::string, std::string> IMPORT_DBManager::insert_certificate_stmt = make_pair<string, string>(
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE gpg_keyserver FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
-            "LINES STARTING BY '.' TERMINATED BY '\\n' (version,ID,@hexfingerprint,@hexcertificate,hash,is_unpacked,error_code) "
+            "LINES TERMINATED BY '\\n' (version,ID,@hexfingerprint,@hexcertificate,hash,is_unpacked,error_code) "
             "SET fingerprint = UNHEX(@hexfingerprint), certificate = COMPRESS(UNHEX(@hexcertificate)), is_synchronized = 1");
 
 IMPORT_DBManager::~IMPORT_DBManager()
@@ -119,7 +119,7 @@ void IMPORT_DBManager::build_index_gpg_keyserver(){
 void IMPORT_DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_data, const int is_unpacked){
     try{
         ostringstream f;
-        f << '.' << '"' << to_string(gpg_data.version) << "\",";
+        f << '"' << to_string(gpg_data.version) << "\",";
         f << '"' << gpg_data.ID << "\",";
         f << '"' << hexlify(gpg_data.fingerprint) << "\",";
         f << '"' << hexlify(gpg_data.certificate) << "\",";
@@ -136,7 +136,7 @@ void IMPORT_DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_dat
 void IMPORT_DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
     try{
         ostringstream f;
-        f << '.' << '"' << pubkey.keyId << "\",";
+        f << '"' << pubkey.keyId << "\",";
         f << '"' << pubkey.version << "\",";
         f << '"' << hexlify(pubkey.fingerprint) << "\",";
         f << '"' << hexlify(pubkey.priFingerprint) << "\",";
@@ -157,7 +157,7 @@ void IMPORT_DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
 void IMPORT_DBManager::write_userID_csv(const DBStruct::userID &uid) {
     try{
         ostringstream f;
-        f << '.' << '"' << uid.ownerkeyID << "\",";
+        f << '"' << uid.ownerkeyID << "\",";
         f << '"' << hexlify(uid.fingerprint) << "\",";
         f << '"' << uid.name << "\",";
         f << "\n";
@@ -170,7 +170,7 @@ void IMPORT_DBManager::write_userID_csv(const DBStruct::userID &uid) {
 void IMPORT_DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
     try{
         ostringstream f;
-        f << '.' << '"' << to_string(ua.id) << "\",";
+        f << '"' << to_string(ua.id) << "\",";
         f << '"' << hexlify(ua.fingerprint) << "\",";
         f << '"' << ua.name << "\",";
         f << '"' << ua.encoding << "\",";

@@ -54,7 +54,7 @@ void Recon_mysql_DBManager::prepare_queries(){
 
 	insert_ptree_stmt = make_pair<string, string>(
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE ptree FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
-            "LINES STARTING BY '.' TERMINATED BY '\\n' (node_key, key_size, node_svalues, num_elements, leaf, node_elements) "
+            "LINES TERMINATED BY '\\n' (@node_key, key_size, node_svalues, num_elements, leaf, node_elements) SET node_key = UNHEX(@node_key)"
             );
 
 	get_removed_hash_stmt = prepare_query("select hash from removed_hash");
@@ -149,20 +149,20 @@ Recon_memory_DBManager::Recon_memory_DBManager() : RECON_DBManager(){
 
 void Recon_memory_DBManager::prepare_queries(){
 
-    get_all_hash_stmt = prepare_query("SELECT hash FROM gpg_keyserver order by hash ASC");
+    get_all_hash_stmt = prepare_query("SELECT hash FROM gpg_keyserver LIMIT 10000");
 
     check_key_stmt = prepare_query("SELECT * FROM gpg_keyserver where hash = (?)");
 
-	insert_ptree_stmt = make_pair<string, string>(
+    insert_ptree_stmt = make_pair<string, string>(
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE ptree FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
-            "LINES STARTING BY '.' TERMINATED BY '\\n' (node_key, node_svalues, num_elements, leaf, node_elements) "
+            "LINES TERMINATED BY '\\n' (@node_key, key_size, node_svalues, num_elements, leaf, node_elements) SET node_key = UNHEX(@node_key)"
             );
 
 }
 
 void Recon_memory_DBManager::insert_node(const DBStruct::node &n){
     //syslog(LOG_DEBUG, "inserting node %s into memory DB", n.key.to_string().c_str());
-    memory_storage.insert(
+    auto res = memory_storage.insert(
         std::make_pair(
             std::make_pair(
                 n.key, n.key_size
@@ -172,7 +172,9 @@ void Recon_memory_DBManager::insert_node(const DBStruct::node &n){
             )
         )
     );
-  }
+    if (!res.second)
+        std::cout << "ERROR in memory DB" << std::endl;
+}
   
 void Recon_memory_DBManager::update_node(const DBStruct::node &n){
     try{
@@ -230,16 +232,15 @@ void Recon_memory_DBManager::commit_memtree(){
     // Open file
     csv_file = ofstream(CONTEXT.dbsettings.tmp_folder + "ptree.csv");
     try{
-        for (auto const &entry: memory_storage){
+        for (const auto& entry: memory_storage){
             std::string node_svalues = RECON_Utils::marshall_vec_zz_p(std::get<0>(entry.second)); 
             std::string node_elements = RECON_Utils::marshall_vec_zz_p(std::get<3>(entry.second)); 
-            csv_file << '.';
-		    csv_file << '"' << entry.first.first << "\",";
-		    csv_file << '"' << entry.first.second << "\",";
-            csv_file << '"' << node_svalues << "\",";
-            csv_file << '"' << std::get<1>(entry.second) << "\",";
-            csv_file << '"' << std::get<2>(entry.second) << "\",";
-            csv_file << '"' << node_elements << "\",";
+		    csv_file << '"' << hexlify(entry.first.first) << "\","; //node key
+		    csv_file << '"' << entry.first.second << "\","; // node key size
+            csv_file << '"' << node_svalues << "\","; // svalues
+            csv_file << '"' << std::get<1>(entry.second) << "\","; //num elements
+            csv_file << '"' << std::get<2>(entry.second) << "\","; // leaf
+            csv_file << '"' << node_elements << "\","; //elements
             csv_file << "\n";
         }
         csv_file.close();

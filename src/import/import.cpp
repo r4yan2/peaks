@@ -105,11 +105,7 @@ void Importer::import() {
     }
     if (CONTEXT.quitting) return;
     if (!(vm.count("csv-only"))){
-        std::cout << "Drop index" << std::endl;
-        dbm->drop_index_gpg_keyserver();
         import_csv(nThreads, selection);
-        std::cout << "Rebuilding index" << std::endl;
-        dbm->build_index_gpg_keyserver();
     }
     if (vm.count("noclean") == 0){
         std::cout << Utils::getCurrentTime() << "Cleaning temporary folder." << std::endl;
@@ -151,20 +147,31 @@ void Importer::generate_csv(std::vector<std::string> files, boost::filesystem::p
 
 void Importer::import_csv(unsigned int nThreads, int selection){
 
+    std::cout << "Drop index" << std::endl;
+    dbm->drop_index_gpg_keyserver();
     std::cout << Utils::getCurrentTime() << "Writing dumped packet in DB:" << std::endl;
 
-    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
-    std::vector<std::function<void ()>> jobs;
-    
+	bool mysqlsh = !bool(system("which mysqlsh > /dev/null 2>&1"));
+
     std::cout << Utils::getCurrentTime() << "\tInserting ";
     std::string s = Utils::FILENAME.at(selection); 
     std::cout << s.substr(0, s.size()-4) << std::endl;
+    std::vector<std::function<void ()>> jobs;
     for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, selection)){
-        jobs.push_back(std::bind(Import::insert_csv, dbm, filename, selection));
+        if (mysqlsh){
+            char buff[500];
+            std::string command = "mysqlsh mysql://%s:@%s:%d -- util import-table file://%s --schema=%s --table=gpg_keyserver --fieldsTerminatedBy=',' --fieldsEnclosedBy='\"' --columns=['\"version\"','\"ID\"',1,2,'\"hash\"','\"is_unpacked\"','\"error_code\"'] --decodeColumns='fingerprint=UNHEX(@1)' --decodeColumns='certificate=COMPRESS(UNHEX(@2))' --decodeColumns='is_synchronized=1' --showProgress=true";
+            sprintf(buff, command.c_str(), CONTEXT.dbsettings.db_user.c_str(), CONTEXT.dbsettings.db_host.c_str(), CONTEXT.dbsettings.db_port, filename.c_str(), CONTEXT.dbsettings.db_database.c_str());
+            std::cout << "Using mysqlsh command line" << std::endl;
+            std::cout << buff << std::endl;
+            system(buff);
+        } else {
+            jobs.push_back(std::bind(Import::insert_csv, dbm, filename, selection));
+        }
     }
-
-    //size_t nJobs = jobs.size();
-    //std::vector<std::thread> pool_vect(nThreads > nJobs ? nJobs : nThreads);
+    if (mysqlsh)
+        return;
+    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
     std::vector<std::thread> pool_vect(1);
 
     for (unsigned int i = 0; i < pool_vect.size(); i++){
@@ -186,6 +193,8 @@ void Importer::import_csv(unsigned int nThreads, int selection){
             std::terminate(); //abrupt chaos
         }
     }
+    std::cout << "Rebuilding index" << std::endl;
+    dbm->build_index_gpg_keyserver();
 }
 
 }
