@@ -3,6 +3,7 @@
 #include <thread>
 
 #include "DBManager.h"
+#include <common/config.h>
 
 using namespace peaks::common;
 using namespace std;
@@ -385,7 +386,7 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
         }
     } while (backoff > 0 && num_retries < 5);
     if (backoff > 0){
-        Utils::put_in_error(settings.error_folder, f, table);
+        Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, table);
     }
     try{
         remove(f.c_str());
@@ -447,9 +448,10 @@ void UNPACKER_DBManager::UpdateIsValid() {
 void UNPACKER_DBManager::openCSVFiles(){
     // Open files
     for (const auto &it: Utils::FILENAME){
+        auto filename = Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, it.first, this_thread::get_id());
         UNPACKER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(
                 it.first,
-                ofstream(Utils::get_file_name(settings.tmp_folder, it.first, this_thread::get_id()), ios_base::app)));
+                ofstream(filename, ios_base::app)));
     }
 }
 

@@ -1,0 +1,7 @@
+body {
+    max-height: 100%;
+}
+
+div.pubkey {
+    width: 50%;
+}

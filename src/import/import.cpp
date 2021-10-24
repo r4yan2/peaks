@@ -151,7 +151,8 @@ void Importer::import_csv(unsigned int nThreads, int selection){
     dbm->drop_index_gpg_keyserver();
     std::cout << Utils::getCurrentTime() << "Writing dumped packet in DB:" << std::endl;
 
-	bool mysqlsh = !bool(system("which mysqlsh > /dev/null 2>&1"));
+	//bool mysqlsh = !bool(system("which mysqlsh > /dev/null 2>&1"));
+    bool mysqlsh = false;
 
     std::cout << Utils::getCurrentTime() << "\tInserting ";
     std::string s = Utils::FILENAME.at(selection); 
@@ -169,28 +170,28 @@ void Importer::import_csv(unsigned int nThreads, int selection){
             jobs.push_back(std::bind(Import::insert_csv, dbm, filename, selection));
         }
     }
-    if (mysqlsh)
-        return;
-    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
-    std::vector<std::thread> pool_vect(1);
+    if (!mysqlsh){
+        std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
+        std::vector<std::thread> pool_vect(1);
 
-    for (unsigned int i = 0; i < pool_vect.size(); i++){
-        pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
-    }
-    for (const auto &j: jobs)
-        pool->Add_Job(j);
-    pool->Stop_Filling_UP();
-
-    while(1){
-        if (pool->done()){
-            for (auto &th: pool_vect)
-                if (th.joinable())
-                    th.join();
-            break;
+        for (unsigned int i = 0; i < pool_vect.size(); i++){
+            pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
         }
-        // DB connector is synchronous
-        if (CONTEXT.quitting){
-            std::terminate(); //abrupt chaos
+        for (const auto &j: jobs)
+            pool->Add_Job(j);
+        pool->Stop_Filling_UP();
+
+        while(1){
+            if (pool->done()){
+                for (auto &th: pool_vect)
+                    if (th.joinable())
+                        th.join();
+                break;
+            }
+            // DB connector is synchronous
+            if (CONTEXT.quitting){
+                std::terminate(); //abrupt chaos
+            }
         }
     }
     std::cout << "Rebuilding index" << std::endl;

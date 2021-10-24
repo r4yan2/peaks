@@ -240,7 +240,6 @@ void Pks::stats(){
 }
 
 void Pks::generating_cert_stats(std::map<std::string, std::string> & stats){
-    set<int> userattr_id = dbm->get_certificates_with_attributes();
 }
 
 
@@ -382,12 +381,361 @@ cppcms::json::value ptree_stats(){
     return full_stats;
 }
 
+cppcms::json::value certificate_stats(){
+    cppcms::json::value full_stats;
+    syslog(LOG_INFO, "Generating ptree stats");
+    std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
+    std::vector<std::tuple<int, int, bool, int>> certificates_data = dbm->get_certificates_analysis();
+    // 4 bins
+    // - < 10kb
+    // - 10kb -> 100kb
+    // - 100kb -> 1Mb
+    // - > 1Mb
+    int KB = 1024;
+    int MB = KB * 1024;
+
+    std::vector<int> size_limits;
+    for (int i=1; i< 10; i++){
+        size_limits.push_back(i*KB);
+    }
+    for (int i=1; i< 10; i++){
+        size_limits.push_back(10*i*KB);
+    }
+    for (int i=1; i< 10; i++){
+        size_limits.push_back(100*i*KB);
+    }
+    size_limits.push_back(MB);
+    int maxsize_ua = 0;
+    int maxsize_noua = 0;
+
+    time_t t = time(NULL);
+    tm* timePtr = localtime(&t);
+    int allowed_max_year = timePtr->tm_year;
+    int allowed_min_year = 1995;
+    std::vector<int> year_limits;
+    for (int i=allowed_min_year; i<=allowed_max_year; i++){
+        year_limits.push_back(i);
+    }
+    std::vector<int> years(year_limits.size()+1, 0);
+
+    for (const auto &flag: {true, false}){
+        std::string uastatus = flag ? "certificates_with_ua" : "certificates_without_ua";
+        std::vector<int> bins(size_limits.size()+1, 0);
+        for (const auto& data: certificates_data){
+            int length = std::get<0>(data); 
+            bool has_ua = std::get<3>(data);
+            if (has_ua == flag){
+                for (int i=0; i<size_limits.size(); i++){
+                    (flag?maxsize_ua:maxsize_noua) = std::max(flag?maxsize_ua:maxsize_noua, length);
+                    if (length < size_limits[i]){
+                        bins[i] += 1;
+                        break;
+                    }
+                }
+            }
+
+            int year = std::get<2>(data);
+            bool found = false;
+            int i = 0;
+            for (; i<year_limits.size(); i++){
+                if (has_ua == flag){
+                    if (year < year_limits[i]){
+                        years[i] += 1;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (has_ua == flag)
+                if (!found)
+                    years[i] += 1;
+        }
+        for (int i=0; i<bins.size(); i++)
+            full_stats["certificates_size"][uastatus][i] = bins[i];
+    }
+    int i = 0;
+    for (; i<size_limits.size(); i++){
+        full_stats["certificates_size"]["ticks"][i] = std::to_string(size_limits[i]/KB);
+    }
+    full_stats["certificates_size"]["maxsize_ua"] = maxsize_ua;
+    full_stats["certificates_size"]["maxsize_noua"] = maxsize_noua;
+    full_stats["certificates_year"]["year"] = years;
+    full_stats["certificates_year"]["ticks"] = year_limits;
+
+    std::string value = full_stats["certificates_size"].save();
+    dbm->store_in_cache("certificates_size", value);
+    value = full_stats["certificates_year"].save();
+    dbm->store_in_cache("certificates_year", value);
+    return full_stats;
+}
+
+
+cppcms::json::value userattribute_stats(){
+    cppcms::json::value full_stats;
+    std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
+    std::vector<std::tuple<int, bool>> ua_data = dbm->get_user_attributes_data();
+    int image_user_attributes = 0;
+    int other_user_attributes = 0;
+    // 4 bins
+    // - < 10kb
+    // - 10kb -> 100kb
+    // - 100kb -> 1Mb
+    // - > 1Mb
+    int KB = 1024;
+    int MB = KB * 1024;
+
+    std::vector<int> limits;
+    for (int i=1; i< 10; i++){
+        limits.push_back(i*KB);
+    }
+    for (int i=1; i< 10; i++){
+        limits.push_back(10*i*KB);
+    }
+    for (int i=1; i< 10; i++){
+        limits.push_back(100*i*KB);
+    }
+    limits.push_back(MB);
+    int maxsize_image = 0;
+    int maxsize_noimage = 0;
+
+    for (const auto &flag: {true, false}){
+        std::vector<int> bins(limits.size()+1, 0);
+        std::string is_image = flag ? "image" : "other";
+        for (const auto& el: ua_data){
+            bool is_data_image = std::get<1>(el)?1:0;
+            if (is_data_image != flag)
+                continue;
+            image_user_attributes += flag?1:0;
+            other_user_attributes += flag?0:1;
+            int length = std::get<0>(el);
+            for (int i=0; i<limits.size(); i++){
+                (flag?maxsize_image:maxsize_noimage) = std::max(flag?maxsize_image:maxsize_noimage, length);
+                if (length < limits[i]){
+                    bins[i] += 1;
+                    break;
+                }
+            }
+        }
+        for (int i=0; i<bins.size(); i++)
+            full_stats["userattributes"][is_image]["size"][i] = bins[i];
+    }
+    int i = 0;
+    for (; i<limits.size(); i++){
+        full_stats["userattributes"]["ticks"][i] = std::to_string(limits[i]/KB);
+    }
+    full_stats["userattributes"]["maxsize_image"] = std::to_string(maxsize_image/KB);
+    full_stats["userattributes"]["maxsize_other"] = std::to_string(maxsize_noimage/KB);
+    full_stats["userattributes"]["images"] = image_user_attributes;
+    full_stats["userattributes"]["others"] = other_user_attributes;
+    std::string value = full_stats["userattributes"].save();
+    dbm->store_in_cache("userattributes", value);
+    return full_stats;
+}
+
+cppcms::json::value pubkey_stats(){
+    cppcms::json::value full_stats;
+    std::map<int, std::string> algorithms_map = {
+        {1, "RSA"},
+        {2, "RSA (Encrypt Only)"},
+        {3, "RSA (Sign Only)"},
+        {16, "Elgamal"},
+        {17, "DSA"},
+        {18, "ECDH"},
+        {19, "ECDSA"},
+        {20, "Reserved Elgamal"},
+        {21, "Reserved DH"},
+        {22, "EdDSA"}
+    };
+    std::map<int, std::map<int, int>>
+        pubkey_year_alg_dict;
+    std::map<int, std::vector<int>>
+        rsa_year_size_dict,
+        dsa_q_year_size_dict,
+        dsa_p_year_size_dict,
+        elgamal_year_size_dict;
+    std::vector<int> rsa_limits = 
+        {512, 1024, 2048, 4096};
+    std::vector<int> elg_limits = 
+        {1024, 2048, 3072};
+    std::vector<int> dsa_qlimits = 
+        {160, 224, 256};
+    std::vector<int> dsa_plimits = 
+        {1024, 2048, 3072};
+    int ec = 0;
+    int rsa = 0;
+    int dsa = 0;
+    int elg = 0;
+    time_t t = time(NULL);
+    tm* timePtr = localtime(&t);
+    int allowed_max_year = 1900 + timePtr->tm_year;
+    int allowed_min_year = 1995;
+    std::set<int>
+        rsabits,
+        rsayears,
+        dsa_qbits,
+        dsa_pbits,
+        dsayears,
+        ecyears,
+        elgamalyears,
+        elgamalbits;
+    std::map<int, int> ec_years_map;
+
+    std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
+    std::vector<std::tuple<int, int, int, int, int>> data = dbm->get_pubkey_data();
+
+    for (const auto &d:data){
+        int algorithm, year, n, q, p;
+        std::tie(algorithm, year, n, p, q) = d;
+        auto it = algorithms_map.find(algorithm);
+        if (it == algorithms_map.end())
+            continue;
+        if (pubkey_year_alg_dict.count(year) == 0){
+            pubkey_year_alg_dict[year] = 
+                std::map<int, int>({{algorithm, 1}});
+        }else{
+            if (pubkey_year_alg_dict[year].count(algorithm) == 0)
+                pubkey_year_alg_dict[year][algorithm] = 1;
+            else 
+                pubkey_year_alg_dict[year][algorithm] += 1;
+        }
+
+        if (algorithm >=1 and algorithm <=3){
+            //RSA
+            rsabits.insert(n);
+            rsayears.insert(year);
+            rsa += 1;
+            if (year >= allowed_min_year and year <= allowed_max_year){
+                if (rsa_year_size_dict.count(year) == 0){
+                    rsa_year_size_dict[year] = 
+                        std::vector<int>(rsa_limits.size()+1, 0);
+                }
+                int i = 0;
+                bool found = false;
+                for (; i<rsa_limits.size(); i++){
+                    if (n < rsa_limits[i]){
+                        rsa_year_size_dict[year][i] += 1;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    rsa_year_size_dict[year][i] += 1;
+            }
+        } else if (algorithm == 16){
+            // Elgamal
+
+            elgamalbits.insert(p);
+            elgamalyears.insert(year);
+            elg += 1;
+            if (year >= allowed_min_year and year <= allowed_max_year){
+                if (elgamal_year_size_dict.count(year) == 0){
+                    elgamal_year_size_dict[year] = 
+                        std::vector<int>(elg_limits.size()+1, 0);
+                }
+                int i = 0;
+                bool found = false;
+                for (; i<elg_limits.size(); i++){
+                    if (p < elg_limits[i]){
+                        elgamal_year_size_dict[year][i] += 1;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    elgamal_year_size_dict[year][i] += 1;
+            }
+        } else if (algorithm == 17){
+            // DSA
+
+            dsa_qbits.insert(q);
+            dsa_pbits.insert(p);
+            dsayears.insert(year);
+            dsa += 1;
+            if (year >= allowed_min_year and year <= allowed_max_year){
+                if (dsa_q_year_size_dict.count(year) == 0){
+                    dsa_q_year_size_dict[year] = 
+                        std::vector<int>(dsa_qlimits.size()+1, 0);
+                    dsa_p_year_size_dict[year] = 
+                        std::vector<int>(dsa_plimits.size()+1, 0);
+                }
+                int i = 0;
+                bool found = false;
+                for (; i<dsa_qlimits.size(); i++){
+                    if (q < dsa_qlimits[i]){
+                        dsa_q_year_size_dict[year][i] += 1;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    dsa_q_year_size_dict[year][i] += 1;
+                i = 0;
+                found = false;
+                for (; i<dsa_plimits.size(); i++){
+                    if (p < dsa_plimits[i]){
+                        dsa_p_year_size_dict[year][i] += 1;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    dsa_p_year_size_dict[year][i] += 1;
+            }
+        } else if (algorithm == 18 || algorithm == 19 || algorithm == 22){
+            ecyears.insert(year);
+            ec += 1;
+            if (year >= allowed_min_year and year <= allowed_max_year){
+                if (ec_years_map.count(year) == 0){
+                    ec_years_map[year] = 1;
+                } else {
+                    ec_years_map[year] += 1;
+                }
+            }
+        }
+    }
+    
+    for (const auto &it: algorithms_map){
+        full_stats["pubkey"]["generic"]["algorithms_map"][it.first] = it.second;
+        int i = 0;
+        for (int y=allowed_min_year; y<=allowed_max_year; y++, i++){
+            full_stats["pubkey"]["generic"][it.second][i] = pubkey_year_alg_dict[y][it.first];
+        }
+    }
+    full_stats["pubkey"]["generic"]["rsa_count"] = rsa;
+    full_stats["pubkey"]["generic"]["dsa_count"] = dsa;
+    full_stats["pubkey"]["generic"]["elgamal_count"] = elg;
+    full_stats["pubkey"]["generic"]["elliptic_count"] = ec;
+    full_stats["pubkey"]["generic"]["total_valid"] = rsa+dsa+elg+ec;
+    full_stats["pubkey"]["generic"]["total"] = data.size();
+
+    for (int y=allowed_min_year,i=0; y<=allowed_max_year; y++,i++){
+        full_stats["pubkey"]["generic"]["years"][i] = y;
+        full_stats["pubkey"]["rsa"]["n_sizes"][i] = rsa_year_size_dict[y];
+        full_stats["pubkey"]["elgamal"]["p_sizes"][i] = elgamal_year_size_dict[y];
+        full_stats["pubkey"]["dsa"]["p_sizes"][i] = dsa_p_year_size_dict[y];
+        full_stats["pubkey"]["dsa"]["q_sizes"][i] = dsa_q_year_size_dict[y];
+        full_stats["pubkey"]["elliptic"]["sizes"][i] = ec_years_map[y];
+    }
+
+    std::string value = full_stats["pubkey"].save();
+    dbm->store_in_cache("pubkey", value);
+    return full_stats;
+}
+
 void json_service::get_stats(std::string what){
     std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
     bool expired = false;
     std::string res = dbm->get_from_cache(what, expired);
     if (res == ""){
-        cppcms::json::value all_stats = ptree_stats();
+        cppcms::json::value all_stats;
+        if (what == "basic_ptree_stats" || what == "node_level_ptree_stats" || what == "num_elements_ptree_stats")
+            all_stats = ptree_stats();
+        else if (what == "certificates_size" || what == "certificates_year")
+            all_stats = certificate_stats();
+        else if (what == "userattributes")
+            all_stats = userattribute_stats();
+        else if (what == "pubkey")
+            all_stats = pubkey_stats();
         return_result(all_stats[what]);
     } else {
         cppcms::json::value stats = parse_stats(res);
@@ -595,8 +943,10 @@ void serve(po::variables_map &vm){
     cfg["file_server"]["enable"] = true;
     cfg["file_server"]["document_root"] = ".";
     cfg["file_server"]["listing"] = true;
-    cfg["file_server"]["alias"][0]["url"] = "/scripts";
-    cfg["file_server"]["alias"][0]["path"] = "static/js";
+    cfg["file_server"]["alias"][0]["url"] = "/css";
+    cfg["file_server"]["alias"][0]["path"] = "static/css";
+    cfg["file_server"]["alias"][1]["url"] = "/js";
+    cfg["file_server"]["alias"][1]["path"] = "static/js";
 
     int log_option;
     int log_upto;

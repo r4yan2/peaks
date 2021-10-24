@@ -144,8 +144,8 @@ int main(int argc, char* argv[]){
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
             po::store(po::command_line_parser(opts).options(import_desc).run(), vm);
-            Importer importer;
             CONTEXT.setContext(vm);
+            Importer importer;
             importer.import();
             }
         else if (cmd == "unpack"){

@@ -175,38 +175,34 @@ void Unpacker::run(){
 void Unpacker::store_keymaterial(){
     if (CONTEXT.vm.count("csv-only"))
         return; //nothing to do
-    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
-    std::vector<std::function<void ()>> jobs;
-    std::vector<std::thread> pool_vect(1);
-    int file_number;
-    do{
-        file_number = Utils::get_files_number(db_settings.tmp_folder);
-        this_thread::sleep_for(std::chrono::seconds{1});
-    }
-    while (file_number < Utils::get_files_number(db_settings.tmp_folder));
+    //std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
+    //std::vector<std::function<void ()>> jobs;
+    //std::vector<std::thread> pool_vect(1);
+    //for (unsigned int i = Utils::PUBKEY; i <= Utils::UNPACKED; i++){
+    //    for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i)){
+    //        std::shared_ptr<Job> j = std::make_shared<Job>([=] { dbm->insertCSV(filename, i); });
+    //        pool->Add_Job(j);
+    //    }
+    //}
 
-    for (unsigned int i = Utils::PUBKEY; i <= Utils::UNPACKED; i++){
-        for (const std::string & filename: Utils::get_files(db_settings.tmp_folder, i)){
-            std::shared_ptr<Job> j = std::make_shared<Job>([=] { dbm->insertCSV(filename, i); });
-            pool->Add_Job(j);
-        }
-    }
-
-    pool->Stop_Filling_UP();
+    //pool->Stop_Filling_UP();
  
-    while(1){
-      if (pool->done()){
-          for (auto &th: pool_vect)
-              if (th.joinable())
-                  th.join();
-          break;
-      }
-      // DB connector is synchronous
-      if (CONTEXT.quitting){
-          std::terminate(); //abrupt chaos
-      }
-    }
+    //while(1){
+    //  if (pool->done()){
+    //      for (auto &th: pool_vect)
+    //          if (th.joinable())
+    //              th.join();
+    //      break;
+    //  }
+    //  // DB connector is synchronous
+    //  if (CONTEXT.quitting){
+    //      std::terminate(); //abrupt chaos
+    //  }
+    //}
 
+    for (unsigned int i = Utils::PUBKEY; i <= Utils::UNPACKED; i++)
+        for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i))
+            dbm->insertCSV(filename, i);
     dbm->UpdateSignatureIssuingFingerprint();
     //dbm->UpdateSignatureIssuingUsername();
     dbm->UpdateIsRevoked();

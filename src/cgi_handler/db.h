@@ -111,7 +111,7 @@ public:
     void insert_broken_key(const std::string &cert, const std::string &comment);
 
     std::string get_key_by_hash(const std::string &hash);
-    std::set<int> get_certificates_with_attributes();
+    std::vector<int> get_certificates_with_attributes();
     std::vector<DBStruct::userAtt> get_user_attributes();
 
     /**
@@ -122,6 +122,9 @@ public:
     std::vector<node> get_pnodes();
     std::string get_from_cache(const std::string &key, bool &expired);
     void store_in_cache(const std::string &key, const std::string &value);
+    std::vector<std::tuple<int, int, bool, int>> get_certificates_analysis();
+    std::vector<std::tuple<int, bool>> get_user_attributes_data();
+    std::vector<std::tuple<int, int, int, int, int>> get_pubkey_data();
 
 private:
 	std::shared_ptr<DBQuery>
@@ -146,7 +149,10 @@ private:
             get_pnodes_stmt,
             get_certificates_with_attributes_stmt,
             get_from_cache_stmt,
-            store_in_cache_stmt;
+            store_in_cache_stmt,
+            get_certificates_analysis_stmt,
+            get_user_attributes_data_stmt,
+            get_pubkey_data_stmt;
     
 	std::string hexToUll(const std::string &hex) {
         unsigned long long ullKey = std::stoull(hex, nullptr, 16);

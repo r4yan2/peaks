@@ -78,6 +78,7 @@ void parse_config(std::istream& conf, po::variables_map &vm){
         ("filters", po::value<std::string>()->default_value("yminsky.dedup,yminsky.merge"))
         ("name", po::value<std::string>()->default_value("peaks_recon"))
         ("gossip_interval", po::value<int>()->default_value(60))
+        ("unpack_interval", po::value<int>()->default_value(60))
         ("max_read_len_shift", po::value<int>()->default_value(24))
         ("max_recover_size", po::value<int>()->default_value(1500))
         ("default_timeout", po::value<int>()->default_value(300))

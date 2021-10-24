@@ -129,6 +129,9 @@ void CGI_DBManager::prepare_queries(){
 
     get_from_cache_stmt = prepare_query("SELECT value, ((created + INTERVAL 7 day) < NOW()) as expired FROM stash WHERE name = (?)");
     store_in_cache_stmt = prepare_query("INSERT INTO stash(`name`,`value`, `created`) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE `value` = (?), `created` = NOW()");
+    get_certificates_analysis_stmt = prepare_query("SELECT LENGTH(UNCOMPRESS(certificate)) as length, gp.id as id, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id");
+    get_user_attributes_data_stmt = prepare_query("SELECT LENGTH(image) as length, (encoding IS NOT NULL) as isImage FROM UserAttribute");
+    get_pubkey_data_stmt = prepare_query("SELECT pubAlgorithm, YEAR(creationtime) as year, BIT_LENGTH(n) as n_length, BIT_LENGTH(p) as p_length, BIT_LENGTH(q) as q_length FROM Pubkey");
 }
 
 // Database class destructor
@@ -543,18 +546,6 @@ string CGI_DBManager::get_key_by_hash(const string &hash) {
     return out;
 }
 
-std::set<int> CGI_DBManager::get_certificates_with_attributes(){
-    set<int> res;
-    try{
-        std::unique_ptr<DBResult> result = get_certificates_with_attributes_stmt->execute();
-        while (result->next())
-            res.insert(result->getInt("unique_id"));
-    }catch(...){
-    }
-    return res;
-}
-
-
 vector<DBStruct::node> CGI_DBManager::get_pnodes(){
     vector<DBStruct::node> res;
     try{
@@ -602,5 +593,60 @@ void CGI_DBManager::store_in_cache(const std::string &key, const std::string &va
 }
 
 
+std::vector<std::tuple<int, int, bool, int>> CGI_DBManager::get_certificates_analysis(){
+    std::vector<std::tuple<int, int, bool, int>> res;
+    try{
+        std::unique_ptr<DBResult> result = get_certificates_analysis_stmt->execute();
+        while(result->next()){
+            res.push_back(std::tuple<int, int, bool, int>(
+                result->getInt("length"),
+                result->getInt("id"),
+                result->getBoolean("hasUserAttribute"),
+                result->getInt("year")
+            ));
+        }
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return res;
+}
+
+
+std::vector<std::tuple<int, bool>> CGI_DBManager::get_user_attributes_data(){
+    std::vector<std::tuple<int, bool>> res;
+    try{
+        std::unique_ptr<DBResult> result = get_user_attributes_data_stmt->execute();
+        while(result->next()){
+            res.push_back(std::tuple<int, bool>(
+                result->getInt("length"),
+                result->getBoolean("isImage")
+            ));
+        }
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return res;
+
+}
+
+std::vector<std::tuple<int, int, int, int, int>> CGI_DBManager::get_pubkey_data(){
+    std::vector<std::tuple<int, int, int, int, int>> res;
+    try{
+        std::unique_ptr<DBResult> result = get_pubkey_data_stmt->execute();
+        while(result->next()){
+            res.push_back(std::tuple<int, int, int, int, int>(
+                result->getInt("pubAlgorithm"),
+                result->getInt("year"),
+                result->getInt("n_length"),
+                result->getInt("p_length"),
+                result->getInt("q_length")
+            ));
+        }
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return res;
+
+}
 }
 }
