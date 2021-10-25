@@ -427,6 +427,7 @@ void UNPACKER_DBManager::UpdateIsExpired() {
 void UNPACKER_DBManager::UpdateIsRevoked() {
     try{
         commit->execute();
+        update_revoked_1->execute();
         update_revoked_2->execute();
     }catch (exception &e){
         syslog(LOG_CRIT, "update_revoked FAILED, the revocation effect on Signatures will be not up to date! - %s",

@@ -204,8 +204,11 @@ void Unpacker::store_keymaterial(){
         for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i))
             dbm->insertCSV(filename, i);
     dbm->UpdateSignatureIssuingFingerprint();
-    //dbm->UpdateSignatureIssuingUsername();
+    dbm->UpdateSignatureIssuingUsername();
+    dbm->UpdateIsExpired();
     dbm->UpdateIsRevoked();
+    dbm->UpdateIsValid();
+    
 
 }
 

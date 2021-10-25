@@ -27,6 +27,7 @@ namespace Import {
                 continue;
             }
         }
+        return hashes;
     }
 
     void insert_csv(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::string &filename, int selection){

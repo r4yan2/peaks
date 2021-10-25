@@ -53,14 +53,6 @@ CREATE TABLE IF NOT EXISTS `SignatureStatus` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Temporary table structure for view `Signature_no_issuing_fp`
---
-
-CREATE VIEW `Signature_no_issuing_fp` AS SELECT 
- 1 AS `id`,
- 1 AS `fp`;
-
---
 -- Table structure for table `Signatures`
 --
 
@@ -152,7 +144,7 @@ CREATE TABLE IF NOT EXISTS `UserID` (
   `name` varchar(750) NOT NULL,
   `is_analyze` tinyint(4) DEFAULT NULL,
   `bindingAuthentic` tinyint(4) NOT NULL,
-  PRIMARY KEY (`fingerprint`,`name`(191)) USING BTREE,
+  PRIMARY KEY (`fingerprint`,`name`(191)),
   KEY `ownerkeyID` (`ownerkeyID`,`fingerprint`),
   FULLTEXT (`name`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -173,39 +165,26 @@ CREATE TABLE IF NOT EXISTS `gpg_keyserver` (
   PRIMARY KEY (`fingerprint`, `version`),
   KEY `ID` (`ID`,`fingerprint`) USING BTREE,
   KEY `HASH` (`hash` ASC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
---
--- Temporary table structure for view `key_primary_userID`
---
-
-CREATE VIEW `key_primary_userID` AS SELECT 
- 1 AS `version`,
- 1 AS `fingerprint`,
- 1 AS `name`,
- 1 AS `isPrimaryUserId`,
- 1 AS `trustLevel`;
 
 --
 -- Table structure for table `removed_hash`
 --
 
 CREATE TABLE IF NOT EXISTS `removed_hash` (
-  `hash` varchar(255) NOT NULL,
-  PRIMARY KEY (`hash`(191))
+  `hash` varchar(128) NOT NULL,
+  PRIMARY KEY (`hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Table structure for table `revocationSignatures`
+-- View structure for `revocationSignatures`
 --
 
-CREATE TABLE IF NOT EXISTS `revocationSignatures` (
-  `issuingKeyId` bigint(20) unsigned NOT NULL DEFAULT '0',
-  `signedFingerprint` binary(20) NOT NULL DEFAULT '\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0',
-  `signedUsername` varchar(750) NOT NULL DEFAULT '',
-  PRIMARY KEY (`issuingKeyId`,`signedFingerprint`,`signedUsername`(191))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE OR REPLACE VIEW `revocationSignatures` (`issuingKeyId`,`signedFingerprint`, `signedUsername`) AS
+ SELECT issuingKeyId, signedFingerprint, signedUsername
+ FROM Signatures
+ WHERE isRevoked = 1;
 
 --
 -- Table structure for table `selfSignaturesMetadata`
@@ -251,8 +230,8 @@ CREATE TABLE IF NOT EXISTS `stash` (
     `created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DELIMITER ;;
-
+-- DELIMITER ;;
+-- 
 -- CREATE TRIGGER update_issuing_fingerprint
 -- AFTER INSERT ON Pubkey
 -- FOR EACH ROW
@@ -261,34 +240,49 @@ DELIMITER ;;
 -- SET issuingFingerprint = new.fingerprint
 -- WHERE issuingKeyId = new.KeyId and isnull(issuingFingerprint);
 -- END;;
+-- 
+-- CREATE TRIGGER `save_hash` 
+-- AFTER DELETE ON `gpg_keyserver` 
+-- FOR EACH ROW 
+-- INSERT IGNORE INTO removed_hash VALUES(OLD.hash);;
+-- 
+-- CREATE TRIGGER `update_issuing_username`
+-- AFTER INSERT ON UserID
+-- FOR EACH ROW
+-- BEGIN
+-- UPDATE Signatures
+-- SET issuingUsername = new.name
+-- WHERE issuingFingerprint = new.fingerprint and isnull(issuingUsername);
+-- END;;
 
-CREATE TRIGGER `save_hash` 
-AFTER DELETE ON `gpg_keyserver` 
-FOR EACH ROW 
-INSERT IGNORE INTO removed_hash VALUES(OLD.hash);;
+-- CREATE TRIGGER `update_revoked_1`
+-- AFTER INSERT ON Signatures
+-- FOR EACH ROW
+-- BEGIN
+-- IF new.isRevocation = 1 THEN
+-- BEGIN
+-- INSERT IGNORE INTO revocationSignatures VALUES (new.issuingKeyID, new.signedFingerprint, new.signedUsername);
+-- END; END IF;
+-- END;;
 
-CREATE TRIGGER `update_issuing_username`
-AFTER INSERT ON UserID
-FOR EACH ROW
-BEGIN
-UPDATE Signatures
-SET issuingUsername = new.name
-WHERE issuingFingerprint = new.fingerprint and isnull(issuingUsername);
-END;;
+-- CREATE TRIGGER `update_revoked_2`
+-- AFTER INSERT ON Signatures
+-- FOR EACH ROW
+-- BEGIN
+--     UPDATE Signatures JOIN revocationSignatures on (
+--         Signatures.issuingKeyId = revocationSignatures.issuingKeyId and 
+--         Signatures.signedFingerprint = revocationSignatures.signedFingerprint and 
+--         Signatures.signedUsername = revocationSignatures.signedUsername
+--     ) set isRevoked = 1, isValid = -1 where isRevoked = 0 and isRevocation = 0;
+-- END;;
+-- 
+-- 
+-- CREATE EVENT `update_validity` ON SCHEDULE EVERY 1 DAY
+-- COMMENT 'update isExpired,isValid attribute on Signatures'
+-- DO BEGIN
+--     UPDATE Signatures SET isExpired = 1, isValid = -1 WHERE expirationTime < NOW() AND isExpired != 1;
+--     UPDATE Signatures SET isValid = -1 WHERE isValid != -1 AND isRevoked = 1;
+--     UPDATE Signatures SET isRevoked = 1, isValid = -1 WHERE isRevoked = 0 AND isRevocation = 0;
+-- END;;
 
-CREATE TRIGGER `update_revoked_1`
-AFTER INSERT ON Signatures
-FOR EACH ROW
-BEGIN
-IF new.isRevocation = 1 THEN
-BEGIN
-INSERT IGNORE INTO revocationSignatures VALUES (new.issuingKeyID, new.signedFingerprint, new.signedUsername);
-END; END IF;
-END;;
-
-DELIMITER ;
-
-CREATE EVENT `update_expired` ON SCHEDULE EVERY 1 DAY
-COMMENT 'update isExpired attribute on Signatures'
-DO UPDATE Signatures SET isExpired = 1, isValid = -1 WHERE expirationTime < NOW();
-
+-- DELIMITER ;

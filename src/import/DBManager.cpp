@@ -87,7 +87,7 @@ void IMPORT_DBManager::prepare_queries() {
     std::pair<std::string, std::string> IMPORT_DBManager::insert_certificate_stmt = make_pair<string, string>(
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE gpg_keyserver FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
             "LINES TERMINATED BY '\\n' (version,ID,@hexfingerprint,@hexcertificate,hash,is_unpacked,error_code) "
-            "SET fingerprint = UNHEX(@hexfingerprint), certificate = COMPRESS(UNHEX(@hexcertificate)), is_synchronized = 1");
+            "SET fingerprint = UNHEX(@hexfingerprint), certificate = UNHEX(@hexcertificate)");
 
 IMPORT_DBManager::~IMPORT_DBManager()
 {}
@@ -107,12 +107,14 @@ bool IMPORT_DBManager::existSignature(const DBStruct::signatures &s){
 }
 
 void IMPORT_DBManager::drop_index_gpg_keyserver(){
-	execute_query("ALTER TABLE gpg_keyserver DROP INDEX ID;");
+	execute_query("ALTER TABLE gpg_keyserver DROP INDEX id;");
+	execute_query("ALTER TABLE gpg_keyserver DROP INDEX fingerprint;");
 	execute_query("ALTER TABLE gpg_keyserver DROP INDEX HASH;");
 }
 
 void IMPORT_DBManager::build_index_gpg_keyserver(){
-	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `ID` (`ID`,`fingerprint`) USING BTREE;");
+	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `id` (`ID`);");
+	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `fingerprint` (`fingerprint`);");
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `HASH` (`hash` ASC);");
 }
 
@@ -331,55 +333,10 @@ void IMPORT_DBManager::insertCSV(const std::string & f, const unsigned int &tabl
     }
 }
 
-void IMPORT_DBManager::UpdateSignatureIssuingFingerprint() {
-    try{
-        execute_query("COMMIT");
-        execute_query("UPDATE Signatures INNER JOIN Pubkey on issuingKeyId = KeyId SET issuingFingerprint = fingerprint where isnull(issuingFingerprint) and issuingKeyId = KeyId;");
-    }catch (exception &e){
-        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
-                          e.what());
-    }
-}
-
 void IMPORT_DBManager::UpdateSignatureIssuingUsername() {
     try{
         execute_query("COMMIT");
-        execute_query("UPDATE Signatures INNER JOIN key_primary_userID on "
-             "issuingFingerprint = fingerprint SET issuingUsername = name WHERE issuingUsername IS NULL;");
-    }catch (exception &e){
-        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
-                          e.what());
-    }
-}
-
-void IMPORT_DBManager::UpdateIsExpired() {
-    try{
-        execute_query("COMMIT");
-        execute_query("UPDATE Signatures SET isExpired = 1 WHERE expirationTime < NOW();");
-    }catch (exception &e){
-        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
-                          e.what());
-    }
-}
-
-void IMPORT_DBManager::UpdateIsRevoked() {
-    try{
-        execute_query("COMMIT");
-        execute_query("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
-             "signedFingerprint, signedUsername FROM Signatures WHERE isRevocation = 1;");
-        execute_query("UPDATE Signatures set isRevoked = 1 where isRevoked = 0 "
-             "and isRevocation = 0 and (issuingKeyId, signedFingerprint, signedUsername) in (select * from revocationSignatures);");
-    }catch (exception &e){
-        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
-                          e.what());
-    }
-}
-
-void IMPORT_DBManager::UpdateIsValid() {
-    try{
-        execute_query("COMMIT");
-        execute_query("UPDATE Signatures as s1 SET s1.isValid = -1 WHERE s1.isExpired = 1 "
-             "or isRevoked = 1;");
+        execute_query("UPDATE Signatures SET issuingUsername = name WHERE issuingUsername IS NULL AND issuingFingerprint = 1;");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
                           e.what());
