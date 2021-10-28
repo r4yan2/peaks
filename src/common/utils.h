@@ -6,11 +6,13 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <map>
+#include <OpenPGP.h>
+using namespace OpenPGP;
 
 namespace peaks{
 namespace common{
 namespace Utils{
-    const unsigned int fileNumber       = 7;
+    const unsigned int fileNumber       = 8;
     const unsigned int CERTIFICATE      = 1;
     const unsigned int PUBKEY           = 2;
     const unsigned int SIGNATURE        = 3;
@@ -91,6 +93,10 @@ namespace Utils{
      * @return vector of strings representing the content of the folder
      */
     std::vector<std::string> dirlisting(const std::string & foldername);
+    std::string calculate_hash(const Key::Ptr &k);
+    OpenPGP::PGP::Packets get_ordered_packet(OpenPGP::PGP::Packets packet_list);
+    std::string concat(const OpenPGP::PGP::Packets &packet_list);
+    bool compare(const OpenPGP::Packet::Tag::Ptr &p1, const OpenPGP::Packet::Tag::Ptr &p2);
 
 }
 

@@ -1,3 +1,4 @@
+#include <boost/filesystem/fstream.hpp>
 #include <sys/syslog.h>
 #include <cstring>
 #include <sstream>
@@ -86,8 +87,8 @@ void IMPORT_DBManager::prepare_queries() {
 
     std::pair<std::string, std::string> IMPORT_DBManager::insert_certificate_stmt = make_pair<string, string>(
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE gpg_keyserver FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
-            "LINES TERMINATED BY '\\n' (version,ID,@hexfingerprint,@hexcertificate,hash,is_unpacked,error_code) "
-            "SET fingerprint = UNHEX(@hexfingerprint), certificate = UNHEX(@hexcertificate)");
+            "LINES TERMINATED BY '\\n' (version,ID,@hexfingerprint,hash,is_unpacked,error_code,filename,origin,len) "
+            "SET fingerprint = UNHEX(@hexfingerprint)");
 
 IMPORT_DBManager::~IMPORT_DBManager()
 {}
@@ -114,20 +115,22 @@ void IMPORT_DBManager::drop_index_gpg_keyserver(){
 
 void IMPORT_DBManager::build_index_gpg_keyserver(){
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `id` (`ID`);");
-	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `fingerprint` (`fingerprint`);");
+	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `fingerprint` (`fingerprint`, `version`);");
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `HASH` (`hash` ASC);");
 }
 
-void IMPORT_DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_data, const int is_unpacked){
+void IMPORT_DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_data){
     try{
         ostringstream f;
         f << '"' << to_string(gpg_data.version) << "\",";
         f << '"' << gpg_data.ID << "\",";
         f << '"' << hexlify(gpg_data.fingerprint) << "\",";
-        f << '"' << hexlify(gpg_data.certificate) << "\",";
         f << '"' << gpg_data.hash << "\",";
-        f << '"' << is_unpacked << "\",";
+        f << '"' << gpg_data.is_unpacked << "\",";
         f << '"' << to_string(gpg_data.error_code) << "\",";
+        f << '"' << gpg_data.filename << "\",";
+        f << '"' << to_string(gpg_data.origin) << "\",";
+        f << '"' << to_string(gpg_data.len) << "\",";
         f << "\n";
 		file_list.at(Utils::CERTIFICATE)->write(f.str());
     }catch (exception &e){

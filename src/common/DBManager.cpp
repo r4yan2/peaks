@@ -5,6 +5,8 @@
 #include <numeric>
 #include <sstream>
 #include "config.h"
+#include <common/Thread_Pool.h>
+#include <tuple>
 
 namespace peaks{
 namespace common{
@@ -22,13 +24,34 @@ DBManager::DBManager():
 
 void DBManager::connect_schema(){
     con->setSchema(CONTEXT.dbsettings.db_database);
+    get_certificate_from_filestore_stmt = prepare_query("SELECT filename, origin, len FROM gpg_keyserver WHERE hash = (?)");
+    get_filestore_index_from_stash_stmt = prepare_query("SELECT value FROM stash WHERE name = 'filestore_index'");
+    store_filestore_index_to_stash_stmt = prepare_query("REPLACE INTO stash (name, value) VALUES ('filestore_index', ?)");
+    // filestorage
+    int idx = 0;
+    try{
+        std::unique_ptr<DBResult> result = get_filestore_index_from_stash_stmt->execute();
+        while (result->next()){
+            idx = atoi(result->getString("value").c_str());
+        }
+    }catch(std::exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    CONTEXT.filestorage_index = idx;
+    std::string format = CONTEXT.dbsettings.filestorage_format;
+    int sz = std::snprintf(nullptr, 0, format.c_str(), idx);
+    std::vector<char> buf(sz + 1);
+    std::snprintf(&buf[0], buf.size(), format.c_str(), idx);
+    std::string tmp(buf.data(), buf.size());
+    filestorage.open(tmp, true);
+
 }
 
 void DBManager::init_database(const std::string &filename){
 
     std::string dbinit = "CREATE DATABASE IF NOT EXISTS `" + CONTEXT.dbsettings.db_database + "`;";
     execute_query(dbinit);
-    connect_schema();
+    con->setSchema(CONTEXT.dbsettings.db_database);
     std::ifstream inFile;
     inFile.open(filename);
     if (inFile.fail())
@@ -59,6 +82,7 @@ bool DBManager::ensure_database_connection(){
 
 void DBManager::begin_transaction(){
     try{
+        execute_query("SET AUTOCOMMIT = 0");
         execute_query("START TRANSACTION");
     }catch (std::exception &e){
         syslog(LOG_WARNING, "begin transaction FAILED, data corruption may occur! - %s", e.what());
@@ -68,6 +92,7 @@ void DBManager::begin_transaction(){
 void DBManager::end_transaction(){
     try{
         execute_query("COMMIT");
+        execute_query("SET AUTOCOMMIT = 1");
     }catch (std::exception &e){
         syslog(LOG_WARNING, "begin transaction FAILED, data corruption may occur! - %s", e.what());
     }
@@ -82,12 +107,10 @@ void DBManager::lockTables(int selection){
         execute_query("SET foreign_key_checks = 0");
 
         std::string table = tables.at(selection);
-        //std::string s = std::accumulate(++tables.begin(), tables.end(), tables[0], [](std::string& a, std::string& b){return a + std::string(" WRITE, ") + b;});
-
         std::string lockQuery = std::string("LOCK TABLES ") + table + std::string(" WRITE");
         execute_query(lockQuery);
     }catch (std::exception &e){
-        syslog(LOG_WARNING, "lock_tables_stmt FAILED, the query will be slowly! - %s", e.what());
+        syslog(LOG_WARNING, "lock_tables_stmt FAILED, the query will be slower! - %s", e.what());
     }
 }
 
@@ -100,8 +123,6 @@ void DBManager::unlockTables(){
     }
 }
 
-
-
 std::shared_ptr<DBQuery> DBManager::prepare_query(const std::string & stmt){
     std::shared_ptr<sql::PreparedStatement> query = std::shared_ptr<sql::PreparedStatement>(con->prepareStatement(stmt));
     std::shared_ptr<DBQuery> res = std::make_shared<DBQuery>(query);
@@ -110,6 +131,59 @@ std::shared_ptr<DBQuery> DBManager::prepare_query(const std::string & stmt){
 
 void DBManager::execute_query(const std::string & stmt){
     std::unique_ptr<sql::Statement>(con->createStatement())->execute(stmt);
+}
+
+std::tuple<std::string, int> DBManager::store_certificate_to_filestore(const std::string &certificate){
+    if (filestorage.size() + certificate.size() > CONTEXT.dbsettings.filestorage_maxsize * 1024 * 1024){
+        // create new file
+        int idx = CONTEXT.filestorage_index + 1;
+        std::string format = CONTEXT.dbsettings.filestorage_format;
+        int sz = std::snprintf(nullptr, 0, format.c_str(), idx);
+        std::vector<char> buf(sz + 1);
+        std::snprintf(&buf[0], buf.size(), format.c_str(), idx);
+        std::string tmp(buf.data(), buf.size());
+        filestorage.open(tmp, true);
+    try{
+        store_filestore_index_to_stash_stmt->setInt(1, idx);
+        store_filestore_index_to_stash_stmt->execute();
+    }catch(std::exception &e){
+        syslog(LOG_WARNING, "Could not update index value to DB: %s", e.what());
+    }
+        
+    }
+    std::size_t orig = filestorage.write(certificate);
+    return std::make_tuple(filestorage.get_name(), orig);
+}
+
+
+std::string DBManager::get_certificate_from_filestore(const std::string &filename, const int start, const int length){
+    std::shared_ptr<std::istream> file = get_certificate_stream_from_filestore(filename, start, length);
+    std::string buffer(length, ' ');
+    file->read(&buffer[0], length); 
+    return buffer;
+}
+
+std::string DBManager::get_certificate_from_filestore(const std::string &hash){
+    std::string filename;
+    int start, length;
+    try{
+        get_certificate_from_filestore_stmt->setString(1, hash);
+        std::unique_ptr<DBResult> result = get_certificate_from_filestore_stmt->execute();
+        while(result->next()){
+            filename = result->getString("filename");
+            start = result->getInt("origin");
+            length = result->getInt("len");
+        }
+    }catch(std::exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return get_certificate_from_filestore(filename, start, length);
+}
+
+std::shared_ptr<std::istream> DBManager::get_certificate_stream_from_filestore(const std::string &filename, const int start, const int length){
+    std::shared_ptr<std::istream> file = std::make_shared<std::ifstream>(filename, std::ios::in | std::ios::binary);
+    file->seekg(start);
+    return file;
 }
 
 DBQuery::DBQuery(std::shared_ptr<sql::PreparedStatement> & stmt_):

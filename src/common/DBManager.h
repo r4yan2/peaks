@@ -10,6 +10,8 @@
 #include <string>
 
 #include <common/utils.h>
+#include <common/Thread_Pool.h>
+#include "DBStruct.h"
 
 namespace peaks{
 namespace common{
@@ -22,6 +24,8 @@ struct DBSettings{
     std::string db_database;
     std::string tmp_folder;
     std::string error_folder;
+    std::string filestorage_format;
+    int filestorage_maxsize;
 };
 
 class DBResult {
@@ -68,6 +72,11 @@ class DBManager {
         sql::Driver *driver;
         sql::Connection *con;
         sql::ConnectOptionsMap connection_properties;
+        std::shared_ptr<DBQuery>
+            get_certificate_from_filestore_stmt,
+            get_filestore_index_from_stash_stmt,
+            store_filestore_index_to_stash_stmt;
+        SynchronizedFile filestorage;
     public:
 
 
@@ -117,6 +126,10 @@ class DBManager {
 
         void lockTables(int selection=Utils::CERTIFICATE);
         void unlockTables();
+        std::string get_certificate_from_filestore(const std::string&, const int, const int);
+        std::string get_certificate_from_filestore(const std::string &hash);
+        std::shared_ptr<std::istream> get_certificate_stream_from_filestore(const std::string &filename, const int, const int);
+        std::tuple<std::string, int> store_certificate_to_filestore(const std::string &);
 
 };
 }

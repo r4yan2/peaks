@@ -19,7 +19,7 @@ namespace unpacker{
  * load the csv into the database, and check expired/revoked/invalid
  * keys after all operations
  */
-class UNPACKER_DBManager:DBManager {
+class UNPACKER_DBManager: public DBManager {
     static std::pair<std::string, std::string> 
         insert_pubkey_stmt, 
         insert_signature_stmt, 

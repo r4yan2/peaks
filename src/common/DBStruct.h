@@ -17,7 +17,11 @@ namespace DBStruct{
         std::string fingerprint = "";
         std::string certificate = "";
         std::string hash = "";
+        int is_unpacked = 0;
         int error_code = 0;
+        std::string filename = "";
+        int origin = 0;
+        int len = 0;
     };
 
     struct pubkey{

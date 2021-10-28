@@ -5,11 +5,15 @@
 #include <syslog.h>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
+#include <PKA/PKAs.h>
+#include <Misc/sigtypes.h>
+#include <boost/algorithm/string.hpp>
 
 #include "utils.h"
 
 using namespace boost::filesystem;
 using namespace std;
+using namespace OpenPGP;
 
 namespace peaks{
 namespace common{
@@ -180,6 +184,36 @@ namespace Utils{
         closedir(theFolder);
         return files;
     }
+
+    std::string calculate_hash(const Key::Ptr &k){
+        std::string concatenation = concat(get_ordered_packet(k->get_packets()));
+        return hexlify(Hash::use(Hash::ID::MD5, concatenation), true);
+    }
+
+    PGP::Packets get_ordered_packet(PGP::Packets packet_list){
+        sort(packet_list.begin(), packet_list.end(), compare);
+        return packet_list;
+    }
+
+    bool compare(const Packet::Tag::Ptr &p1, const Packet::Tag::Ptr &p2){
+        if (p1->get_tag() == p2->get_tag()){
+            return p1->raw() < p2->raw();
+        }else{
+            return p1->get_tag() < p2->get_tag();
+        }
+    }
+
+    string concat(const PGP::Packets &packet_list){
+        string out = "";
+        for (const auto &p: packet_list){
+            out += unhexlify(makehex(p->get_tag(), 8));
+            out += unhexlify(makehex(p->raw().size(), 8));
+            out += p->raw();
+        }
+
+        return out;
+    }
+
 
 }
 

@@ -1,5 +1,7 @@
 #include "unpacker.h"
+#include "common/DBStruct.h"
 #include <common/config.h>
+#include <common/utils.h>
 
 using namespace std;
 using namespace OpenPGP;
@@ -12,11 +14,9 @@ namespace Import {
     std::vector<std::string> unpack_string_th(std::shared_ptr<IMPORT_DBManager> & dbm, const vector<string> keys){
         std::vector<std::string> hashes;
         for (auto key_str : keys){
+            Key::Ptr key;
             try{
-                Key::Ptr key;
                 key = std::make_shared<Key>(key_str);
-                fast_unpack(key, dbm);
-                hashes.push_back(calculate_hash(key));
             }catch (exception &e){
                 syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", e.what());
                 cerr << "Key not unpacked due to not meaningfulness (" << e.what() << ")." << endl;
@@ -26,6 +26,11 @@ namespace Import {
                 cerr << "Key not unpacked due to not meaningfulness (" << ec.message() << ")." << endl;
                 continue;
             }
+            DBStruct::gpg_keyserver_data gpg_keyserver_table;
+            dbm->store_certificate_to_filestore(key->raw());
+            read_gpg_keyserver_data(key, &gpg_keyserver_table);
+            hashes.push_back(gpg_keyserver_table.hash);
+            dbm->write_gpg_keyserver_csv(gpg_keyserver_table);
         }
         return hashes;
     }
@@ -53,13 +58,11 @@ namespace Import {
                     std::string::size_type pos = 0;
                     bool end = false;
                     while(!end){
+                        Key::Ptr key = std::make_shared<Key>();
+                        std::string::size_type start = pos;
                         try{
-                            Key::Ptr key = std::make_shared<Key>();
                             key->read_raw(buffer, pos, fast);
-                            fast_unpack(key, dbm);
-                            if (pos >= size)
-                                end = true;
-                            if (Context::context().quitting) return;
+                            key->set_type(PGP::PUBLIC_KEY_BLOCK);
                         }catch (exception &e){
                             syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", e.what());
                             cerr << "Key not unpacked due to not meaningfulness (" << e.what() << ")." << endl;
@@ -84,6 +87,12 @@ namespace Import {
                                 cerr << "catched KeyError" << ke << " current pos "<< (pos/size)*100.0 << "%" << std::endl;
                             }
                         }
+                        if (pos >= size)
+                            end = true;
+                        DBStruct::gpg_keyserver_data gpg_keyserver_table;
+                        read_gpg_keyserver_data(key, &gpg_keyserver_table, f, start, pos-start);
+                        dbm->write_gpg_keyserver_csv(gpg_keyserver_table);
+                        if (Context::context().quitting) return;
                     }
                 }else{
                     throw std::runtime_error("Unable to open file: " + f);
@@ -96,49 +105,15 @@ namespace Import {
             }
         }
     }
-
-    void fast_unpack(Key::Ptr &key, const shared_ptr<IMPORT_DBManager> &dbm){
-        DBStruct::gpg_keyserver_data gpg_keyserver_table;
-        key->set_type(PGP::PUBLIC_KEY_BLOCK);
-        read_gpg_keyserver_data(key, &gpg_keyserver_table);
-        dbm->write_gpg_keyserver_csv(gpg_keyserver_table, 0);
-    }
-
-    void read_gpg_keyserver_data(const Key::Ptr &k, DBStruct::gpg_keyserver_data *gk){
+    
+    void read_gpg_keyserver_data(const OpenPGP::Key::Ptr &k, DBStruct::gpg_keyserver_data *gk, const std::string filename, const int pos, const int len) {
         gk->fingerprint = k->fingerprint();
         gk->version = k->version();
         gk->ID = mpitodec(rawtompi(k->keyid()));
-        gk->certificate = k->raw();
-        gk->hash = calculate_hash(k);
-    }
-
-    std::string calculate_hash(const Key::Ptr &k){
-        std::string concatenation = concat(get_ordered_packet(k->get_packets()));
-        return hexlify(Hash::use(Hash::ID::MD5, concatenation), true);
-    }
-
-    PGP::Packets get_ordered_packet(PGP::Packets packet_list){
-        sort(packet_list.begin(), packet_list.end(), compare);
-        return packet_list;
-    }
-
-    bool compare(const Packet::Tag::Ptr &p1, const Packet::Tag::Ptr &p2){
-        if (p1->get_tag() == p2->get_tag()){
-            return p1->raw() < p2->raw();
-        }else{
-            return p1->get_tag() < p2->get_tag();
-        }
-    }
-
-    string concat(const PGP::Packets &packet_list){
-        string out = "";
-        for (const auto &p: packet_list){
-            out += unhexlify(makehex(p->get_tag(), 8));
-            out += unhexlify(makehex(p->raw().size(), 8));
-            out += p->raw();
-        }
-
-        return out;
+        gk->hash = Utils::calculate_hash(k);
+        gk->filename = filename;
+        gk->origin = pos;
+        gk->len = len;
     }
 
 }

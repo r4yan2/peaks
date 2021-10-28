@@ -157,18 +157,43 @@ template<typename T> void SafeQueue<T>::enqueue(T t)
     c.notify_one();
   }
 
-SynchronizedFile::SynchronizedFile(const std::string& path):
-	f(path),
+SynchronizedFile::SynchronizedFile(const std::string& path, bool append):
+    name(path),
+	f(path, append?ios_base::app:ios_base::out),
 	m()
 {}
 
-SynchronizedFile::~SynchronizedFile()
+SynchronizedFile::SynchronizedFile():
+    name(),
+    f(),
+    m()
 {}
 
-void SynchronizedFile::write(const std::string& data)
+SynchronizedFile::~SynchronizedFile(){}
+
+void SynchronizedFile::open(const std::string& path, bool append){
+	std::lock_guard<std::mutex> lock(m);
+    name = path;
+    auto mode = ios::in|ios::out;
+    if (append)
+        mode |= ios::app;
+    f = fstream(path, mode);
+}
+
+std::size_t SynchronizedFile::write(const std::string& data)
 {
 	std::lock_guard<std::mutex> lock(m);
+    std::size_t pos = f.tellp();
 	f << data;
+    return pos;
+}
+
+std::string SynchronizedFile::get_name(){
+    return name;
+}
+
+std::size_t SynchronizedFile::size(){
+    return f.tellg();
 }
 
 }

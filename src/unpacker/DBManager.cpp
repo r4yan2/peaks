@@ -21,7 +21,7 @@ void UNPACKER_DBManager::prepare_queries(){
     //con->createStatement()->execute("set foreign_key_checks = 0;");
 
     // Create prepared Statements
-    get_analyzable_cert_stmt = prepare_query("SELECT version, fingerprint, UNCOMPRESS(certificate) AS certificate "
+    get_analyzable_cert_stmt = prepare_query("SELECT version, fingerprint, filename, origin, len "
                                          "FROM gpg_keyserver WHERE is_unpacked = 0 LIMIT ?");
     
     get_signature_by_index = prepare_query("SELECT id "
@@ -93,7 +93,6 @@ std::pair<std::string, std::string> UNPACKER_DBManager::insert_userAtt_stmt = ma
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_unpackerErrors_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Unpacker_errors FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
                                      "LINES STARTING BY '.' TERMINATED BY '\\n' (version, @hexfingerprint, error) SET fingerprint = UNHEX(@hexfingerprint);");
-
 std::pair<std::string, std::string> UNPACKER_DBManager::insert_unpacked_stmt = make_pair<string, string>(
                     "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE tmp_unpacker FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
                     "LINES STARTING BY '.' TERMINATED BY '\\n' (version,@hexfingerprint,unpacked) SET fingerprint = UNHEX(@hexfingerprint);");
@@ -101,6 +100,7 @@ std::pair<std::string, std::string> UNPACKER_DBManager::insert_unpacked_stmt = m
 std::string UNPACKER_DBManager::create_unpacker_tmp_table = "CREATE TEMPORARY TABLE tmp_unpacker (version tinyint, fingerprint binary(20), unpacked tinyint);";
 std::string UNPACKER_DBManager::update_gpg_keyserver = "UPDATE gpg_keyserver INNER JOIN tmp_unpacker ON tmp_unpacker.version = gpg_keyserver.version AND tmp_unpacker.fingerprint = gpg_keyserver.fingerprint SET gpg_keyserver.is_unpacked = tmp_unpacker.unpacked;";
 std::string UNPACKER_DBManager::drop_unpacker_tmp_table = "DROP TEMPORARY TABLE tmp_unpacker;";
+
 
 UNPACKER_DBManager::~UNPACKER_DBManager(){
     for (auto &it: file_list){
@@ -116,8 +116,11 @@ vector<DBStruct::gpg_keyserver_data> UNPACKER_DBManager::get_certificates(const 
         DBStruct::gpg_keyserver_data tmp_field = {
                 .version = result->getInt("version"),
                 .fingerprint = result->getString("fingerprint"),
-                .certificate = result->getString("certificate")
+                .filename = result->getString("filename"),
+                .origin = result->getInt("origin"),
+                .len = result->getInt("len")
         };
+        tmp_field.certificate = get_certificate_from_filestore(tmp_field.filename, tmp_field.origin, tmp_field.len);
         certificates.push_back(tmp_field);
     }
     return certificates;
@@ -340,12 +343,14 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
             statement = insert_unpackerErrors_stmt.first + f + insert_unpackerErrors_stmt.second;
             break;
     }
-
     do{
         try{
             execute_query(statement);
             if (table == Utils::UNPACKED){
+                begin_transaction();
                 execute_query(update_gpg_keyserver);
+                end_transaction();
+                execute_query(drop_unpacker_tmp_table);
             }
             backoff = 0;
         }catch(exception &e){

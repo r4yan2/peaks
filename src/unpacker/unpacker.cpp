@@ -74,11 +74,6 @@ Unpacker::Unpacker(po::variables_map &vm){
         }
     }
     
-    if (vm.count("recover")){
-        std::cout << "Finished recovery, exiting" << std::endl;
-        exit(0);
-    }
-    
     if(vm.count("keys"))
         key_per_thread = vm["keys"].as<unsigned int>();
     else
@@ -90,6 +85,10 @@ void Unpacker::run(){
     // resume session if any
     store_keymaterial(); 
     
+    if (CONTEXT.vm.count("recover")){
+        std::cout << "Finished recovery, exiting" << std::endl;
+        exit(0);
+    }
     std::vector<DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
     limit = gpg_data.size();
 
@@ -119,8 +118,6 @@ void Unpacker::run(){
                 key->read_raw(gpg_data[i].certificate);
                 key->set_type(PGP::PUBLIC_KEY_BLOCK);
                 pks.push_back(key);
-                printf ("\rProgress: %lu", pks.size());
-                fflush(stdout);
             }catch (std::error_code &ec){
                 switch (ec.value()) {
                     case static_cast<int>(KeyErrc::NotExistingVersion):
@@ -147,12 +144,12 @@ void Unpacker::run(){
                         break;
                 }
 
-                dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
                 syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", ec.message().c_str());
+                dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
                 continue;
             }catch (std::exception &e){
-                dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
                 syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", e.what());
+                dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
                 continue;
             }catch (...){
                 syslog(LOG_CRIT, "Error during creation of the object PGP::Key");
@@ -163,10 +160,19 @@ void Unpacker::run(){
         pool->Add_Job(unpacking_jobs.back());
     }
     pool->Stop_Filling_UP();
-    for (auto &th: pool_vect){
-        while (!th.joinable()){}
-        th.join();
+    while(1){
+        if (pool->done()){
+            for (auto &th: pool_vect)
+                if (th.joinable())
+                    th.join();
+            break;
+        }
+        // DB connector is synchronous
+        if (CONTEXT.quitting){
+            std::terminate(); //abrupt chaos
+        }
     }
+
     store_keymaterial();
 
     syslog(LOG_NOTICE, "Unpacker daemon is stopping!");
@@ -200,16 +206,20 @@ void Unpacker::store_keymaterial(){
     //  }
     //}
 
-    for (unsigned int i = Utils::PUBKEY; i <= Utils::UNPACKED; i++)
-        for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i))
+    bool data = false;
+    for (unsigned int i = 2; i <= Utils::fileNumber; i++){
+        for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i)){
             dbm->insertCSV(filename, i);
-    dbm->UpdateSignatureIssuingFingerprint();
-    dbm->UpdateSignatureIssuingUsername();
-    dbm->UpdateIsExpired();
-    dbm->UpdateIsRevoked();
-    dbm->UpdateIsValid();
-    
-
+            data=true;
+        }
+    }
+    if (data){
+        dbm->UpdateSignatureIssuingFingerprint();
+        dbm->UpdateSignatureIssuingUsername();
+        dbm->UpdateIsExpired();
+        dbm->UpdateIsRevoked();
+        //dbm->UpdateIsValid();
+    }
 }
 
 void unpack_key_th(std::shared_ptr<UNPACKER_DBManager> dbm, const vector<Key::Ptr> &pks){

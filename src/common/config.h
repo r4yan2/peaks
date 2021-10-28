@@ -18,6 +18,7 @@ namespace peaks{
             Context(Context const &) = delete;
             void operator=(Context const &) = delete;
             void setContext(const po::variables_map &);
+            int filestorage_index;
         private:
             Context(){}
     };

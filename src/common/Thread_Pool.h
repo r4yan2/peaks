@@ -112,12 +112,17 @@ private:
 
 class SynchronizedFile {
 public:
-    SynchronizedFile (const std::string& path);
+    SynchronizedFile (const std::string& path, bool append = false);
+	SynchronizedFile();
 	~SynchronizedFile();
-    void write (const std::string& data);
+    std::size_t write (const std::string& data);
+    std::string get_name ();
+    void open(const std::string &, bool append = false);
+    std::size_t size();
 
 private:
-	std::ofstream f;
+    std::string name;
+	std::fstream f;
 	std::mutex m;
 };
 

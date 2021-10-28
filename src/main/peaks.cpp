@@ -97,6 +97,8 @@ void parse_config(std::istream& conf, po::variables_map &vm){
         ("db_user", po::value<std::string>()->default_value("root"))
         ("db_database", po::value<std::string>()->default_value("gpg_keyserver"))
         ("db_password", po::value<std::string>()->default_value(""))
+        ("filestorage_format", po::value<std::string>()->default_value("/tmp/peaks_filestorage"))
+        ("filestorage_maxsize", po::value<int>()->default_value(100))
         ("membership_config", po::value<std::string>()->default_value("/etc/peaks/memebership"))
         ("cppcms_config", po::value<std::string>()->default_value("/etc/peaks/config.js"))
         ("default_dump_path", po::value<std::string>()->default_value("/tmp/pgp_dump"))

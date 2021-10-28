@@ -8,8 +8,6 @@
 #include "utils.h"
 
 #include <common/includes.h>
-#include <PKA/PKAs.h>
-#include <Misc/sigtypes.h>
 #include <boost/algorithm/string.hpp>
 
 using namespace std;
@@ -53,12 +51,12 @@ void CGI_DBManager::check_sql_mode(){
 }
 
 void CGI_DBManager::prepare_queries(){
-    shortid_stmt = prepare_query("SELECT UNCOMPRESS(certificate) FROM "
+    shortid_stmt = prepare_query("SELECT filename, origin, len FROM "
                                        "gpg_keyserver WHERE LPAD(CONV(ID,16,10),16,0) LIKE (?);");
 
-    longid_stmt = prepare_query("SELECT UNCOMPRESS(certificate) FROM "
+    longid_stmt = prepare_query("SELECT filename, origin, len FROM "
                                        "gpg_keyserver WHERE ID = CONV((?),16,10);");
-    fprint_stmt = prepare_query("SELECT UNCOMPRESS(certificate) FROM "
+    fprint_stmt = prepare_query("SELECT filename, origin, len FROM "
                                        "gpg_keyserver WHERE fingerprint = unhex(?);");
     index_stmt = prepare_query("SELECT nLength, pLength, pubAlgorithm, creationTime, "
                                        "kID, name FROM ("
@@ -70,11 +68,6 @@ void CGI_DBManager::prepare_queries(){
                                        "0 as creationTime, name "
                                        "FROM UserID WHERE MATCH(name) AGAINST (? IN BOOLEAN MODE)) "
                                        "AS keys_list GROUP BY kID");
-    insert_gpg_stmt = prepare_query("REPLACE INTO gpg_keyserver "
-                                       "VALUES (COMPRESS(?), ?, ?, ?, ?, 0, 0, ?);");
-    update_gpg_stmt = prepare_query("UPDATE gpg_keyserver SET "
-                                       "certificate = COMPRESS(?), is_unpacked = 0, is_synchronized = 0, hash = (?) WHERE fingerprint = unhex(?) "
-                                       "and version = (?);");
     insert_uid_stmt = prepare_query("INSERT INTO UserID "
                                        "VALUES (?, ?, ?, 0, 0);");
 
@@ -121,15 +114,13 @@ void CGI_DBManager::prepare_queries(){
     vindex_sign_vuln_stmt = prepare_query("SELECT vulnerabilityDescription FROM "
                                        "SignatureStatus WHERE signature_id = (?) and vulnerabilityCode < 100;");
 
-    get_by_hash_stmt = prepare_query("SELECT UNCOMPRESS(certificate) FROM gpg_keyserver WHERE hash = (?);");
-    
     get_pnodes_stmt = prepare_query("SELECT node_key, key_size, num_elements, leaf FROM ptree");
 
     get_certificates_with_attributes_stmt = prepare_query("SELECT DISTINCT(gpg_keyserver.id) as unique_id FROM gpg_keyserver join UserAttribute on gpg_keyserver.fingerprint=UserAttribute.fingerprint");
 
     get_from_cache_stmt = prepare_query("SELECT value, ((created + INTERVAL 7 day) < NOW()) as expired FROM stash WHERE name = (?)");
     store_in_cache_stmt = prepare_query("INSERT INTO stash(`name`,`value`, `created`) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE `value` = (?), `created` = NOW()");
-    get_certificates_analysis_stmt = prepare_query("SELECT LENGTH(UNCOMPRESS(certificate)) as length, gp.id as id, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id");
+    get_certificates_analysis_stmt = prepare_query("SELECT len as length, gp.id as id, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id");
     get_user_attributes_data_stmt = prepare_query("SELECT LENGTH(image) as length, (encoding IS NOT NULL) as isImage FROM UserAttribute");
     get_pubkey_data_stmt = prepare_query("SELECT pubAlgorithm, YEAR(creationtime) as year, BIT_LENGTH(n) as n_length, BIT_LENGTH(p) as p_length, BIT_LENGTH(q) as q_length FROM Pubkey");
 }
@@ -171,7 +162,10 @@ std::shared_ptr<istream> CGI_DBManager::shortIDQuery(const string &keyID) {
     shortid_stmt->setString(1, "%" + keyID);
     std::unique_ptr<DBResult> result = longid_stmt->execute();
     if (result->next()) {
-        return result->getBlob("certificate");
+        std::string filename = result->getString("filename");
+        int origin = result->getInt("origin");
+        int len = result->getInt("len");
+        return get_certificate_stream_from_filestore(filename, origin, len);
     } else {
         return NULL;
     }
@@ -184,7 +178,10 @@ std::shared_ptr<istream> CGI_DBManager::longIDQuery(const string &keyID) {
     longid_stmt->setString(1, keyID);
     std::unique_ptr<DBResult> result = longid_stmt->execute();
     if (result->next()) {
-        return result->getBlob("certificate");
+        std::string filename = result->getString("filename");
+        int origin = result->getInt("origin");
+        int len = result->getInt("len");
+        return get_certificate_stream_from_filestore(filename, origin, len);
     } else {
         return NULL;
     }
@@ -196,7 +193,10 @@ std::shared_ptr<istream> CGI_DBManager::fingerprintQuery(const string &fp) {
     fprint_stmt->setString(1, fp);
     std::unique_ptr<DBResult> result = fprint_stmt->execute();
     if (result->next()) {
-        return result->getBlob("certificate");
+        std::string filename = result->getString("filename");
+        int origin = result->getInt("origin");
+        int len = result->getInt("len");
+        return get_certificate_stream_from_filestore(filename, origin, len);
     } else {
         return NULL;
     }
@@ -303,26 +303,26 @@ void CGI_DBManager::insert_gpg_keyserver(const gpg_keyserver_data &gk) {
         insert_gpg_stmt->setInt(1, gk.version);
         insert_gpg_stmt->setBigInt(2, gk.ID);
         insert_gpg_stmt->setBlob(3, new istringstream(gk.fingerprint));
-        insert_gpg_stmt->setBlob(4, new istringstream(gk.certificate));
         insert_gpg_stmt->setString(5, gk.hash);
         insert_gpg_stmt->setInt(6, gk.error_code);
         insert_gpg_stmt->execute();
     }catch (std::exception &e){
         syslog(LOG_ERR, "insert_gpg_stmt FAILED - %s", e.what());
     }
+    store_certificate_to_filestore(gk.certificate);
 }
 
 void CGI_DBManager::update_gpg_keyserver(const gpg_keyserver_data &gk) {
     check_database_connection();
-    try {
-        update_gpg_stmt->setBlob(1, new istringstream(gk.certificate));
-        update_gpg_stmt->setString(2, gk.hash);
-        update_gpg_stmt->setString(3, hexlify(gk.fingerprint, true));
-        update_gpg_stmt->setInt(4, gk.version);
-        update_gpg_stmt->execute();
-    }catch (std::exception &e){
-        syslog(LOG_ERR, "update_gpg_stmt FAILED - %s", e.what());
-    }
+    //try {
+    //    update_gpg_stmt->setBlob(1, new istringstream(gk.certificate));
+    //    update_gpg_stmt->setString(2, gk.hash);
+    //    update_gpg_stmt->setString(3, hexlify(gk.fingerprint, true));
+    //    update_gpg_stmt->setInt(4, gk.version);
+    //    update_gpg_stmt->execute();
+    //}catch (std::exception &e){
+    //    syslog(LOG_ERR, "update_gpg_stmt FAILED - %s", e.what());
+    //}
 }
 
 void CGI_DBManager::insert_user_id(const userID &uid) {
@@ -533,17 +533,7 @@ std::forward_list<std::string> CGI_DBManager::get_sign_vuln(const unsigned int &
 
 string CGI_DBManager::get_key_by_hash(const string &hash) {
     check_database_connection();
-    string out = "";
-    try{
-        get_by_hash_stmt->setString(1, hash);
-        std::unique_ptr<DBResult> result = get_by_hash_stmt->execute();
-        while (result->next()){
-            out += result->getString("certificate");
-        }
-    }catch (exception &e){
-        syslog(LOG_WARNING, "Hash not found: requested not existing hashing during recon: %s", hash.c_str());
-    }
-    return out;
+    return get_certificate_from_filestore(hash);
 }
 
 vector<DBStruct::node> CGI_DBManager::get_pnodes(){
@@ -648,5 +638,6 @@ std::vector<std::tuple<int, int, int, int, int>> CGI_DBManager::get_pubkey_data(
     return res;
 
 }
+
 }
 }

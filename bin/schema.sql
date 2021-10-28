@@ -131,8 +131,8 @@ CREATE TABLE IF NOT EXISTS `UserAttribute` (
   `encoding` int(11) DEFAULT NULL,
   `image` longblob,
   PRIMARY KEY (`id`,`fingerprint`,`name`(200)),
-  UNIQUE KEY `fingerprint` (`fingerprint`,`name`(200),`image`(60)) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `fingerprint` (`fingerprint`,`name`(200),`image`(60))
+) ENGINE=InnoDB ROW_FORMAT=COMPACT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Table structure for table `UserID`
@@ -157,16 +157,16 @@ CREATE TABLE IF NOT EXISTS `gpg_keyserver` (
   `version` tinyint(3) unsigned NOT NULL,
   `ID` bigint(20) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
-  `certificate` longblob,
   `hash` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_unpacked` tinyint(4) NOT NULL DEFAULT '0',
-  `is_synchronized` tinyint(4) NOT NULL DEFAULT '0',
   `error_code` int(11) NOT NULL DEFAULT '0',
-  PRIMARY KEY (`fingerprint`, `version`),
-  KEY `ID` (`ID`,`fingerprint`) USING BTREE,
+  `filename` TEXT NOT NULL,
+  `origin` int(11) NOT NULL,
+  `len` int(11) NOT NULL,
+  KEY `fingerprint` (`fingerprint`, `version`),
+  KEY `id` (`ID`),
   KEY `HASH` (`hash` ASC)
-) ENGINE=InnoDB ROW_FORMAT=DYNAMIC CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Table structure for table `removed_hash`
@@ -228,6 +228,7 @@ CREATE TABLE IF NOT EXISTS `stash` (
     `name` VARCHAR(255) NOT NULL,
     `value` TEXT NOT NULL,
     `created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- DELIMITER ;;

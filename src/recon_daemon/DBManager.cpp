@@ -6,6 +6,7 @@
 #include "recon_daemon/Utils.h"
 #include <common/config.h>
 #include <recon_daemon/Bitset.h>
+#include <OpenPGP.h>
 
 using namespace peaks::common;
 using namespace std;

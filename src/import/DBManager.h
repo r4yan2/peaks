@@ -28,7 +28,7 @@ public:
     void write_signature_csv(const DBStruct::signatures &ss);
     void write_self_signature_csv(const DBStruct::signatures &ss);
     void write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod);
-    void write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_data, const int is_unpacked);
+    void write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_data);
 
     void write_broken_key_csv(std::ifstream &file_cert, const std::string &error);
 
