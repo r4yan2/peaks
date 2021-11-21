@@ -1,15 +1,22 @@
 #include <ios>
+#include <stdexcept>
 #include <thread>
 #include "Thread_Pool.h"
 #include <iostream>
-
 using namespace std;
 
 namespace peaks{
 namespace common{
-Thread_Pool::Thread_Pool():
-    filling_up(true)
-{}
+
+Thread_Pool::Thread_Pool(){}
+
+Thread_Pool::Thread_Pool(const unsigned int &size):
+    pool_vect(size),
+    state(Pool_Status::FILLING)
+{
+    for (unsigned int i = 0; i < size; i++)
+        pool_vect[i] = std::thread([=] { Infinite_loop_function(); });
+}
 
 void Thread_Pool::Infinite_loop_function() {
 
@@ -42,21 +49,30 @@ void Thread_Pool::Add_Jobs(const std::vector<std::shared_ptr<Job>> & new_jobs){
     {
         std::lock_guard <mutex> lock(queue_mutex);
         queue.insert(queue.end(), new_jobs.begin(), new_jobs.end());
-        condition.notify_all();
+        for (int i=0; i<new_jobs.size(); i++) condition.notify_one();
     }
 }
 
 void Thread_Pool::Stop_Filling_UP(){
-    filling_up = false;
+    state = Pool_Status::WORK;
 }
 
 void Thread_Pool::Start_Filling_UP(){
-    filling_up = true;
+    state = Pool_Status::FILLING;
+}
+
+void Thread_Pool::terminate(){
+    state = Pool_Status::DONE;
+    condition.notify_all();
+    for (auto &th: pool_vect){
+        while (!th.joinable()){}
+        th.join();
+    }
 }
 
 bool Thread_Pool::done(){
     unique_lock <mutex> lock(queue_mutex);
-    if (filling_up) return false;
+    if (state == Pool_Status::FILLING) return false;
     for (auto & j: queue)
         if (!j->done())
             return false;
@@ -65,6 +81,8 @@ bool Thread_Pool::done(){
 
 std::shared_ptr<Job> Thread_Pool::Request_Job(){
     unique_lock <mutex> lock(queue_mutex);
+    if (state == Pool_Status::FILLING)
+        condition.wait(lock);
     while(true){
         bool all_done = true;
         for (auto & j: queue){
@@ -80,9 +98,10 @@ std::shared_ptr<Job> Thread_Pool::Request_Job(){
                 return j;
             }
         }
-        if (all_done && !filling_up)
+        if (all_done && state == Pool_Status::DONE)
             return nullptr;
-        condition.wait_for(lock, std::chrono::seconds{TIMEOUT});
+        //condition.wait_for(lock, std::chrono::seconds{TIMEOUT});
+        condition.wait(lock);
     }
 }
 
@@ -100,7 +119,11 @@ Job::Job(std::function<void()> f, const std::vector<std::shared_ptr<Job>> & depe
 Job::~Job(){}
 
 void Job::execute(){
-    assignment();
+    try{
+        assignment();
+    }catch(std::exception &e){
+        std::cout << e.what() << std::endl;
+    }
     status = Job_Status::DONE;
 }
 
@@ -159,17 +182,21 @@ template<typename T> void SafeQueue<T>::enqueue(T t)
 
 SynchronizedFile::SynchronizedFile(const std::string& path, bool append):
     name(path),
-	f(path, append?ios_base::app:ios_base::out),
+    pos(0),
+	f(path, ios::out),
 	m()
 {}
 
 SynchronizedFile::SynchronizedFile():
     name(),
+    pos(0),
     f(),
     m()
 {}
 
-SynchronizedFile::~SynchronizedFile(){}
+SynchronizedFile::~SynchronizedFile(){
+    close();
+}
 
 void SynchronizedFile::open(const std::string& path, bool append){
 	std::lock_guard<std::mutex> lock(m);
@@ -180,12 +207,28 @@ void SynchronizedFile::open(const std::string& path, bool append){
     f = fstream(path, mode);
 }
 
-std::size_t SynchronizedFile::write(const std::string& data)
+void SynchronizedFile::close(){
+	std::lock_guard<std::mutex> lock(m);
+    if (f.is_open())
+        f.close();
+}
+
+void SynchronizedFile::flush(){
+	std::lock_guard<std::mutex> lock(m);
+    if (f.is_open())
+        f.flush();
+}
+
+std::size_t SynchronizedFile::write(const std::string& data, bool flush)
 {
 	std::lock_guard<std::mutex> lock(m);
-    std::size_t pos = f.tellp();
-	f << data;
-    return pos;
+    if (!f.is_open())
+        throw std::runtime_error("File is not open");
+    std::size_t orig = pos;
+    pos += data.size();
+	f.write(data.c_str(), data.size());
+    if (flush) f.flush();
+    return orig;
 }
 
 std::string SynchronizedFile::get_name(){
@@ -193,7 +236,8 @@ std::string SynchronizedFile::get_name(){
 }
 
 std::size_t SynchronizedFile::size(){
-    return f.tellg();
+	std::lock_guard<std::mutex> lock(m);
+    return pos;
 }
 
 }

@@ -5,6 +5,8 @@
 #include <common/errors.h>
 #include <cmath>
 #include <Misc/PKCS1.h>
+#include "PKA/PKAs.h"
+#include "Packets/Tag2/Subpacket.h"
 #include "unpacker.h"
 #include "Key_Tools.h"
 #include <common/config.h>
@@ -61,8 +63,23 @@ Unpacker::Unpacker(po::variables_map &vm){
         syslog(LOG_WARNING,  "Unable to create error folder");
         exit(-1);
     }
-    dbm = std::make_shared<UNPACKER_DBManager>();
     
+    dbm = std::make_shared<UNPACKER_DBManager>();
+    if (CONTEXT.vm.count("reset")){
+        //reset unpacking status
+        dbm->execute_query("truncate Pubkey");
+        dbm->execute_query("truncate Signatures");
+        dbm->execute_query("truncate selfSignaturesMetadata");
+        dbm->execute_query("truncate UserID");
+        dbm->execute_query("truncate UserAttribute");
+        dbm->execute_query("truncate Unpacker_errors");
+        dbm->execute_query("LOCK TABLE gpg_keyserver WRITE");
+        dbm->execute_query("UPDATE gpg_keyserver SET is_unpacked = 0");
+        dbm->execute_query("UNLOCK TABLES");
+        std::cout << "Unpacker status reset completed!" << std::endl;
+        exit(0);
+    }
+
     std::vector<std::string> error_files = Utils::dirlisting(vm["error_folder"].as<std::string>());
     if (error_files.size() > 0){
         std::cout << "Found files in unpacker error folder, proceding to error recovery" << std::endl;
@@ -82,6 +99,7 @@ Unpacker::Unpacker(po::variables_map &vm){
 
 void Unpacker::run(){
 
+    dbm = std::make_shared<UNPACKER_DBManager>();
     // resume session if any
     store_keymaterial(); 
     
@@ -89,6 +107,7 @@ void Unpacker::run(){
         std::cout << "Finished recovery, exiting" << std::endl;
         exit(0);
     }
+    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
     std::vector<DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
     limit = gpg_data.size();
 
@@ -100,12 +119,7 @@ void Unpacker::run(){
     key_per_thread = 1 + ((limit - 1)/nThreads); 
     std::cout << "key per thread: " << key_per_thread << std::endl;
 
-    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
-    std::vector<std::thread> pool_vect(nThreads);
-
-    for (unsigned int i = 0; i < nThreads; i++){
-        pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
-    }
+    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>(nThreads);
 
     std::vector<std::shared_ptr<Job>> unpacking_jobs;
 
@@ -144,15 +158,16 @@ void Unpacker::run(){
                         break;
                 }
 
-                syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", ec.message().c_str());
+                syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s at index %d", ec.message().c_str(), i);
                 dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
                 continue;
             }catch (std::exception &e){
-                syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s", e.what());
+                syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s at index %d", e.what(), i);
                 dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
+                //std::terminate();
                 continue;
             }catch (...){
-                syslog(LOG_CRIT, "Error during creation of the object PGP::Key");
+                syslog(LOG_CRIT, "Error during creation of the object PGP::Key at index %d", i);
                 continue;
             }
         }
@@ -160,18 +175,7 @@ void Unpacker::run(){
         pool->Add_Job(unpacking_jobs.back());
     }
     pool->Stop_Filling_UP();
-    while(1){
-        if (pool->done()){
-            for (auto &th: pool_vect)
-                if (th.joinable())
-                    th.join();
-            break;
-        }
-        // DB connector is synchronous
-        if (CONTEXT.quitting){
-            std::terminate(); //abrupt chaos
-        }
-    }
+    pool->terminate();
 
     store_keymaterial();
 
@@ -181,31 +185,6 @@ void Unpacker::run(){
 void Unpacker::store_keymaterial(){
     if (CONTEXT.vm.count("csv-only"))
         return; //nothing to do
-    //std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
-    //std::vector<std::function<void ()>> jobs;
-    //std::vector<std::thread> pool_vect(1);
-    //for (unsigned int i = Utils::PUBKEY; i <= Utils::UNPACKED; i++){
-    //    for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i)){
-    //        std::shared_ptr<Job> j = std::make_shared<Job>([=] { dbm->insertCSV(filename, i); });
-    //        pool->Add_Job(j);
-    //    }
-    //}
-
-    //pool->Stop_Filling_UP();
- 
-    //while(1){
-    //  if (pool->done()){
-    //      for (auto &th: pool_vect)
-    //          if (th.joinable())
-    //              th.join();
-    //      break;
-    //  }
-    //  // DB connector is synchronous
-    //  if (CONTEXT.quitting){
-    //      std::terminate(); //abrupt chaos
-    //  }
-    //}
-
     bool data = false;
     for (unsigned int i = 2; i <= Utils::fileNumber; i++){
         for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i)){
@@ -247,6 +226,9 @@ void unpack_key_th(std::shared_ptr<UNPACKER_DBManager> dbm, const vector<Key::Pt
             continue;
         }
     }
+
+    dbm->flushCSVFiles();
+
 }
 
 void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
@@ -559,8 +541,13 @@ DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const
                 ss.sString = mpitoraw(algValues[1]);
             }
             break;
+        case PKA::ID::RESERVED_ELGAMAL:
+            //TODO obsolete
+            if (algValues.size() > 0) 
+                ss.sString = mpitoraw(algValues[0]);
+            break; 
         default:
-            syslog(LOG_ERR, "Not valid/implemented algorithm found: %i", ss.hashAlgorithm);
+            syslog(LOG_ERR, "Not valid/implemented algorithm found: %i", ss.pubAlgorithm);
             break;
     }
 
@@ -673,6 +660,7 @@ DBStruct::pubkey get_publicKey_data(const Packet::Tag::Ptr &p, const Packet::Key
                 }
                 break;
             case PKA::ID::ELGAMAL:
+            case PKA::ID::RESERVED_ELGAMAL:
                 if (algValues.size() > 2){
                     pk.algValue.at(2) = mpitoraw(algValues[0]);
                     pk.algValue.at(4) = mpitoraw(algValues[1]);
@@ -822,15 +810,15 @@ void get_tag2_subpackets_data(const std::vector<Subpacket::Tag2::Sub::Ptr> &subp
             }
             case Subpacket::Tag2::EMBEDDED_SIGNATURE:
                 break; // Not in DB
-            #ifdef GPG_COMPATIBLE
             case Subpacket::Tag2::ISSUER_FINGERPRINT: {
                 Subpacket::Tag2::Sub33::Ptr s33 = dynamic_pointer_cast<Subpacket::Tag2::Sub33>(p);
                 ss->issuingFingerprint = s33->get_issuer_fingerprint();
                 break;
             }
-            #endif
             default:
-                syslog(LOG_WARNING, "Not valid signature subpacket tag found: %d", p->get_type());
+                auto type = p->get_type();
+                if (Subpacket::Tag2::NAME.count(type) == 0)
+                    syslog(LOG_WARNING, "Not valid signature subpacket tag found: %d", p->get_type());
                 break;
         }
     }

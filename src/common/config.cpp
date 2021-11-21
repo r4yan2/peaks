@@ -20,5 +20,6 @@ void Context::setContext(const po::variables_map & _vm){
         vm["error_folder"].as<std::string>(),
         vm["filestorage_format"].as<std::string>(),
         vm["filestorage_maxsize"].as<int>(),
+        vm["expire_interval"].as<int>(),
     };
 }

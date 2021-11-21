@@ -5,12 +5,18 @@
 #include <vector>
 #include <common/DBStruct.h>
 #include "db_key.h"
-#include "utils.h"
 #include <common/DBManager.h>
 #include <set>
+#include <common/utils.h>
 
+typedef std::tuple<int, bool, int> certificate_data_t;
+typedef std::tuple<int, bool> userattribute_data_t;
+typedef std::tuple<int, int, int, int, int, std::string, int> pubkey_data_t;
+typedef std::tuple<int, int, int, int, int, int> signature_data_t;
+typedef std::tuple<int, std::string> userid_data_t;
 using namespace peaks::common;
 using namespace peaks::common::DBStruct;
+using namespace peaks::common::Utils;
 namespace peaks {
 namespace pks{
 
@@ -18,7 +24,7 @@ const int SUCCESS = 0;
 const int ERROR = -1;
 const int KEY_NOT_FOUND = -2;
 
-class CGI_DBManager: DBManager {
+class CGI_DBManager: public DBManager {
 public:
     /**
      * default constructor
@@ -28,13 +34,6 @@ public:
      * default destructor
      */
     ~CGI_DBManager();
-
-    /**
-     * For the integrated web server it is necessary to have
-     * ONLY_FULL_GROUP_BY disabled in mysql. This function will check and 
-     * attempt to disable the sql mode
-     */
-    void check_sql_mode();
 
 	/**
 	 * prepare some queries
@@ -120,11 +119,11 @@ public:
      * @return vector containing nodes information
      */
     std::vector<node> get_pnodes();
-    std::string get_from_cache(const std::string &key, bool &expired);
-    void store_in_cache(const std::string &key, const std::string &value);
-    std::vector<std::tuple<int, int, bool, int>> get_certificates_analysis();
-    std::vector<std::tuple<int, bool>> get_user_attributes_data();
-    std::vector<std::tuple<int, int, int, int, int>> get_pubkey_data();
+    std::vector<certificate_data_t> get_certificates_analysis(const int &min_year, const int &max_year);
+    std::vector<userattribute_data_t> get_user_attributes_data();
+    std::vector<pubkey_data_t> get_pubkey_data(const int &min_year, const int &max_year);
+    std::vector<signature_data_t> get_signature_data();
+    std::vector<userid_data_t> get_userid_data();
 
 private:
 	std::shared_ptr<DBQuery>
@@ -152,7 +151,9 @@ private:
             store_in_cache_stmt,
             get_certificates_analysis_stmt,
             get_user_attributes_data_stmt,
-            get_pubkey_data_stmt;
+            get_pubkey_data_stmt,
+            get_signature_data_stmt,
+            get_userid_data_stmt;
     
 	std::string hexToUll(const std::string &hex) {
         unsigned long long ullKey = std::stoull(hex, nullptr, 16);

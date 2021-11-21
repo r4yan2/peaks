@@ -43,6 +43,7 @@ void help(){
     std::cout << "    --keys \t\tSet how many keys a thread has to analyze" << std::endl;
     std::cout << "    --limit \tSet the limit on key to unpack" << std::endl;
     std::cout << "    --recover \tRecover previous broken session only" << std::endl;
+    std::cout << "    --reset \tReset DB unpacking status" << std::endl;
 
     std::cout << std::endl;
 
@@ -79,6 +80,7 @@ void parse_config(std::istream& conf, po::variables_map &vm){
         ("name", po::value<std::string>()->default_value("peaks_recon"))
         ("gossip_interval", po::value<int>()->default_value(60))
         ("unpack_interval", po::value<int>()->default_value(60))
+        ("analyze_interval", po::value<int>()->default_value(60))
         ("max_read_len_shift", po::value<int>()->default_value(24))
         ("max_recover_size", po::value<int>()->default_value(1500))
         ("default_timeout", po::value<int>()->default_value(300))
@@ -99,6 +101,7 @@ void parse_config(std::istream& conf, po::variables_map &vm){
         ("db_password", po::value<std::string>()->default_value(""))
         ("filestorage_format", po::value<std::string>()->default_value("/tmp/peaks_filestorage"))
         ("filestorage_maxsize", po::value<int>()->default_value(100))
+        ("expire_interval", po::value<int>()->default_value(15))
         ("membership_config", po::value<std::string>()->default_value("/etc/peaks/memebership"))
         ("cppcms_config", po::value<std::string>()->default_value("/etc/peaks/config.js"))
         ("default_dump_path", po::value<std::string>()->default_value("/tmp/pgp_dump"))

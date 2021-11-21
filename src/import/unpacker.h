@@ -31,7 +31,7 @@ namespace Import {
 
     void Import(po::variables_map &vm);
     std::vector<std::string> unpack_string_th(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::vector<std::string> keys);
-	void insert_csv(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::string &filename, int selection);
+	void insert_csv(std::shared_ptr<IMPORT_DBManager> & dbm_, int selection);
     void unpack_dump_th(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::vector<std::string> &files, const bool &fast);
     void unpack_dump(std::ifstream &key_file, const std::shared_ptr<IMPORT_DBManager> &dbm);
     void unpack_string(std::string key, std::shared_ptr<IMPORT_DBManager> dbm);

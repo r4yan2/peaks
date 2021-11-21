@@ -115,15 +115,30 @@ public:
     SynchronizedFile (const std::string& path, bool append = false);
 	SynchronizedFile();
 	~SynchronizedFile();
-    std::size_t write (const std::string& data);
+    std::size_t write (const std::string& data, bool flush = false);
     std::string get_name ();
     void open(const std::string &, bool append = false);
+    void close();
+    void flush();
     std::size_t size();
 
 private:
     std::string name;
+    std::size_t pos;
 	std::fstream f;
 	std::mutex m;
+};
+
+/** @brief Possible status for a thread pool
+ * This enum holds the possible status for a Thread Pool
+ * FILLING mean the jobs are being pushed
+ * WORK mean the jobs should be running now
+ * DONE mean there are no jobs yet to be pushed into the Pool
+ */
+enum class Pool_Status{
+    FILLING,
+    WORK,
+    DONE
 };
 
 
@@ -141,6 +156,7 @@ public:
     /** @brief default constructor
      */
     Thread_Pool();
+    Thread_Pool(const unsigned int &);
     
     /** @brief main loop of the worker
      */
@@ -164,13 +180,17 @@ public:
      */
     void Add_Jobs(const std::vector<std::shared_ptr<Job>> & new_jobs);
 
-    /** @brief Signal that no more jobs will be added
+    /** @brief Signal that workers may start processing jobs
      */
     void Stop_Filling_UP();
 
     /** @brief Signal that jobs are being added
      */
     void Start_Filling_UP();
+
+    /** @brief Signal that no more jobs will be added, workers need to be joined
+     */
+    void terminate();
 
     /** @brief Used by the worker to request something to do
      * @return Job to perform
@@ -183,10 +203,11 @@ public:
     bool done();
 
 private:
-    bool filling_up;
+    Pool_Status state;
     std::vector<std::shared_ptr<Job>> queue;
     std::mutex queue_mutex;
     std::condition_variable condition;
+    std::vector<std::thread> pool_vect;
 };
 
 

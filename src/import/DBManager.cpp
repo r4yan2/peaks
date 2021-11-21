@@ -263,10 +263,13 @@ void IMPORT_DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors 
     }
 }
 
-void IMPORT_DBManager::insertCSV(const std::string & f, const unsigned int &table){
+void IMPORT_DBManager::insertCSV(const unsigned int &table){
     unsigned int backoff = 1;
     unsigned int num_retries = 0;
     std::string statement;
+    std::string f = file_list.at(table)->get_name();
+    file_list.at(table)->close();
+    std::cout << "Working on " << f << std::endl;
     switch (table){
         case Utils::PUBKEY:
             statement = insert_pubkey_stmt.first + f + insert_pubkey_stmt.second;
@@ -333,6 +336,15 @@ void IMPORT_DBManager::insertCSV(const std::string & f, const unsigned int &tabl
     } while (backoff > 0 && num_retries < 5);
     if (backoff > 0){
         Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, table);
+    }
+    // Delete inserted file
+    if (CONTEXT.vm.count("noclean") == 0){
+        try{
+            remove(f.c_str());
+        }catch (exception &e){
+            syslog(LOG_CRIT, "Error during deletion of files. The file will remaining in the temp folder. - %s",
+                              e.what());
+        }
     }
 }
 

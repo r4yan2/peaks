@@ -150,7 +150,7 @@ Recon_memory_DBManager::Recon_memory_DBManager() : RECON_DBManager(){
 
 void Recon_memory_DBManager::prepare_queries(){
 
-    get_all_hash_stmt = prepare_query("SELECT hash FROM gpg_keyserver LIMIT 10000");
+    get_all_hash_stmt = prepare_query("SELECT hash FROM gpg_keyserver");
 
     check_key_stmt = prepare_query("SELECT * FROM gpg_keyserver where hash = (?)");
 

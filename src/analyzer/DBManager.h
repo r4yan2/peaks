@@ -11,6 +11,7 @@
 #include "Math_Support.h"
 #include <common/DBManager.h>
 #include <common/DBStruct.h>
+#include <common/Thread_Pool.h>
 
 using namespace peaks::common;
 namespace peaks{
@@ -19,8 +20,7 @@ class ANALYZER_DBManager: public DBManager {
 public:
     ANALYZER_DBManager();
     ~ANALYZER_DBManager();
-    void open_pubkey_files();
-    void open_signatures_files();
+    void open_files();
 
     std::vector<DBStruct::pubkey> get_pubkey(const unsigned long &l);
     std::vector<DBStruct::signatures> get_signatures(const unsigned long &l);
@@ -33,14 +33,14 @@ public:
     void write_broken_key_csv(const DBStruct::KeyStatus &ks);
     void write_broken_modulus_csv(const std::vector<std::string> &broken_modulus);
 
-    void insertCSV(const std::vector<std::string> &files, const unsigned int &table);
+    void insertCSV(const unsigned int &table);
 
     void write_analyzed_pk_csv(const DBStruct::pubkey &pk);
 
     void write_analyzed_sign_csv(const DBStruct::signatures &s);
 
 private:
-    std::map<unsigned int, std::ofstream> file_list;
+    std::map<unsigned int, std::shared_ptr<SynchronizedFile>> file_list;
 
     void prepare_queries();
 

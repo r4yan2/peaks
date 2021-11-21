@@ -1,4 +1,6 @@
 #include "Utils.h"
+#include "NTL/ZZ.h"
+#include <assert.h>
 
 namespace peaks{
 namespace recon{
@@ -18,6 +20,31 @@ int ASCIIHexToInt[] =
 };
 
 char int2hex[] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
+std::map<char, unsigned char> char2hex = 
+{
+  {'0', 0x0},
+  {'1', 0x1},
+  {'2', 0x2},
+  {'3', 0x3},
+  {'4', 0x4},
+  {'5', 0x5},
+  {'6', 0x6},
+  {'7', 0x7},
+  {'8', 0x8},
+  {'9', 0x9},
+  {'a', 0xa},
+  {'b', 0xb},
+  {'c', 0xc},
+  {'d', 0xd},
+  {'e', 0xe},
+  {'f', 0xf},
+  {'A', 0xa},
+  {'B', 0xb},
+  {'C', 0xc},
+  {'D', 0xd},
+  {'E', 0xe},
+  {'F', 0xf}
+};
 
 std::string marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements){
     if (elements.empty()) return "";
@@ -29,19 +56,14 @@ std::string marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements){
 
 NTL::ZZ_p hex_to_zz(const std::string &hash){
 
-    std::vector<unsigned int> inthash;
-    for (size_t i=0; i<hash.size(); i+=2)
-        inthash.push_back(16 * ASCIIHexToInt[int(hash[i])] + ASCIIHexToInt[int(hash[i+1])]);
-
-    NTL::ZZ_p elem(0);
-    /* Actually this should be reversed, but if you do it will not work
-     * anymore
-     */
-    //std::reverse(inthash.begin(), inthash.end());
-    
-    for (size_t i=0; i < inthash.size(); i++)
-        elem += NTL::power(NTL::ZZ_p(256), (i)) * inthash[i];
-    return elem;
+    std::vector<unsigned char> bytes;
+    for (size_t i = 0; i < hash.size() / 2; i++) {
+      unsigned char b1 = (unsigned char)(char2hex[hash[2*i]] << 4);
+      unsigned char b2 = char2hex[hash[2*i+1]];
+      bytes.push_back(b1 | b2);
+    }
+    NTL::ZZ_p el2 = NTL::conv<NTL::ZZ_p>(NTL::ZZFromBytes(bytes.data(), bytes.size()));
+    return el2;
 }
 
 NTL::ZZ_p bytes_to_zz(const std::vector<unsigned char> &bytes){

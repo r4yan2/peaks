@@ -4,16 +4,17 @@ var tabs = [
   ['ptree', 'block', initPtreeStats],
   ['certificates', 'block', initCertificatesStats],
   ['userattributes', 'block', initUserattributesStats],
-  ['pubkey', 'block', initPubkeyStats]
+  ['pubkey', 'block', initPubkeyStats],
+  ['signature', 'block', initSignatureStats],
+  ['userid', 'block', initUseridStats],
 ];
 
 function switchTab(ev, el){
-  if (el == currentTab){
-    //deactivate current tab
-    document.getElementsByClassName(currentTab)[0].style.display = 'none';
-    currentTab = '';
-    return;
+  currentTabEl = document.getElementsByClassName("buttonActive")[0]
+  if (currentTabEl) {
+    currentTabEl.classList.remove("buttonActive");
   }
+  ev.currentTarget.classList.add("buttonActive");
   tabs.forEach(function(tab){ 
     tabElem = document.getElementsByClassName(tab[0])[0];
     tabElem.style.display = (tab[0] === el ? tab[1] : 'none');
@@ -27,7 +28,7 @@ function switchTab(ev, el){
 var charts = {};
 
 function makeChart(id, chartData, retry=10){
-  var elem = document.getElementById(id);
+  var elem = document.getElementsByName(id)[0];
   if (!elem){
     if (retry > 0){
         setTimeout("makeChart(${id}, ${chartData}, ${retry-1})", 150);
@@ -43,31 +44,20 @@ function makePtreeChart1(values){
   // num elements buckets
   const data = {
     datasets: [{
-        data: values
+        data: values["num_elements_ptree_stats"],
+        label: 'Elements',
+        backgroundColor: NAMED_COLORS[0],
     }],
     labels: range(0, 51, 10),
   };
-  //const options = {
-  //    legend: {
-  //      display: false
-  //    },
-  //    scales: {
-  //        x: {
-  //          ticks: {
-  //            display: false,
-  //          }
-  //          //gridLines: {
-  //          //   offsetGridLines: true
-  //          //},
-  //            //max: 10,
-  //            //grid: {
-  //            //  offset: true
-  //            //}
-  //        }
-  //    }
-  //};
   const options = {
     responsive: true,
+    plugins: {
+      title: {
+        display: true,
+        text: 'Elements per leaf node'
+      },
+    },
     legend: {
       display: false
     },   
@@ -90,12 +80,12 @@ function makePtreeChart1(values){
         var xAxis = chart.scales['x'];
         var tickDistance = xAxis.width / (xAxis.ticks.length);
         xAxis.ticks.forEach((value, index) => {
-            var x = tickDistance * 0.12 + tickDistance * index;
+            var x = tickDistance * 0.20 + tickDistance * index;
             var y = chart.height - 10;
             chart.ctx.save();        
             chart.ctx.fillText(value.label, x, y);
             chart.ctx.restore();
-        });      
+        });
       }
     }],
     data: data,
@@ -107,11 +97,19 @@ function makePtreeChart2(values){
   // nodes per level
   const data = {
     datasets: [{
-        data: values,
+        data: values["node_level_ptree_stats"],
+        label: 'Nodes per level',
+        backgroundColor: NAMED_COLORS[1],
     }],
-    labels: [...values.keys()],
+    labels: range(0, values["node_level_ptree_stats"].length, 1),
   };
   const options = {
+       plugins: {
+         title: {
+           display: true,
+           text: 'Node number distribution per level'
+         },
+       },
         xAxes: {
             ticks: {
                 max: 10,
@@ -126,147 +124,111 @@ function makePtreeChart2(values){
   });
 }
 
-function makeCertificateChart1(values){
-  const options = {
-    layout: {
-      padding: 10,
-    },
-    responsive: true,
-    legend: {
-      display: false
-    },   
-    scales: {
-      x: {
-        ticks: {
-          //autoSkip: false,
-          //maxRotation: 40,
-          //minRotation: 40,
-          color: 'rgba(255,255,255,0)',
-          padding: 5,
-        }
+function makeCertificateChart(values){
+
+  const plugins = [{
+      afterDraw: chart => {      
+        var xAxis = chart.scales['x'];
+        var tickDistance = xAxis.width / (xAxis.ticks.length);
+        var y = chart.height - 30;
+        xAxis.ticks.forEach((value, index) => {
+            var x = xAxis.left + tickDistance * index;
+            chart.ctx.save();        
+            chart.ctx.translate(x, y);
+            chart.ctx.rotate(-0.25*Math.PI);
+            chart.ctx.fillText(String(value.label), 0, 0);
+            chart.ctx.restore();
+        });      
       }
-    }
-  }
+    }];
  
   makeChart('cert-chart-noua', {
     type: 'bar',
-    plugins: [{
-      afterDraw: chart => {      
-        var xAxis = chart.scales['x'];
-        var tickDistance = xAxis.width / (xAxis.ticks.length);
-        // add 0
-        var y = chart.height - 10; // -10 padding
-        chart.ctx.save();        
-        chart.ctx.translate(chart.width-xAxis.width-10, y);
-        chart.ctx.rotate(-0.25*Math.PI);
-        chart.ctx.fillText("0", 0, 0);
-        chart.ctx.restore();
-        xAxis.ticks.forEach((value, index) => {
-            var x = tickDistance * 1.5 + tickDistance * index;
-            chart.ctx.save();        
-            chart.ctx.translate(x, y);
-            chart.ctx.rotate(-0.25*Math.PI);
-            chart.ctx.fillText(String(value.label)+"KB", 0, 0);
-            chart.ctx.restore();
-        });      
-      }
-    }],
+    plugins: plugins,
     data: {
       datasets: [{
-        data: values["certificates_without_ua"],
+        data: values["size"]["certificates_without_ua"],
+        label: "Certificates size",
+        backgroundColor: NAMED_COLORS[0],
       }],
-      labels: values["ticks"].concat(String([values["maxsize_noua"]])),
+      labels: values["size"]["ticks"].concat(String([values["size"]["maxsize_noua"]])),
     },
-    options: options
-  });
-
-  makeChart('cert-chart-ua', {
-    type: 'bar',
-    plugins: [{
-      afterDraw: chart => {      
-        var xAxis = chart.scales['x'];
-        var tickDistance = xAxis.width / (xAxis.ticks.length);
-        // add 0
-        var y = chart.height - 10; // -10 padding
-        chart.ctx.save();        
-        chart.ctx.translate(chart.width-xAxis.width-10, y);
-        chart.ctx.rotate(-0.25*Math.PI);
-        chart.ctx.fillText("0", 0, 0);
-        chart.ctx.restore();
-        xAxis.ticks.forEach((value, index) => {
-            var x = tickDistance * 1.5 + tickDistance * index;
-            chart.ctx.save();        
-            chart.ctx.translate(x, y);
-            chart.ctx.rotate(-0.25*Math.PI);
-            chart.ctx.fillText(String(value.label)+"KB", 0, 0);
-            chart.ctx.restore();
-        });      
-      }
-    }],
-    data: {
-      datasets: [{
-        data: values["certificates_with_ua"],
-      }],
-      labels: values["ticks"].concat(String([values["maxsize_ua"]])),
-    },
-    options: options
-  });
-
-
-}
-function makeCertificateChart2(values){
-  const data = {
-    datasets: [{
-      data: values["year"],
-    }],
-    labels: values["ticks"].concat([String(values["maxyear"])]),
-  };
-  const options = {
-    layout: {
-      padding: 10,
-    },
+    options: {
     responsive: true,
     legend: {
       display: false
     },   
+    title: {
+      display: true,
+      text: 'Certificate (without user attributes) size divided in bins'
+    },
     scales: {
       x: {
+        title: {
+          text: "KB",
+          display: true,
+        },
         ticks: {
-          //autoSkip: false,
-          //maxRotation: 40,
-          //minRotation: 40,
+          autoSkip: false,
           color: 'rgba(255,255,255,0)',
-          padding: 5,
         }
       }
     }
   }
- 
+
+  });
+  makeChart('cert-chart-ua', {
+    type: 'bar',
+    plugins: plugins,
+    data: {
+      datasets: [{
+        data: values["size"]["certificates_with_ua"],
+        label: "Certificates size",
+        backgroundColor: NAMED_COLORS[1],
+      }],
+      labels: values["size"]["ticks"].concat(String([values["size"]["maxsize_ua"]])),
+    },
+    options: {
+      responsive: true,
+      legend: {
+        display: false
+      },   
+      title: {
+        display: true,
+        text: 'Certificate (with user attributes) size divided in bins'
+      },
+      scales: {
+        x: {
+          title: {
+            text: "KB",
+            display: true,
+          },
+          ticks: {
+            autoSkip: false,
+            color: 'rgba(255,255,255,0)',
+          }
+        }
+      }
+  }
+
+  });
+
   makeChart('cert-year', {
     type: 'bar',
-    plugins: [{
-      afterDraw: chart => {      
-        var xAxis = chart.scales['x'];
-        var tickDistance = xAxis.width / (xAxis.ticks.length);
-        // add 0
-        var y = chart.height - 10; // -10 padding
-        chart.ctx.save();        
-        chart.ctx.translate(chart.width-xAxis.width-10, y);
-        chart.ctx.rotate(-0.25*Math.PI);
-        chart.ctx.fillText("<1995", 0, 0);
-        chart.ctx.restore();
-        xAxis.ticks.forEach((value, index) => {
-            var x = tickDistance * 1.5 + tickDistance * index;
-            chart.ctx.save();        
-            chart.ctx.translate(x, y);
-            chart.ctx.rotate(-0.25*Math.PI);
-            chart.ctx.fillText(value.label, 0, 0);
-            chart.ctx.restore();
-        });      
-      }
-    }],
-    data: data,
-    options: options
+    data: {
+      datasets: [{
+        data: values["year"]["value"],
+        label: "certificates",
+        backgroundColor: NAMED_COLORS[2],
+      }],
+      labels: values["year"]["tick"],
+    },
+    options: {
+      responsive: true,
+      legend: {
+        display: false
+      },   
+    }
   });
 }
 
@@ -283,8 +245,6 @@ function makeUserattributesChart1(values){
       x: {
         ticks: {
           //autoSkip: false,
-          //maxRotation: 40,
-          //minRotation: 40,
           color: 'rgba(255,255,255,0)',
           padding: 5,
         }
@@ -299,11 +259,6 @@ function makeUserattributesChart1(values){
         var tickDistance = xAxis.width / (xAxis.ticks.length);
         // add 0
         var y = chart.height - 10; // -10 padding
-        chart.ctx.save();        
-        chart.ctx.translate(chart.width-xAxis.width-10, y);
-        chart.ctx.rotate(-0.25*Math.PI);
-        chart.ctx.fillText("0", 0, 0);
-        chart.ctx.restore();
         xAxis.ticks.forEach((value, index) => {
             var x = tickDistance * 1.5 + tickDistance * index;
             chart.ctx.save();        
@@ -317,10 +272,11 @@ function makeUserattributesChart1(values){
     data: {
       datasets: [{
         data: values["image"]["size"],
+        backgroundColor: NAMED_COLORS[0],
       }],
       labels: values["ticks"].concat([String(values["maxsize_image"])]),
     },
-    options: options
+    options: Object.assign({}, options, {plugins: {title: {display: true, text: "Image attribute size divided in bins"}}})
   });
   makeChart('userattributes-chart-other', {
     type: 'bar',
@@ -330,11 +286,6 @@ function makeUserattributesChart1(values){
         var tickDistance = xAxis.width / (xAxis.ticks.length);
         // add 0
         var y = chart.height - 10; // -10 padding
-        chart.ctx.save();        
-        chart.ctx.translate(chart.width-xAxis.width-10, y);
-        chart.ctx.rotate(-0.25*Math.PI);
-        chart.ctx.fillText("0", 0, 0);
-        chart.ctx.restore();
         xAxis.ticks.forEach((value, index) => {
             var x = tickDistance * 1.5 + tickDistance * index;
             chart.ctx.save();        
@@ -348,23 +299,23 @@ function makeUserattributesChart1(values){
     data: {
       datasets: [{
         data: values["other"]["size"],
+        backgroundColor: NAMED_COLORS[1],
       }],
       labels: values["ticks"].concat([String(values["maxsize_other"])]),
     },
-    options: options
+    options: Object.assign({}, options, {plugins: {title: {display: true, text: "Other attribute size divided in bins"}}})
   });
 
   makeChart('userattributes-pie', {
     type: 'pie',
     data: {
       labels: [
-        'None',
+        'No attribute',
         'Image',
         'Other'
       ],
       datasets: [{
-        label: 'My First Dataset',
-        data: [300, values["images"], values["others"]],
+        data: [values["none"], values["images"], values["others"]],
         backgroundColor: [
           'rgb(255, 99, 132)',
           'rgb(54, 162, 235)',
@@ -384,7 +335,7 @@ const CHART_COLORS = {
     cyan: 'rgb(66, 215, 245)',
     blue: 'rgb(54, 162, 235)',
     purple: 'rgb(153, 102, 255)',
-    grey: 'rgb(201, 203, 207)'
+    grey: 'rgb(50, 50, 50)'
 };
 
 const NAMED_COLORS = [
@@ -395,8 +346,11 @@ const NAMED_COLORS = [
     CHART_COLORS.cyan,
     CHART_COLORS.blue,
     CHART_COLORS.purple,
-    CHART_COLORS.grey,
 ];
+
+function color(i){
+  return NAMED_COLORS[i%NAMED_COLORS.length];
+}
 
 function makePubkeyChart1(values){
 
@@ -607,9 +561,357 @@ function makePubkeyChart1(values){
       responsive: true,
     }
    });
+
+  makeChart('pubkey-counter', {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [
+        {
+          labels: years,
+          data: values["generic"]["counter"],
+          borderColor: NAMED_COLORS[0],
+          fill: false,
+          cubicInterpolationMode: 'monotone',
+          tension: 0.3,
+        }
+      ]
+    },
+    options: {
+      plugins: {
+        title: {
+          display: true,
+          text: 'Chart.js Bar Chart - Stacked'
+        },
+      },
+      interaction: {
+              intersect: false,
+            },
+      responsive: true,
+    }
+   });
+
 }
 
+function makeUseridChart1(values){
+
+  addRows("userid-table", values["generic"]);
+  makeChart('userid-domain-horizontal', {
+    type: 'bar',
+    data: {
+      labels: values["domain"]["label"],
+      datasets: [{
+        data: values["domain"]["value"],
+        backgroundColor: CHART_COLORS.blue,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      // Elements options apply to all of the options unless overridden in a dataset
+      // In this case, we are setting the border of each horizontal bar to be 2px wide
+      elements: {
+        bar: {
+          borderWidth: 2,
+        }
+      },
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'right',
+        },
+        title: {
+          display: true,
+          text: 'Top 10 domain for mail in userID'
+        }
+      }
+    }
+  });
+  makeChart('userid-size-chart', {
+    type: 'bar',
+    plugins: [{
+      afterDraw: chart => {      
+        var xAxis = chart.scales['x'];
+        var tickDistance = xAxis.width / (xAxis.ticks.length);
+        // add 0
+        var y = chart.height - 10; // -10 padding
+        xAxis.ticks.forEach((value, index) => {
+            var x = tickDistance * 1.5 + tickDistance * index;
+            chart.ctx.save();        
+            chart.ctx.translate(x, y);
+            chart.ctx.rotate(-0.25*Math.PI);
+            chart.ctx.fillText(value.label, 0, 0);
+            chart.ctx.restore();
+        });      
+      }
+    }],
+    data: {
+      datasets: [{
+        data: values["size"]["value"],
+        backgroundColor: NAMED_COLORS[2],
+      }],
+      labels: values["size"]["label"],
+    },
+    options: {
+      plugins: {
+        title: {
+          display: true,
+          text: "UID length divided in bins",
+        }
+      },
+      layout: {
+        padding: 10,
+      },
+      responsive: true,
+      legend: {
+        display: false
+      },   
+      scales: {
+        x: {
+          ticks: {
+            color: 'rgba(255,255,255,0)',
+            padding: 5,
+          }
+        }
+      }
+  }
  
+  });
+
+
+}
+
+function makeSignatureChart1(values){
+
+  addRows("signature-table", values["generic"]);
+  const algorithms = values["static"]["algorithms_map"];
+  const years = values["static"]["years"];
+  const rsa_data = values["year"][algorithms[1]];
+  const rsa_sign_data = values["year"][algorithms[3]];
+  const dsa_data = values["year"][algorithms[17]];
+  const elgamal_data = values["year"][algorithms[16]];
+  const ec_data = values["year"][algorithms[18]].map((val, idx)=>val+values["year"][algorithms[19]][idx]);
+  let data = {
+    labels: years,
+    datasets: [
+      {
+        label: 'RSA',
+        data: rsa_data,
+        backgroundColor: CHART_COLORS.orange,
+      }, {
+        label: 'RSA (Sign Only)',
+        data: rsa_sign_data,
+        backgroundColor: CHART_COLORS.purple,
+      }, {
+        label: 'DSA',
+        data: dsa_data,
+        backgroundColor: CHART_COLORS.red,
+      }, {
+        label: 'Elgamal',
+        data: elgamal_data,
+        backgroundColor: CHART_COLORS.blue,
+      }, {
+        label: 'Elliptic Curve',
+        data: ec_data,
+        backgroundColor: CHART_COLORS.green,
+      },
+    ]
+  };
+
+  makeChart('signature-alg-stacked', {
+    type: 'bar',
+    data: data,
+    options: {
+      plugins: {
+        title: {
+          display: true,
+          text: 'Distribution of algorithm per year'
+        },
+      },
+      responsive: true,
+      scales: {
+        x: {
+          stacked: true,
+        },
+        y: {
+          stacked: true
+        }
+      }
+    }
+  });
+
+  data = {
+    labels: years,
+    datasets: ["signatures valid", "signatures expired", "signatures revocation","self signatures valid", "self signatures expired", "self signatures revocation"].map((val, idx)=>{ return{
+      label: val,
+      data: values["year"][val],
+      backgroundColor: color(idx),
+    }}),
+  };
+
+  makeChart('signature-stacked', {
+    type: 'bar',
+    data: data,
+    options: {
+      plugins: {
+        title: {
+          display: true,
+          text: 'Distribution of algorithm per year'
+        },
+      },
+      responsive: true,
+      scales: {
+        x: {
+          stacked: true,
+        },
+        y: {
+          stacked: true
+        }
+      }
+    }
+  });
+
+  data = {
+    labels: years,
+    datasets: ["signatures", "self signatures"].map((val, idx)=>{ return {
+      label: val,
+      data: values["year"][val],
+      backgroundColor: color(idx),
+    }}),
+  };
+
+  makeChart('signature-simple-stacked', {
+    type: 'bar',
+    data: data,
+    options: {
+      plugins: {
+        title: {
+          display: true,
+          text: 'Distribution of algorithm per year'
+        },
+      },
+      responsive: true,
+      scales: {
+        x: {
+          stacked: true,
+        },
+        y: {
+          stacked: true
+        }
+      }
+    }
+  });
+
+
+
+  makeChart('signature-pie', {
+    type: 'pie',
+    data: {
+      labels: [
+        'Signature Valid',
+        'Signature Expired',
+        'Self Signature Valid',
+        'Self Signature Expired',
+      ],
+      datasets: [{
+        label: 'My First Dataset',
+        data: [
+          values["generic"]["signatures valid"],
+          values["generic"]["signatures expired"],
+          values["generic"]["self signatures valid"],
+          values["generic"]["self signatures expired"],
+        ],
+        backgroundColor: range(0,7,1).map(n=>color(n)),
+        hoverOffset: 4
+      }]
+    }
+  });
+
+
+}
+
+function makePubkeyVulnerabilityChart1(values){
+
+  //const algorithms = values["generic"]["algorithms_map"];
+  const algorithms = ["rsa", "elgamal", "dsa", "ec"];
+  const vulnerabilities = values["vulnerability"]["vulnerability_map"];
+  const years = values["generic"]["years"];
+  algorithms.map(alg => {
+    const healthy_data = values["vulnerability"]['healthy_'+alg];
+    const unhealhy_data = values["vulnerability"]['unhealthy_'+alg];
+    const data = {
+      labels: years,
+      datasets: [
+        {
+          label: 'Healthy',
+          data: healthy_data,
+          backgroundColor: CHART_COLORS.blue,
+        }, {
+          label: 'Unhealthy',
+          data: healthy_data,
+          backgroundColor: CHART_COLORS.red,
+        },
+      ]
+    };
+
+    makeChart('pubkey-healthy-'+alg, {
+      type: 'bar',
+      data: data,
+      options: {
+        plugins: {
+          title: {
+            display: true,
+            text: 'Distribution of algorithm per year'
+          },
+        },
+        responsive: true,
+        scales: {
+          x: {
+            stacked: true,
+          },
+          y: {
+            stacked: true
+          }
+        }
+      }
+    });
+  })
+
+  algorithms.map(alg => {
+    let data = {
+      labels: years,
+      datasets: Object.keys(vulnerabilities).map((lab, idx) => {return {
+        label: lab,
+        data: values["vulnerability"][alg][lab],
+        backgroundColor: color(idx),
+      }}).filter(obj => (obj.data.reduce((acc, e) => {return acc + e;}, 0)) > 0)
+    };
+    makeChart("pubkey-vulnerability-"+alg, {
+      type: 'bar',
+      data: data,
+      options: {
+        plugins: {
+          title: {
+            display: true,
+            text: 'Distribution of algorithm per year'
+          },
+        },
+        responsive: true,
+        scales: {
+          x: {
+            stacked: true,
+          },
+          y: {
+            stacked: true
+          }
+        }
+      }
+    });
+
+
+  });
+
+}
+
 function fetchReport(){
     fetch('get_report')
    .then(res => res.json())
@@ -681,22 +983,18 @@ function addRows(table, content) {
 var ptreeInitialized = false;
 function initPtreeStats(){
     if (ptreeInitialized) return;
-    let basic_values = rpc.get_stats("basic_ptree_stats");
-    addRows("ptree-table", basic_values);
-    let num_elements = rpc.get_stats("num_elements_ptree_stats");
-    makePtreeChart1(num_elements);
-    let node_values = rpc.get_stats("node_level_ptree_stats");
-    makePtreeChart2(node_values);
+    let values = rpc.get_stats("ptree");
+    addRows("ptree-table", values["generic"]);
+    makePtreeChart1(values);
+    makePtreeChart2(values);
     ptreeInitialized = true;
 }
 
 var certificatesInitialized = false;
 function initCertificatesStats(){
   if (certificatesInitialized) return;
-  let certificates_size = rpc.get_stats("certificates_size");
-  makeCertificateChart1(certificates_size);
-  let certificates_year = rpc.get_stats("certificates_year");
-  makeCertificateChart2(certificates_year);
+  let values = rpc.get_stats("certificates");
+  makeCertificateChart(values);
   certificatesInitialized = true;
 }
 
@@ -713,9 +1011,25 @@ function initPubkeyStats(){
   if (pubkeyInitialized) return;
   let value = rpc.get_stats("pubkey");
   makePubkeyChart1(value);
+  makePubkeyVulnerabilityChart1(value);
   pubkeyInitialized = true;
 }
 
+var signatureInitialized = false;
+function initSignatureStats(){
+  if (signatureInitialized) return;
+  let value = rpc.get_stats("signature");
+  makeSignatureChart1(value);
+  signatureInitialized = true;
+}
+
+var useridInitialized = false;
+function initUseridStats(){
+  if (useridInitialized) return;
+  let value = rpc.get_stats("userid");
+  makeUseridChart1(value);
+  useridInitialized = true;
+}
 var rpc;
 function main() {
     rpc = new JsonRPC('/pks/numbers/rpc', ['get_stats']); 

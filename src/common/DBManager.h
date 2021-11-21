@@ -26,6 +26,7 @@ struct DBSettings{
     std::string error_folder;
     std::string filestorage_format;
     int filestorage_maxsize;
+    int expire_interval;
 };
 
 class DBResult {
@@ -73,6 +74,8 @@ class DBManager {
         sql::Connection *con;
         sql::ConnectOptionsMap connection_properties;
         std::shared_ptr<DBQuery>
+            get_from_cache_stmt,
+            set_in_cache_stmt,
             get_certificate_from_filestore_stmt,
             get_filestore_index_from_stash_stmt,
             store_filestore_index_to_stash_stmt;
@@ -106,6 +109,14 @@ class DBManager {
          */
         bool ensure_database_connection();
 
+        /**
+         * For the integrated web server it is necessary to have
+         * ONLY_FULL_GROUP_BY disabled in mysql. This function will check and 
+         * attempt to disable the sql mode
+         */
+        void check_sql_mode();
+
+
         void check_database_connection(){
             if (!ensure_database_connection())
                 prepare_queries();
@@ -130,6 +141,8 @@ class DBManager {
         std::string get_certificate_from_filestore(const std::string &hash);
         std::shared_ptr<std::istream> get_certificate_stream_from_filestore(const std::string &filename, const int, const int);
         std::tuple<std::string, int> store_certificate_to_filestore(const std::string &);
+        bool get_from_cache(const std::string &key, std::string & value);
+        void store_in_cache(const std::string &key, const std::string &value);
 
 };
 }

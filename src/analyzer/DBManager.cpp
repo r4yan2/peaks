@@ -4,7 +4,7 @@
 #include <sstream>
 
 #include "DBManager.h"
-#include "utils.h"
+#include <common/utils.h>
 #include <common/config.h>
 
 using namespace std;
@@ -17,6 +17,7 @@ namespace analyzer{
 
 // Database connector initialization
 ANALYZER_DBManager::ANALYZER_DBManager():DBManager() {
+    check_sql_mode();
     connect_schema();
     prepare_queries();
 }
@@ -47,30 +48,30 @@ void ANALYZER_DBManager::prepare_queries(){
 
     set_pubkey_analyzed_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
             "' IGNORE INTO TABLE tmp_analyzer_pk FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
-            "LINES STARTING BY '.' TERMINATED BY '\\n' "
+            "LINES TERMINATED BY '\\n' "
             "(version,@hexfingerprint) SET fingerprint = UNHEX(@hexfingerprint);");
 
     set_analyzed_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
             "' IGNORE INTO TABLE tmp_analyzer_s FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
-            "LINES STARTING BY '.' TERMINATED BY '\\n' (signature_id);");
+            "LINES TERMINATED BY '\\n' (signature_id);");
 
     insert_broken_key_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
             "' IGNORE INTO TABLE KeyStatus FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
-            " LINES STARTING BY '.' TERMINATED BY '\\n' "
+            " LINES TERMINATED BY '\\n' "
             "(version,@hexfingerprint,vulnerabilityCode,vulnerabilityDescription) "
             "SET fingerprint = UNHEX(@hexfingerprint);");
 
     insert_broken_modulus_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-            "' IGNORE INTO TABLE tmp_analyzer_mod FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES STARTING BY '.' "
+            "' IGNORE INTO TABLE tmp_analyzer_mod FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES "
             "TERMINATED BY '\\n' (@hexn) SET RSA_modulus = UNHEX(@hexn);");
 
     insert_broken_signature_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
             "' IGNORE INTO TABLE SignatureStatus FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
-            "LINES STARTING BY '.' TERMINATED BY '\\n' "
+            "LINES TERMINATED BY '\\n' "
             "(signature_id,vulnerabilityCode,vulnerabilityDescription);");
 
     insert_repeated_r_stmt = make_pair<string, string>("LOAD DATA LOCAL INFILE '",
-            "' IGNORE INTO TABLE tmp_analyzer_repR FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES STARTING BY '.' "
+            "' IGNORE INTO TABLE tmp_analyzer_repR FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES "
             "TERMINATED BY '\\n';");
 
 }
@@ -296,10 +297,11 @@ vector<ZZ> ANALYZER_DBManager::get_RSA_modulus(){
 
 void ANALYZER_DBManager::write_analyzed_pk_csv(const DBStruct::pubkey &pk){
     try{
-        ostream &f = file_list.at(ANALYZER_Utils::ANALYZED_PUBKEY);
-        f << '.' << '"' << to_string(pk.version) << "\",";
+        ostringstream f;
+        f << '"' << to_string(pk.version) << "\",";
         f << '"' << hexlify(pk.fingerprint) << "\",";
         f << "\n";
+        file_list.at(Utils::ANALYZER_FILES::ANALYZED_PUBKEY)->write(f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_analyzed_pk_csv FAILED, the key will result ANALYZABLE in the database! - %s",
                          e.what());
@@ -308,9 +310,10 @@ void ANALYZER_DBManager::write_analyzed_pk_csv(const DBStruct::pubkey &pk){
 
 void ANALYZER_DBManager::write_analyzed_sign_csv(const DBStruct::signatures &s){
     try{
-        ostream &f = file_list.at(ANALYZER_Utils::ANALYZED_SIGNATURE);
-        f << '.' << '"' << to_string(s.id) << "\"";
+        ostringstream f;
+        f << '"' << to_string(s.id) << "\"";
         f << "\n";
+        file_list.at(Utils::ANALYZER_FILES::ANALYZED_SIGNATURE)->write(f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_analyzed_sign_csv FAILED, the signature will result ANALYZABLE in the database! - %s",
                           e.what());
@@ -319,11 +322,11 @@ void ANALYZER_DBManager::write_analyzed_sign_csv(const DBStruct::signatures &s){
 
 void ANALYZER_DBManager::write_broken_modulus_csv(const std::vector<std::string> &broken_modulus) {
     try{
-        ofstream f = ofstream(ANALYZER_Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, ANALYZER_Utils::BROKEN_MODULUS, this_thread::get_id()), ios_base::app);
+        ostringstream f;
         for (const auto &n: broken_modulus){
-            f << '.' << '"' << n << '"' << "\n";
+            f << '"' << n << '"' << "\n";
         }
-        f.close();
+        file_list.at(Utils::ANALYZER_FILES::BROKEN_MODULUS)->write(f.str());
     } catch (exception &e){
         syslog(LOG_CRIT, "write_broken_modulus_csv FAILED, the modulo will result not broken in the database! - %s",
                           e.what());
@@ -332,12 +335,13 @@ void ANALYZER_DBManager::write_broken_modulus_csv(const std::vector<std::string>
 
 void ANALYZER_DBManager::write_broken_key_csv(const DBStruct::KeyStatus &ks) {
     try{
-        ofstream &f = file_list.at(ANALYZER_Utils::BROKEN_PUBKEY);
-        f << '.' << '"' << ks.version << "\",";
+        ostringstream f;
+        f << '"' << ks.version << "\",";
         f << '"' << hexlify(ks.fingerprint) << "\",";
         f << '"' << ks.vulnerabilityCode << "\",";
         f << '"' << ks.vulnerabilityDescription << "\"";
         f << "\n";
+        file_list.at(Utils::ANALYZER_FILES::BROKEN_PUBKEY)->write(f.str());
     } catch (exception &e){
         syslog(LOG_CRIT, "write_broken_key_csv FAILED, the key will result not broken in the database! - %s",
                           e.what());
@@ -345,12 +349,13 @@ void ANALYZER_DBManager::write_broken_key_csv(const DBStruct::KeyStatus &ks) {
 }
 
 void ANALYZER_DBManager::write_broken_signature_csv(const DBStruct::SignatureStatus &ss) {
-    try{
-        ofstream &f = file_list.at(ANALYZER_Utils::BROKEN_SIGNATURE);
-        f << '.' << '"' << ss.signature_id << "\",";
+    try{ 
+        ostringstream f;
+        f << '"' << ss.signature_id << "\",";
         f << '"' << ss.vulnerabilityCode << "\",";
         f << '"' << ss.vulnerabilityDescription << "\"";
         f << "\n";
+        file_list.at(Utils::ANALYZER_FILES::BROKEN_SIGNATURE)->write(f.str());
     } catch (exception &e){
 	    string tmp = e.what();
         syslog(LOG_CRIT, "write_broken_signature_csv FAILED, the signature will result not broken in the database! - %s",
@@ -361,110 +366,100 @@ void ANALYZER_DBManager::write_broken_signature_csv(const DBStruct::SignatureSta
 void ANALYZER_DBManager::write_repeated_r_csv() {
     try{
         std::unique_ptr<DBResult> result = get_repeated_r_stmt->execute();
-        ofstream f = ofstream(ANALYZER_Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, ANALYZER_Utils::REPEATED_R, this_thread::get_id()), ios_base::app);
+        ostringstream f;
         while (result->next()) {
-            f << '.' << '"' << result->getInt("id") << '"' << "\n";
+            f << '"' << result->getInt("id") << '"' << "\n";
         }
-        f.close();
+        file_list.at(Utils::ANALYZER_FILES::REPEATED_R)->write(f.str());
     } catch (exception &e){
         syslog(LOG_CRIT, "write_repeated_r_csv FAILED, the signature will result not broken in the database! - %s",
                           e.what());
     }
 }
 
-void ANALYZER_DBManager::insertCSV(const vector<string> &files, const unsigned int &table){
+void ANALYZER_DBManager::insertCSV(const unsigned int &table){
+    std::string f = file_list.at(table)->get_name();
+    file_list.at(table)->close();
     switch (table){
-        case ANALYZER_Utils::ANALYZED_PUBKEY:
-            for (const auto &f: files){
-                try{
-                    execute_query("CREATE TABLE tmp_analyzer_pk (version tinyint, "
-                               "fingerprint binary(20), analyzed tinyint, PRIMARY KEY (version, fingerprint)) ENGINE=MEMORY;");
-                    execute_query(set_pubkey_analyzed_stmt.first + f + set_pubkey_analyzed_stmt.second);
-                    execute_query("UPDATE Pubkey INNER JOIN tmp_analyzer_pk ON "
-                               "tmp_analyzer_pk.version = Pubkey.version AND tmp_analyzer_pk.fingerprint = Pubkey.fingerprint "
-                               "SET Pubkey.is_analyzed = 1;");
-                    execute_query("DROP TABLE tmp_analyzer_pk;");
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "set_pubkey_analyzed_stmt FAILED, the key will result ANALYZABLE in the database! - %s",
-                                      e.what());
-                    ANALYZER_Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, ANALYZER_Utils::ANALYZED_PUBKEY);
-                }
+        case Utils::ANALYZER_FILES::ANALYZED_PUBKEY:
+            try{
+                execute_query("CREATE TEMPORARY TABLE tmp_analyzer_pk (version tinyint, "
+                           "fingerprint binary(20), analyzed tinyint, PRIMARY KEY (version, fingerprint));");
+                execute_query(set_pubkey_analyzed_stmt.first + f + set_pubkey_analyzed_stmt.second);
+                execute_query("UPDATE Pubkey INNER JOIN tmp_analyzer_pk ON "
+                           "tmp_analyzer_pk.version = Pubkey.version AND tmp_analyzer_pk.fingerprint = Pubkey.fingerprint "
+                           "SET Pubkey.is_analyzed = 1;");
+                execute_query("DROP TEMPORARY TABLE tmp_analyzer_pk;");
+            }catch (exception &e){
+                syslog(LOG_CRIT, "set_pubkey_analyzed_stmt FAILED, the key will result ANALYZABLE in the database! - %s",
+                                  e.what());
+                Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, Utils::ANALYZER_FILES::ANALYZED_PUBKEY);
             }
             break;
-        case ANALYZER_Utils::ANALYZED_SIGNATURE:
-            for (const auto &f: files){
-                try{
-                    execute_query("CREATE TABLE tmp_analyzer_s (signature_id int(10), "
-                               "PRIMARY KEY (signature_id)) ENGINE=MEMORY;");
-                    execute_query(set_analyzed_signature_stmt.first + f + set_analyzed_signature_stmt.second);
-                    execute_query("UPDATE Signatures INNER JOIN tmp_analyzer_s ON "
-                               "tmp_analyzer_s.signature_id = Signatures.id SET Signatures.is_analyzed = 1;");
-                    execute_query("DROP TABLE tmp_analyzer_s;");
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "set_analyzed_signature_stmt FAILED, the signature will result ANALYZABLE in the database! - %s",
-                                      e.what());
-                    ANALYZER_Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, ANALYZER_Utils::ANALYZED_SIGNATURE);
-                }
+        case Utils::ANALYZER_FILES::ANALYZED_SIGNATURE:
+            try{
+                execute_query("CREATE TEMPORARY TABLE tmp_analyzer_s (signature_id int(10), "
+                           "PRIMARY KEY (signature_id));");
+                execute_query(set_analyzed_signature_stmt.first + f + set_analyzed_signature_stmt.second);
+                execute_query("UPDATE Signatures INNER JOIN tmp_analyzer_s ON "
+                           "tmp_analyzer_s.signature_id = Signatures.id SET Signatures.is_analyzed = 1;");
+                execute_query("DROP TEMPORARY TABLE tmp_analyzer_s;");
+            }catch (exception &e){
+                syslog(LOG_CRIT, "set_analyzed_signature_stmt FAILED, the signature will result ANALYZABLE in the database! - %s",
+                                  e.what());
+                Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, Utils::ANALYZER_FILES::ANALYZED_SIGNATURE);
             }
             break;
-        case ANALYZER_Utils::BROKEN_PUBKEY:
-            for (const auto &f: files){
-                try{
-                    execute_query(insert_broken_key_stmt.first + f + insert_broken_key_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_broken_key_stmt FAILED, the key will result not broken in the database! - %s",
-                                      e.what());
-                    ANALYZER_Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, ANALYZER_Utils::BROKEN_PUBKEY);
-                }
+        case Utils::ANALYZER_FILES::BROKEN_PUBKEY:
+            try{
+                execute_query(insert_broken_key_stmt.first + f + insert_broken_key_stmt.second);
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_broken_key_stmt FAILED, the key will result not broken in the database! - %s",
+                                  e.what());
+                Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, Utils::ANALYZER_FILES::BROKEN_PUBKEY);
             }
             break;
-        case ANALYZER_Utils::BROKEN_MODULUS:
-            for (const auto &f: files){
-                try{
-                    execute_query("CREATE TABLE tmp_analyzer_mod (RSA_modulus blob, "
-                               "PRIMARY KEY (RSA_modulus(767)));");
-                    auto insert_keystatus_stmt = prepare_query("INSERT IGNORE INTO "
-                               "KeyStatus SELECT version, fingerprint, ?, ? FROM Pubkey WHERE n in (SELECT * FROM tmp_analyzer_mod)");
-                    execute_query(insert_broken_modulus_stmt.first + f + insert_broken_modulus_stmt.second);
-                    insert_keystatus_stmt->setInt(1, ANALYZER_Utils::VULN_CODE::RSA_COMMON_FACTOR);
-                    insert_keystatus_stmt->setString(2, ANALYZER_Utils::VULN_NAME.at(ANALYZER_Utils::VULN_CODE::RSA_COMMON_FACTOR));
-                    insert_keystatus_stmt->execute();
-                    execute_query("DROP TABLE tmp_analyzer_mod;");
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_broken_modulus_stmt FAILED, the key will result not broken in the database! - %s",
-                                      e.what());
-                    ANALYZER_Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, ANALYZER_Utils::BROKEN_MODULUS);
-                }
+        case Utils::ANALYZER_FILES::BROKEN_MODULUS:
+            try{
+                execute_query("CREATE TEMPORARY TABLE tmp_analyzer_mod (RSA_modulus blob, "
+                           "PRIMARY KEY (RSA_modulus(767)));");
+                auto insert_keystatus_stmt = prepare_query("INSERT IGNORE INTO "
+                           "KeyStatus SELECT version, fingerprint, ?, ? FROM Pubkey WHERE n in (SELECT * FROM tmp_analyzer_mod)");
+                execute_query(insert_broken_modulus_stmt.first + f + insert_broken_modulus_stmt.second);
+                insert_keystatus_stmt->setInt(1, Utils::VULN_CODE::RSA_COMMON_FACTOR);
+                insert_keystatus_stmt->setString(2, Utils::VULN_NAME.at(Utils::VULN_CODE::RSA_COMMON_FACTOR));
+                insert_keystatus_stmt->execute();
+                execute_query("DROP TEMPORARY TABLE tmp_analyzer_mod;");
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_broken_modulus_stmt FAILED, the key will result not broken in the database! - %s",
+                                  e.what());
+                Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, Utils::ANALYZER_FILES::BROKEN_MODULUS);
             }
             break;
-        case ANALYZER_Utils::BROKEN_SIGNATURE:
-            for (const auto &f: files){
-                try{
-                    execute_query(insert_broken_signature_stmt.first + f + insert_broken_signature_stmt.second);
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_broken_signature_stmt FAILED, the signature will result not broken in the database! - %s",
-                                      e.what());
-                    ANALYZER_Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, ANALYZER_Utils::BROKEN_SIGNATURE);
-                }
+        case Utils::ANALYZER_FILES::BROKEN_SIGNATURE:
+            try{
+                execute_query(insert_broken_signature_stmt.first + f + insert_broken_signature_stmt.second);
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_broken_signature_stmt FAILED, the signature will result not broken in the database! - %s",
+                                  e.what());
+                Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, Utils::ANALYZER_FILES::BROKEN_SIGNATURE);
             }
             break;
-        case ANALYZER_Utils::REPEATED_R:
-            for (const auto &f: files){
-                try{
-                    execute_query("CREATE TABLE tmp_analyzer_repR (id int(10), "
-                               "PRIMARY KEY(id)) ENGINE=MEMORY;");
-                    auto insert_signatureStatus_stmt = prepare_query("INSERT IGNORE "
-                               "INTO SignatureStatus SELECT id, ?, ? FROM tmp_analyzer_repR;");
-                    execute_query(insert_repeated_r_stmt.first + f + insert_repeated_r_stmt.second);
-                    insert_signatureStatus_stmt->setInt(1, ANALYZER_Utils::VULN_CODE::SIGNATURE_REPEATED_R);
-                    insert_signatureStatus_stmt->setString(2, ANALYZER_Utils::VULN_NAME.at(ANALYZER_Utils::VULN_CODE::SIGNATURE_REPEATED_R));
-                    insert_signatureStatus_stmt->execute();
-                    execute_query("DROP TABLE tmp_analyzer_repR;");
-                }catch (exception &e){
-                    syslog(LOG_CRIT, "insert_repeated_r_stmt FAILED, the signature will result not broken in the database! - %s",
-                                      e.what());
-                    ANALYZER_Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, ANALYZER_Utils::REPEATED_R);
-                }
+        case Utils::ANALYZER_FILES::REPEATED_R:
+            try{
+                execute_query("CREATE TEMPORARY TABLE tmp_analyzer_repR (id int(10), "
+                           "PRIMARY KEY(id));");
+                auto insert_signatureStatus_stmt = prepare_query("INSERT IGNORE "
+                           "INTO SignatureStatus SELECT id, ?, ? FROM tmp_analyzer_repR;");
+                execute_query(insert_repeated_r_stmt.first + f + insert_repeated_r_stmt.second);
+                insert_signatureStatus_stmt->setInt(1, Utils::VULN_CODE::SIGNATURE_REPEATED_R);
+                insert_signatureStatus_stmt->setString(2, Utils::VULN_NAME.at(Utils::VULN_CODE::SIGNATURE_REPEATED_R));
+                insert_signatureStatus_stmt->execute();
+                execute_query("DROP TEMPORARY TABLE tmp_analyzer_repR;");
+            }catch (exception &e){
+                syslog(LOG_CRIT, "insert_repeated_r_stmt FAILED, the signature will result not broken in the database! - %s",
+                                  e.what());
+                Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, Utils::ANALYZER_FILES::REPEATED_R);
             }
             break;
         default:
@@ -472,38 +467,22 @@ void ANALYZER_DBManager::insertCSV(const vector<string> &files, const unsigned i
     }
 
     // Delete inserted file
-    for (const auto &f: files){
-        try{
-            remove(f.c_str());
-        }catch (exception &e){
-            syslog(LOG_CRIT, "Error during deletion of files. The file will remaining in the temp folder. - %s",
-                              e.what());
-        }
+    try{
+        remove(f.c_str());
+    }catch (exception &e){
+        syslog(LOG_CRIT, "Error during deletion of files. The file will remaining in the temp folder. - %s",
+                          e.what());
     }
 }
 
-void ANALYZER_DBManager::open_pubkey_files() {
-    ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(ANALYZER_Utils::ANALYZED_PUBKEY,
-                         ofstream(ANALYZER_Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, ANALYZER_Utils::ANALYZED_PUBKEY, this_thread::get_id()), ios_base::app)));
-    ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(ANALYZER_Utils::BROKEN_PUBKEY,
-                         ofstream(ANALYZER_Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, ANALYZER_Utils::BROKEN_PUBKEY, this_thread::get_id()), ios_base::app)));
-}
-
-void ANALYZER_DBManager::open_signatures_files() {
-    for (auto & sig: {
-            ANALYZER_Utils::ANALYZED_SIGNATURE, 
-            ANALYZER_Utils::BROKEN_SIGNATURE
-            }){
-    ANALYZER_DBManager::file_list.insert(std::pair<unsigned int, ofstream>(sig, ofstream(ANALYZER_Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, sig, this_thread::get_id()), ios_base::app)));
-    }
+void ANALYZER_DBManager::open_files() {
+    for (const auto &it: Utils::ANALYZER_FILES::FILENAME)
+		ANALYZER_DBManager::file_list[it.first] = make_shared<SynchronizedFile>(Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, it.second));
 }
 
 ANALYZER_DBManager::~ANALYZER_DBManager(){
-    for (auto &it: file_list){
-        if (it.second.is_open()){
-            it.second.close();
-        }
-    }
+    for (const auto &f: file_list)
+        f.second->close();
 }
 
  

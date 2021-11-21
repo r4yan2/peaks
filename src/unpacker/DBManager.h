@@ -50,6 +50,7 @@ public:
     /** @brief Ready CSV files for writing tmp data
      */
     void openCSVFiles();
+    void flushCSVFiles();
 
     /** @brief Recover the certificates to unpack
      * Perform a query on the certificate table to

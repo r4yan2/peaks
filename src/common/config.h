@@ -13,7 +13,7 @@ namespace peaks{
         public:
 	        po::variables_map vm;
             common::DBSettings dbsettings;
-            std::atomic<bool> quitting;
+            std::atomic<bool> critical_section;
             static Context& context();
             Context(Context const &) = delete;
             void operator=(Context const &) = delete;

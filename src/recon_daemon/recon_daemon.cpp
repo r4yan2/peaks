@@ -41,8 +41,7 @@ void build(po::variables_map &vm){
     hashes = dbm->get_all_hash();
     entries = hashes.size();
     if (entries == 0){
-        std::cout << "DB is empty! Aborting..." << std::endl;
-        exit(0);
+        std::cout << "DB is empty! Continue anyway" << std::endl;
     }
     std::vector<NTL::ZZ_p> points = RECON_Utils::Zpoints(vm["num_samples"].as<int>());
     Ptree_config ptree_settings = {
@@ -61,8 +60,6 @@ void build(po::variables_map &vm){
     tree.create();
     int progress = 0;
     for (auto hash : hashes){
-        if (CONTEXT.quitting)
-            exit(0);
         tree.insert(hash);
         progress += 1;
         if (progress%1000 == 0){

@@ -41,12 +41,9 @@ void signalHandler(int signum) {
     switch(signum){
         case SIGINT:
         case SIGTERM:
-            if (sleeping)
+            std::cerr << "Shutting Down..." << std::endl;
+            if (!CONTEXT.critical_section)
                 exit(0);
-            else{
-                std::cerr << "Shutting Down..." << std::endl;
-                CONTEXT.quitting = true;
-            }
             break;
         case SIGSEGV:
             std::cerr << boost::stacktrace::stacktrace() << std::endl;
@@ -60,7 +57,6 @@ int main(int argc, char* argv[]){
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
     std::signal(SIGSEGV, signalHandler);
-    CONTEXT.quitting = false;
 
     try{
 	    po::options_description global("Global options");
@@ -155,7 +151,8 @@ int main(int argc, char* argv[]){
                 ("keys,k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
                 ("limit,l", po::value<unsigned int>(), "set limit to how many keys to unpack per run")
                 ("csv-only", "stop certificate import after creating csv")
-                ("recover,r", "recover");
+                ("recover", "recover")
+                ("reset", "reset");
 
             std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
             opts.erase(opts.begin());
@@ -163,8 +160,6 @@ int main(int argc, char* argv[]){
             CONTEXT.setContext(vm);
             Unpacker unpacker(vm);
             while(true){
-                if (CONTEXT.quitting)
-                    exit(0);
             	unpacker.run();
                 sleeping = true;
         		std::this_thread::sleep_for(std::chrono::seconds{vm["unpack_interval"].as<int>()});
@@ -184,11 +179,9 @@ int main(int argc, char* argv[]){
             Analyzer analyzer(vm);
             
             while(true){
-                if (CONTEXT.quitting)
-                    exit(0);
             	analyzer.run();
                 sleeping = true;
-        		std::this_thread::sleep_for(std::chrono::seconds{vm["gossip_interval"].as<int>()});
+        		std::this_thread::sleep_for(std::chrono::seconds{vm["analyze_interval"].as<int>()});
                 sleeping = false;
             }
         }

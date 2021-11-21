@@ -1,4 +1,5 @@
 #include "import.h"
+#include "common/utils.h"
 #include <boost/program_options/variables_map.hpp>
 #include <functional>
 #include <common/config.h>
@@ -38,22 +39,8 @@ void Importer::import() {
 
     openlog("pgp_import", log_option, LOG_USER);
     setlogmask(log_upto);
-    syslog(LOG_NOTICE, "Dump_import is starting up!");
-    unsigned int nThreads = std::thread::hardware_concurrency() / 2 + 1;
-    unsigned int key_per_thread;
-    int selection = -1;
-
-    selection = Utils::CERTIFICATE;
-
-    if(vm.count("threads"))
-        nThreads = vm["threads"].as<unsigned int>();
-    
-    std::cout << "Threads: " << nThreads << std::endl;
-
-    Utils::create_folders(CONTEXT.dbsettings.tmp_folder);
-    Utils::create_folders(CONTEXT.dbsettings.error_folder);
-
-    std::string filename;
+ 
+    std::string filename = "";
     auto it = CONTEXT.vm.find("init");
     if (it != CONTEXT.vm.end()){
         filename = it->second.as<std::string>();
@@ -63,14 +50,34 @@ void Importer::import() {
         }
     }
 
+   syslog(LOG_NOTICE, "Dump_import is starting up!");
     try{
         dbm = std::make_shared<IMPORT_DBManager>();
+        Utils::create_folders(CONTEXT.dbsettings.tmp_folder);
+        Utils::create_folders(CONTEXT.dbsettings.error_folder);
     }catch(std::exception &e){
         std::cout << "Unable to connect to the database: "<< e.what() << std::endl;
         exit(0);
     }
+    unsigned int selection = Utils::CERTIFICATE;
+    std::string status = "";
+    dbm->get_from_cache("import_status", status);
+    if (status == "ready"){
+        if (!(vm.count("csv-only")))
+            import_csv(selection);
+        dbm->store_in_cache("import_status", "done");
+    }
+        
+    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
 
-    if (CONTEXT.quitting) return;
+    unsigned int nThreads = std::thread::hardware_concurrency() / 2 + 1;
+    unsigned int key_per_thread;
+
+    if(vm.count("threads"))
+        nThreads = vm["threads"].as<unsigned int>();
+    
+    std::cout << "Threads: " << nThreads << std::endl;
+
     if (!(vm.count("import-only"))){
         boost::filesystem::path path = vm["default_dump_path"].as<std::string>();
         if(vm.count("path"))
@@ -103,19 +110,10 @@ void Importer::import() {
 
         generate_csv(files, path, nThreads, key_per_thread, vm.count("fastimport"));
     }
-    if (CONTEXT.quitting) return;
     if (!(vm.count("csv-only"))){
-        std::cout << "Drop index" << std::endl;
-        dbm->drop_index_gpg_keyserver();
-        std::cout << Utils::getCurrentTime() << "Writing dumped packet in DB:" << std::endl;
-        import_csv(nThreads, selection);
-        std::cout << "Rebuilding index" << std::endl;
-        dbm->build_index_gpg_keyserver();
+        import_csv(selection);
     }
-    if (vm.count("noclean") == 0){
-        std::cout << Utils::getCurrentTime() << "Cleaning temporary folder." << std::endl;
-        Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
-    }else{
+    if (vm.count("noclean") != 0){
         std::cout << Utils::getCurrentTime() << "Not removing temporary csv file as user request." << std::endl;
     }
     syslog(LOG_NOTICE, "Dump_import is stopping!");
@@ -126,12 +124,7 @@ void Importer::generate_csv(std::vector<std::string> files, boost::filesystem::p
     std::cout << Utils::getCurrentTime() << "Starting dump read" << std::endl;
 
     dbm->openCSVFiles();
-    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
-    std::vector<std::thread> pool_vect(nThreads);
-
-    for (unsigned int i = 0; i < nThreads; i++){
-        pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
-    }
+    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>(nThreads);
 
     for (unsigned int i = 0; i < files.size();){
         std::vector<std::string> dump_file_tmp;
@@ -143,44 +136,19 @@ void Importer::generate_csv(std::vector<std::string> files, boost::filesystem::p
     }
 
     pool->Stop_Filling_UP();
-
-    for (auto &th: pool_vect){
-        while (!th.joinable()){}
-        th.join();
-    }
+    pool->terminate();
 }
 
-void Importer::import_csv(unsigned int nThreads, int selection){
+void Importer::import_csv(unsigned int selection){
 
-    std::cout << Utils::getCurrentTime() << "\tInserting ";
-    std::string s = Utils::FILENAME.at(selection); 
-    std::cout << s.substr(0, s.size()-4) << std::endl;
-    std::vector<std::function<void ()>> jobs;
-    for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, selection)){
-        jobs.push_back(std::bind(Import::insert_csv, dbm, filename, selection));
-    }
-    std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>();
-    std::vector<std::thread> pool_vect(1);
-
-    for (unsigned int i = 0; i < pool_vect.size(); i++){
-        pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
-    }
-    for (const auto &j: jobs)
-        pool->Add_Job(j);
-    pool->Stop_Filling_UP();
-
-    while(1){
-        if (pool->done()){
-            for (auto &th: pool_vect)
-                if (th.joinable())
-                    th.join();
-            break;
-        }
-        // DB connector is synchronous
-        if (CONTEXT.quitting){
-            std::terminate(); //abrupt chaos
-        }
-    }
+    std::cout << Utils::getCurrentTime() << "Writing in DB" << std::endl;
+    //std::cout << "Drop index" << std::endl;
+    //dbm->drop_index_gpg_keyserver();
+    dbm->store_in_cache("import_status", "ready");
+    Import::insert_csv(dbm, selection);
+    dbm->store_in_cache("import_status", "done");
+    //std::cout << "Rebuilding index" << std::endl;
+    //dbm->build_index_gpg_keyserver();
 }
 
 }

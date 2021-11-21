@@ -19,6 +19,8 @@ DBManager::DBManager():
     connection_properties["password"] = CONTEXT.dbsettings.db_password;
     connection_properties["port"] = CONTEXT.dbsettings.db_port;
     connection_properties["CLIENT_MULTI_STATEMENTS"] = true;
+    connection_properties["OPT_CHARSET_NAME"] = "utf8";
+    connection_properties["OPT_SET_CHARSET_NAME"] = "utf8";
     con = driver->connect(connection_properties);
 }
 
@@ -27,6 +29,8 @@ void DBManager::connect_schema(){
     get_certificate_from_filestore_stmt = prepare_query("SELECT filename, origin, len FROM gpg_keyserver WHERE hash = (?)");
     get_filestore_index_from_stash_stmt = prepare_query("SELECT value FROM stash WHERE name = 'filestore_index'");
     store_filestore_index_to_stash_stmt = prepare_query("REPLACE INTO stash (name, value) VALUES ('filestore_index', ?)");
+    get_from_cache_stmt = prepare_query("SELECT value, ((created + INTERVAL (?) day) < NOW()) as expired FROM stash WHERE name = (?)");
+    set_in_cache_stmt = prepare_query("REPLACE INTO stash(`name`,`value`, `created`) VALUES (?, ?, NOW())");
     // filestorage
     int idx = 0;
     try{
@@ -44,8 +48,36 @@ void DBManager::connect_schema(){
     std::snprintf(&buf[0], buf.size(), format.c_str(), idx);
     std::string tmp(buf.data(), buf.size());
     filestorage.open(tmp, true);
+}
+
+void DBManager::check_sql_mode(){
+    std::shared_ptr<DBQuery> sqlmode_query = prepare_query("SELECT @@SESSION.sql_mode AS mode");
+    std::unique_ptr<DBResult> result = sqlmode_query->execute();
+    std::string mode;
+    if (result->next()){
+        mode = result->getString("mode");
+    }
+    else{
+        std::cerr << "Could not determine sql mode, refer to the README for further info" << std::endl;
+        return;
+    }
+    if (mode.find("ONLY_FULL_GROUP_BY") != std::string::npos) {
+        std::cerr << "Found sql mode ONLY_FULL_GROUP_BY active, attempting to change" << '\n';
+        execute_query("SET SESSION sql_mode=(SELECT REPLACE(@@SESSION.sql_mode,'ONLY_FULL_GROUP_BY',''))");
+        std::unique_ptr<DBResult> result = sqlmode_query->execute();
+        if (result->next()){
+            mode = result->getString("mode");
+            if (mode.find("ONLY_FULL_GROUP_BY") != std::string::npos) {
+                std::cerr << "Could not change sql mode, refer to the README for further info" << std::endl;
+                exit(1);
+            } else {
+                std::cerr << "SQL mode changed" << std::endl;
+            }
+        }
+    }
 
 }
+
 
 void DBManager::init_database(const std::string &filename){
 
@@ -185,6 +217,35 @@ std::shared_ptr<std::istream> DBManager::get_certificate_stream_from_filestore(c
     file->seekg(start);
     return file;
 }
+
+bool DBManager::get_from_cache(const std::string &key, std::string &value){
+    std::string res = "";
+    bool expired = false;
+    try{
+        get_from_cache_stmt->setInt(1, CONTEXT.dbsettings.expire_interval);
+        get_from_cache_stmt->setString(2, key);
+        std::unique_ptr<DBResult> result = get_from_cache_stmt->execute();
+        while (result->next()){
+            value = result->getString("value");
+            expired = result->getBoolean("expired");
+        }
+    }catch(std::exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return expired;
+
+}
+
+void DBManager::store_in_cache(const std::string &key, const std::string &value){
+    try{
+        set_in_cache_stmt->setString(1, key);
+        set_in_cache_stmt->setString(2, value);
+        std::unique_ptr<DBResult> result = set_in_cache_stmt->execute();
+    }catch(std::exception &e){
+        syslog(LOG_WARNING, "Could not save data in the DB: %s", e.what());
+    }
+}
+
 
 DBQuery::DBQuery(std::shared_ptr<sql::PreparedStatement> & stmt_):
     stmt(stmt_)

@@ -5,7 +5,6 @@
 
 // Local files includes
 #include "db.h"
-#include "utils.h"
 
 #include <common/includes.h>
 #include <boost/algorithm/string.hpp>
@@ -20,34 +19,6 @@ CGI_DBManager::CGI_DBManager(): DBManager() {
     check_sql_mode();
     connect_schema();
     prepare_queries();
-}
-
-void CGI_DBManager::check_sql_mode(){
-    std::shared_ptr<DBQuery> sqlmode_query = prepare_query("SELECT @@SESSION.sql_mode AS mode");
-    std::unique_ptr<DBResult> result = sqlmode_query->execute();
-    std::string mode;
-    if (result->next()){
-        mode = result->getString("mode");
-    }
-    else{
-        std::cerr << "Could not determine sql mode, refer to the README for further info" << std::endl;
-        return;
-    }
-    if (mode.find("ONLY_FULL_GROUP_BY") != std::string::npos) {
-        std::cerr << "Found sql mode ONLY_FULL_GROUP_BY active, attempting to change" << '\n';
-        execute_query("SET SESSION sql_mode=(SELECT REPLACE(@@SESSION.sql_mode,'ONLY_FULL_GROUP_BY',''))");
-        std::unique_ptr<DBResult> result = sqlmode_query->execute();
-        if (result->next()){
-            mode = result->getString("mode");
-            if (mode.find("ONLY_FULL_GROUP_BY") != std::string::npos) {
-                std::cerr << "Could not change sql mode, refer to the README for further info" << std::endl;
-                exit(1);
-            } else {
-                std::cerr << "SQL mode changed" << std::endl;
-            }
-        }
-    }
-
 }
 
 void CGI_DBManager::prepare_queries(){
@@ -68,6 +39,9 @@ void CGI_DBManager::prepare_queries(){
                                        "0 as creationTime, name "
                                        "FROM UserID WHERE MATCH(name) AGAINST (? IN BOOLEAN MODE)) "
                                        "AS keys_list GROUP BY kID");
+    insert_gpg_stmt = prepare_query("REPLACE INTO gpg_keyserver "
+                                    "VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?);");
+
     insert_uid_stmt = prepare_query("INSERT INTO UserID "
                                        "VALUES (?, ?, ?, 0, 0);");
 
@@ -118,11 +92,11 @@ void CGI_DBManager::prepare_queries(){
 
     get_certificates_with_attributes_stmt = prepare_query("SELECT DISTINCT(gpg_keyserver.id) as unique_id FROM gpg_keyserver join UserAttribute on gpg_keyserver.fingerprint=UserAttribute.fingerprint");
 
-    get_from_cache_stmt = prepare_query("SELECT value, ((created + INTERVAL 7 day) < NOW()) as expired FROM stash WHERE name = (?)");
-    store_in_cache_stmt = prepare_query("INSERT INTO stash(`name`,`value`, `created`) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE `value` = (?), `created` = NOW()");
-    get_certificates_analysis_stmt = prepare_query("SELECT len as length, gp.id as id, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id");
+    get_certificates_analysis_stmt = prepare_query("SELECT len as length, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id WHERE YEAR(pu.creationtime) >= (?) and YEAR(pu.creationtime) <= (?)");
     get_user_attributes_data_stmt = prepare_query("SELECT LENGTH(image) as length, (encoding IS NOT NULL) as isImage FROM UserAttribute");
-    get_pubkey_data_stmt = prepare_query("SELECT pubAlgorithm, YEAR(creationtime) as year, BIT_LENGTH(n) as n_length, BIT_LENGTH(p) as p_length, BIT_LENGTH(q) as q_length FROM Pubkey");
+    get_pubkey_data_stmt = prepare_query("SELECT pubAlgorithm, YEAR(creationtime) as year, BIT_LENGTH(n) as n_length, BIT_LENGTH(p) as p_length, BIT_LENGTH(q) as q_length, vulnerabilityDescription, vulnerabilityCode FROM Pubkey LEFT JOIN KeyStatus on Pubkey.fingerprint = KeyStatus.fingerprint WHERE YEAR(creationtime) >= (?) and YEAR(creationtime) <= (?)");
+    get_signature_data_stmt = prepare_query("SELECT isRevocation, isExpired, pubAlgorithm, YEAR(creationTime) as year, issuingKeyId, signedKeyId from Signatures");
+    get_userid_data_stmt = prepare_query("SELECT ownerkeyid, name FROM UserID");
 }
 
 // Database class destructor
@@ -202,9 +176,9 @@ std::shared_ptr<istream> CGI_DBManager::fingerprintQuery(const string &fp) {
     }
 }
 
-peaks::pks::full_key CGI_DBManager::vindexQuery(string id) {
+full_key CGI_DBManager::vindexQuery(string id) {
     check_database_connection();
-    peaks::pks::full_key res;
+    full_key res;
     std::unique_ptr<DBResult> key_result;
     switch (id.length()) {
         case 8 : // 32-bit key ID
@@ -299,17 +273,20 @@ forward_list<DB_Key*> *CGI_DBManager::indexQuery(string key) {
 
 void CGI_DBManager::insert_gpg_keyserver(const gpg_keyserver_data &gk) {
     check_database_connection();
+    std::tuple <std::string, int> res = store_certificate_to_filestore(gk.certificate); 
     try {
         insert_gpg_stmt->setInt(1, gk.version);
         insert_gpg_stmt->setBigInt(2, gk.ID);
         insert_gpg_stmt->setBlob(3, new istringstream(gk.fingerprint));
-        insert_gpg_stmt->setString(5, gk.hash);
-        insert_gpg_stmt->setInt(6, gk.error_code);
+        insert_gpg_stmt->setString(4, gk.hash);
+        insert_gpg_stmt->setInt(5, gk.error_code);
+        insert_gpg_stmt->setString(6, std::get<0>(res));
+        insert_gpg_stmt->setInt(7, std::get<1>(res));
+        insert_gpg_stmt->setInt(8, gk.certificate.size());
         insert_gpg_stmt->execute();
     }catch (std::exception &e){
         syslog(LOG_ERR, "insert_gpg_stmt FAILED - %s", e.what());
     }
-    store_certificate_to_filestore(gk.certificate);
 }
 
 void CGI_DBManager::update_gpg_keyserver(const gpg_keyserver_data &gk) {
@@ -331,7 +308,6 @@ void CGI_DBManager::insert_user_id(const userID &uid) {
         insert_uid_stmt->setBigInt(1, uid.ownerkeyID);
         insert_uid_stmt->setString(2, uid.fingerprint);
         insert_uid_stmt->setString(3, uid.name);
-        insert_uid_stmt->setString(4, uid.email);
         insert_uid_stmt->execute();
     }catch(std::exception &e){
         syslog(LOG_ERR, "insert_uid_stmt FAILED - %s", e.what());
@@ -350,7 +326,7 @@ void CGI_DBManager::insert_broken_key(const string &cert, const string &comment)
 }
 
 key CGI_DBManager::get_key_info(const std::unique_ptr<DBResult> & key_result) {
-    peaks::pks::key tmp_key;
+    key tmp_key;
 
     tmp_key.fingerprint = hexlify(key_result->getString("fingerprint"), true);
     tmp_key.keyID = string(key_result->getString("keyId"));
@@ -399,7 +375,7 @@ std::forward_list<signature> CGI_DBManager::get_signatures(const std::string &si
     vindex_signatures_stmt->setInt(3, ua_id);
     std::unique_ptr<DBResult> sign_result = vindex_signatures_stmt->execute();
     while(sign_result->next()){
-        peaks::pks::signature tmp_sign;
+        signature tmp_sign;
         tmp_sign.hex_type = sign_result->getInt("type");
         if (sign_result->getBoolean("isExpired")){
             tmp_sign.type = "exp";
@@ -485,7 +461,7 @@ std::forward_list<ua> CGI_DBManager::get_userAtt(const uid &tmp_uid) {
     vindex_uatt_stmt->setString(2, tmp_uid.name);
     std::unique_ptr<DBResult> ua_result = vindex_uatt_stmt->execute();
     while(ua_result ->next()){
-        peaks::pks::ua tmp_ua;
+        ua tmp_ua;
         tmp_ua.signatures = get_signatures(tmp_uid.fingerprint, "", ua_result->getInt("id"));
         ua_list.push_front(tmp_ua);
     }
@@ -498,7 +474,7 @@ std::forward_list<uid> CGI_DBManager::get_users(const std::string &id) {
     vindex_uid_fp_stmt->setString(1, id);
     std::unique_ptr<DBResult> uid_result = vindex_uid_fp_stmt->execute();
     while (uid_result->next()) {
-        peaks::pks::uid tmp_uid;
+        uid tmp_uid;
         tmp_uid.name = uid_result->getString("name");
         tmp_uid.fingerprint = hexlify(uid_result->getString("fingerprint"), true);
         tmp_uid.signatures = get_signatures(tmp_uid.fingerprint, tmp_uid.name);
@@ -555,42 +531,16 @@ vector<DBStruct::node> CGI_DBManager::get_pnodes(){
     return res;
 }
 
-std::string CGI_DBManager::get_from_cache(const std::string &key, bool &expired){
-    std::string res = "";
+
+std::vector<certificate_data_t> CGI_DBManager::get_certificates_analysis(const int &min_year, const int &max_year){
+    std::vector<certificate_data_t> res;
     try{
-        get_from_cache_stmt->setString(1, key);
-        std::unique_ptr<DBResult> result = get_from_cache_stmt->execute();
-        while (result->next()){
-            res = result->getString("value");
-            expired = result->getBoolean("expired");
-        }
-    }catch(exception &e){
-        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
-    }
-    return res;
-
-}
-
-void CGI_DBManager::store_in_cache(const std::string &key, const std::string &value){
-    try{
-        store_in_cache_stmt->setString(1, key);
-        store_in_cache_stmt->setString(2, value);
-        store_in_cache_stmt->setString(3, value);
-        std::unique_ptr<DBResult> result = store_in_cache_stmt->execute();
-    }catch(exception &e){
-        syslog(LOG_WARNING, "Could not save data in the DB: %s", e.what());
-    }
-}
-
-
-std::vector<std::tuple<int, int, bool, int>> CGI_DBManager::get_certificates_analysis(){
-    std::vector<std::tuple<int, int, bool, int>> res;
-    try{
+        get_certificates_analysis_stmt->setInt(1, min_year);
+        get_certificates_analysis_stmt->setInt(2, max_year);
         std::unique_ptr<DBResult> result = get_certificates_analysis_stmt->execute();
         while(result->next()){
-            res.push_back(std::tuple<int, int, bool, int>(
+            res.push_back(certificate_data_t(
                 result->getInt("length"),
-                result->getInt("id"),
                 result->getBoolean("hasUserAttribute"),
                 result->getInt("year")
             ));
@@ -601,13 +551,12 @@ std::vector<std::tuple<int, int, bool, int>> CGI_DBManager::get_certificates_ana
     return res;
 }
 
-
-std::vector<std::tuple<int, bool>> CGI_DBManager::get_user_attributes_data(){
-    std::vector<std::tuple<int, bool>> res;
+std::vector<userattribute_data_t> CGI_DBManager::get_user_attributes_data(){
+    std::vector<userattribute_data_t> res;
     try{
         std::unique_ptr<DBResult> result = get_user_attributes_data_stmt->execute();
         while(result->next()){
-            res.push_back(std::tuple<int, bool>(
+            res.push_back(userattribute_data_t(
                 result->getInt("length"),
                 result->getBoolean("isImage")
             ));
@@ -619,17 +568,21 @@ std::vector<std::tuple<int, bool>> CGI_DBManager::get_user_attributes_data(){
 
 }
 
-std::vector<std::tuple<int, int, int, int, int>> CGI_DBManager::get_pubkey_data(){
-    std::vector<std::tuple<int, int, int, int, int>> res;
+std::vector<pubkey_data_t> CGI_DBManager::get_pubkey_data(const int &min_year, const int &max_year){
+    std::vector<pubkey_data_t> res;
     try{
+        get_pubkey_data_stmt->setInt(1, min_year);
+        get_pubkey_data_stmt->setInt(2, max_year);
         std::unique_ptr<DBResult> result = get_pubkey_data_stmt->execute();
         while(result->next()){
-            res.push_back(std::tuple<int, int, int, int, int>(
+            res.push_back(pubkey_data_t(
                 result->getInt("pubAlgorithm"),
                 result->getInt("year"),
                 result->getInt("n_length"),
                 result->getInt("p_length"),
-                result->getInt("q_length")
+                result->getInt("q_length"),
+                result->getString("vulnerabilityDescription"),
+                result->getInt("vulnerabilityCode")
             ));
         }
     }catch(exception &e){
@@ -639,5 +592,42 @@ std::vector<std::tuple<int, int, int, int, int>> CGI_DBManager::get_pubkey_data(
 
 }
 
+std::vector<signature_data_t> CGI_DBManager::get_signature_data(){
+    std::vector<signature_data_t> res;
+    try{
+        std::unique_ptr<DBResult> result = get_signature_data_stmt->execute();
+        while(result->next()){
+            res.push_back(signature_data_t(
+                result->getInt("isRevocation"),
+                result->getInt("isExpired"),
+                result->getInt("pubAlgorithm"),
+                result->getInt("year"),
+                result->getInt("issuingKeyId"),
+                result->getInt("signedKeyId")
+            ));
+        }
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return res;
+
+}
+
+std::vector<userid_data_t> CGI_DBManager::get_userid_data(){
+    std::vector<userid_data_t> res;
+    try{
+        std::unique_ptr<DBResult> result = get_userid_data_stmt->execute();
+        while(result->next()){
+            res.push_back(userid_data_t(
+                result->getInt("ownerkeyid"),
+                result->getString("name")
+            ));
+        }
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return res;
+
+}
 }
 }

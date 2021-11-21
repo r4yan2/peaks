@@ -17,6 +17,7 @@ filters = yminsky.dedup,yminsky.merge
 name = peaks_recon
 gossip_interval = 60
 unpack_interval = 300
+analyze_interval = 300
 max_read_len_shift = 24 #max_read_len will be 1 << max_read_len_shift
 max_recover_size = 15000
 default_timeout = 300

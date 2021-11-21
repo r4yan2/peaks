@@ -117,9 +117,7 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
     std::vector<std::string> hashes = Import::unpack_string_th(dbm, keys);
 
     dbm->begin_transaction();
-    for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, Utils::CERTIFICATE)){
-        dbm->insertCSV(filename, Utils::CERTIFICATE);
-    }
+    dbm->insertCSV(Utils::CERTIFICATE);
 
     if (hashes.size() != elements.size()){
         syslog(LOG_WARNING, "number of recovered keys does not match number of hashes recovered!");

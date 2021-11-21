@@ -66,10 +66,10 @@ CREATE TABLE IF NOT EXISTS `Signatures` (
   `signedKeyId` bigint(20) unsigned NOT NULL,
   `issuingFingerprint` binary(20) DEFAULT NULL,
   `signedFingerprint` binary(20) NOT NULL,
-  `signedUsername` varchar(750) CHARACTER SET utf8 DEFAULT NULL,
+  `signedUsername` varchar(750) DEFAULT NULL,
   `sign_Uatt_id` int(11) DEFAULT NULL,
-  `issuingUsername` varchar(750) CHARACTER SET utf8 DEFAULT NULL,
-  `regex` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `issuingUsername` varchar(750) DEFAULT NULL,
+  `regex` varchar(40) DEFAULT NULL,
   `creationTime` datetime NOT NULL,
   `expirationTime` datetime DEFAULT NULL,
   `r` blob,
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS `Signatures` (
   `hashMismatch` tinyint(4) DEFAULT '0',
   `keyExpirationTime` datetime DEFAULT NULL,
   `revocationCode` smallint(5) unsigned DEFAULT NULL,
-  `revocationReason` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `revocationReason` varchar(500) DEFAULT NULL,
   `revocationSigId` int(10) unsigned DEFAULT NULL,
   `isRevocable` tinyint(4) NOT NULL DEFAULT '1',
   `isExportable` tinyint(1) NOT NULL,
@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS `removed_hash` (
 CREATE OR REPLACE VIEW `revocationSignatures` (`issuingKeyId`,`signedFingerprint`, `signedUsername`) AS
  SELECT issuingKeyId, signedFingerprint, signedUsername
  FROM Signatures
- WHERE isRevoked = 1;
+ WHERE isRevocation = 1;
 
 --
 -- Table structure for table `selfSignaturesMetadata`

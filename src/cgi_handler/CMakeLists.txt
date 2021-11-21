@@ -1,7 +1,7 @@
-set(SOURCE_FILES pks.cpp db.cpp utils.cpp encoder.cpp mitpgpskin.cpp PacketReader.cpp db_key.h content.h)
+set(SOURCE_FILES pks.cpp db.cpp encoder.cpp mitpgpskin.cpp PacketReader.cpp db_key.h content.h)
 
 set(TEMPLATES_FOLDER ${CGI_HANDLER_DIR}/templates)
-set(TEMPLATES ${TEMPLATES_FOLDER}/certificate.tmpl ${TEMPLATES_FOLDER}/index.tmpl ${TEMPLATES_FOLDER}/homepage.tmpl ${TEMPLATES_FOLDER}/vindex.tmpl ${TEMPLATES_FOLDER}/stats.tmpl)
+set(TEMPLATES ${TEMPLATES_FOLDER}/certificate.tmpl ${TEMPLATES_FOLDER}/index.tmpl ${TEMPLATES_FOLDER}/homepage.tmpl ${TEMPLATES_FOLDER}/vindex.tmpl)
 
 set(CPPCMS_TMPL_CC ${LIB_DIR}/bin/cppcms_tmpl_cc)
 

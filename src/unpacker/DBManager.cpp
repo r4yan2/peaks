@@ -108,6 +108,12 @@ UNPACKER_DBManager::~UNPACKER_DBManager(){
     }
 };
 
+void UNPACKER_DBManager::flushCSVFiles(){
+    for (auto &it: file_list){
+        it.second.flush();
+    }
+}
+
 vector<DBStruct::gpg_keyserver_data> UNPACKER_DBManager::get_certificates(const unsigned long &l) {
     vector<DBStruct::gpg_keyserver_data> certificates;
     get_analyzable_cert_stmt->setString(1, to_string(l));
@@ -352,6 +358,7 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
                 end_transaction();
                 execute_query(drop_unpacker_tmp_table);
             }
+            syslog(LOG_DEBUG, "inserted %s succesfully!", f.c_str());
             backoff = 0;
         }catch(exception &e){
             num_retries += 1;
@@ -404,6 +411,7 @@ void UNPACKER_DBManager::insertCSV(const string &f, const unsigned int &table){
 void UNPACKER_DBManager::UpdateSignatureIssuingFingerprint() {
     try{
         update_issuing_fingerprint->execute();
+        syslog(LOG_DEBUG, "update_issuing_fingerprint DONE");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
                           e.what());
@@ -413,6 +421,7 @@ void UNPACKER_DBManager::UpdateSignatureIssuingFingerprint() {
 void UNPACKER_DBManager::UpdateSignatureIssuingUsername() {
     try{
         update_issuing_username->execute();
+        syslog(LOG_DEBUG, "update_issuing_username DONE");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_signature_issuing_username FAILED, the issuingUsername of the signature will not be inserted! - %s",
                           e.what());
@@ -423,6 +432,7 @@ void UNPACKER_DBManager::UpdateIsExpired() {
     try{
         commit->execute();
         update_expired->execute();
+        syslog(LOG_DEBUG, "update_expired_stmt DONE");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_expired_stmt FAILED, the Signatures are not up to date checked for expiration! - %s",
                           e.what());
@@ -432,8 +442,9 @@ void UNPACKER_DBManager::UpdateIsExpired() {
 void UNPACKER_DBManager::UpdateIsRevoked() {
     try{
         commit->execute();
-        update_revoked_1->execute();
+        //update_revoked_1->execute();
         update_revoked_2->execute();
+        syslog(LOG_DEBUG, "update_revoked DONE");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_revoked FAILED, the revocation effect on Signatures will be not up to date! - %s",
                           e.what());
@@ -445,6 +456,7 @@ void UNPACKER_DBManager::UpdateIsValid() {
     try{
         commit->execute();
         update_valid->execute();
+        syslog(LOG_DEBUG, "update_valid DONE");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_valid FAILED, the validity of Signatures will be not up to date! - %s",
                           e.what());

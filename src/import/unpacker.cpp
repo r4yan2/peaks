@@ -35,10 +35,9 @@ namespace Import {
         return hashes;
     }
 
-    void insert_csv(std::shared_ptr<IMPORT_DBManager> & dbm_, const std::string &filename, int selection){
-        std::cout << "Working on " << filename << std::endl;
+    void insert_csv(std::shared_ptr<IMPORT_DBManager> & dbm_, int selection){
         dbm_->lockTables(selection);
-        dbm_->insertCSV(filename, selection);
+        dbm_->insertCSV(selection);
         dbm_->unlockTables();
     }
 
@@ -92,7 +91,6 @@ namespace Import {
                         DBStruct::gpg_keyserver_data gpg_keyserver_table;
                         read_gpg_keyserver_data(key, &gpg_keyserver_table, f, start, pos-start);
                         dbm->write_gpg_keyserver_csv(gpg_keyserver_table);
-                        if (Context::context().quitting) return;
                     }
                 }else{
                     throw std::runtime_error("Unable to open file: " + f);

@@ -39,7 +39,7 @@ public:
 
     void openCSVFiles();
 
-    void insertCSV(const std::string & f, const unsigned int &table);
+    void insertCSV(const unsigned int &table);
 
     void UpdateIsExpired();
     void UpdateIsRevoked();
