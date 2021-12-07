@@ -1,5 +1,7 @@
 #include "Message.h"
+#include <common/utils.h>
 
+using namespace peaks::common;
 namespace peaks{
 namespace recon{
 
@@ -61,7 +63,7 @@ void Buffer::append(const Buffer &other){
     buf.insert(buf.end(), v.begin(), v.end());
 }
 
-void Buffer::write_zset(const zset &to_write){
+void Buffer::write_zpset(const zpset &to_write){
     write_zz_array(to_write.elements());
 }
 
@@ -135,14 +137,14 @@ std::vector<NTL::ZZ_p> Buffer::read_zz_array(){
     std::vector<NTL::ZZ_p> array(array_size);
     for (int i=0; i<array_size; i++){
         std::vector<unsigned char> zbytes = read_bytes(NumBytes(NTL::ZZ_p::modulus()));
-        array[i] = RECON_Utils::bytes_to_zz(zbytes);
+        array[i] = Utils::bytes_to_zz(zbytes);
     }
     return array;
 }
 
-zset Buffer::read_zset(){
+zpset Buffer::read_zpset(){
     std::vector<NTL::ZZ_p> array = read_zz_array();
-    zset result(array);
+    zpset result(array);
     return result;
 }
 

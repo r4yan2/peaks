@@ -4,7 +4,6 @@
 #include <vector>
 #include <iostream>
 #include <common/DBStruct.h>
-#include "Recon_settings.h"
 #include <fstream>
 #include <map>
 #include <common/DBManager.h>
@@ -23,7 +22,7 @@ public:
      * @param settings Settings for the database
      */
     RECON_DBManager();
-    ~RECON_DBManager(){};
+    ~RECON_DBManager();
 
     /** recover a node from the database
      * @param key key of the node to recover

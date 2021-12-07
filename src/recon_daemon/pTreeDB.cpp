@@ -1,28 +1,41 @@
 #include "pTreeDB.h"
+#include <common/config.h>
+
 
 namespace peaks{
 namespace recon{
 
-Ptree::Ptree(){
+Ptree::Ptree():
+    root(NULL),
+    dbm(std::make_shared<Recon_mysql_DBManager>())
+{
+    Bitset bs(0);
+    try{
+        root = node(bs);
+    }catch(std::runtime_error &e){
+        //expected, tree need to be initialized explicitly when empty
+    }
 }
 
-Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbp, const Ptree_config &settings_):
-    dbm(dbp),
-    settings(settings_)
-{}
+Ptree& Ptree::ptree(){
+    static Ptree instance;
+    return instance;
+}
 
 Ptree::~Ptree(){}
-Ptree_config Ptree::get_settings(){
-    return settings;
+
+void Ptree::set_db(std::shared_ptr<RECON_DBManager> dbm_){
+    dbm = dbm_;
 }
+
 pnode_ptr Ptree::get_root(){
     return root;
 }
 
 std::vector<NTL::ZZ_p> Ptree::add_element_array(const NTL::ZZ_p &z){
-    std::vector<NTL::ZZ_p> marray(settings.num_samples);
-    for(size_t i=0; i<settings.num_samples; i++){
-        marray[i] = settings.points[i] - z;
+    std::vector<NTL::ZZ_p> marray(CONTEXT.treesettings.num_samples);
+    for(size_t i=0; i<CONTEXT.treesettings.num_samples; i++){
+        marray[i] = CONTEXT.treesettings.points[i] - z;
         if (marray[i] == 0){
             syslog(LOG_CRIT, "marray has a zero element!");
             throw std::runtime_error("marray has a zero element");
@@ -32,59 +45,52 @@ std::vector<NTL::ZZ_p> Ptree::add_element_array(const NTL::ZZ_p &z){
 }
 
 std::vector<NTL::ZZ_p> Ptree::delete_element_array(const NTL::ZZ_p &z){
-    std::vector<NTL::ZZ_p> marray(settings.num_samples);
-    for(size_t i=0; i < settings.num_samples; i++){
-        marray[i] = inv(settings.points[i] - z);
+    std::vector<NTL::ZZ_p> marray(CONTEXT.treesettings.num_samples);
+    for(size_t i=0; i < CONTEXT.treesettings.num_samples; i++){
+        marray[i] = inv(CONTEXT.treesettings.points[i] - z);
     }
     return marray;
 }
 
 bool Ptree::create(){
-    Bitset bs(0);
-    try{
-        root = node(bs);
-        return false;
-    }catch(std::runtime_error &e){
-        root = new_child(Bitset(), -1);
-        root->commit_node(true);
-        return true;
-    }
+    root = new_child(Bitset(), -1);
+    root->commit_node(true);
 }
 
 int Ptree::get_mbar(){
-    return settings.mbar;
+    return CONTEXT.treesettings.mbar;
 }
 
 int Ptree::get_bq(){
-    return settings.bq;
+    return CONTEXT.treesettings.bq;
 }
 
 size_t Ptree::get_num_samples(){
-    return settings.num_samples;
+    return CONTEXT.treesettings.num_samples;
 }
 
 int Ptree::get_max_ptree_nodes(){
-    return settings.max_ptree_nodes;
+    return CONTEXT.treesettings.max_ptree_nodes;
 }
 
 int Ptree::get_ptree_thresh_mult(){
-    return settings.ptree_thresh_mult;
+    return CONTEXT.treesettings.ptree_thresh_mult;
 }
 
 std::vector<NTL::ZZ_p> Ptree::get_points(){
-    return settings.points;
+    return CONTEXT.treesettings.points;
 }
 
 unsigned int Ptree::get_split_threshold(){
-    return settings.split_threshold;
+    return CONTEXT.treesettings.split_threshold;
 }
 
 unsigned int Ptree::get_join_threshold(){
-    return settings.join_threshold;
+    return CONTEXT.treesettings.join_threshold;
 }
 
 int Ptree::get_sks_bitstring(){
-    return settings.sks_bitstring;
+    return CONTEXT.treesettings.sks_bitstring;
 }
 pnode_ptr Ptree::get_node(const Bitset& key){
     DBStruct::node n = dbm->get_node(key);
@@ -102,7 +108,7 @@ bool Ptree::has_key(const std::string &key){
 }
 
 void Ptree::insert(const std::string &hash){
-    NTL::ZZ_p elem = RECON_Utils::hex_to_zz(hash);
+    NTL::ZZ_p elem = Utils::hex_to_zz(hash);
     insert(elem);
 }
 
@@ -155,8 +161,8 @@ pnode_ptr Ptree::new_child(const Bitset& parent_key, int child_index){
                 child_index);
     }
     n->set_node_key(key);
-    std::vector<NTL::ZZ_p> svalues(settings.num_samples);
-    for (size_t i=0; i < settings.num_samples; i++){
+    std::vector<NTL::ZZ_p> svalues(CONTEXT.treesettings.num_samples);
+    for (size_t i=0; i < CONTEXT.treesettings.num_samples; i++){
         NTL::ZZ_p z(1);
         svalues[i] = z;
     }
@@ -179,7 +185,7 @@ pnode_ptr Ptree::node(Bitset &key){
         if (key.size() == 0)
             throw std::runtime_error("root not found");
 
-        target_key.resize(target_key.size() - settings.bq);
+        target_key.resize(target_key.size() - CONTEXT.treesettings.bq);
     }
     return n;
 }
@@ -192,7 +198,7 @@ void Ptree::remove(const NTL::ZZ_p &z){
 }
 
 void Ptree::remove(const std::string &hash){
-    NTL::ZZ_p elem = RECON_Utils::hex_to_zz(hash);
+    NTL::ZZ_p elem = Utils::hex_to_zz(hash);
     remove(elem);
 }
 

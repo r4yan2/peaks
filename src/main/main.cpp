@@ -36,15 +36,13 @@ using namespace peaks;
  
 /** signal handler when SIGINT or SIGTERM are catched
  */
-bool sleeping = false;
 void signalHandler(int signum) {
     switch(signum){
         case SIGINT:
         case SIGTERM:
             std::cerr << "Shutting Down..." << std::endl;
-            if (!CONTEXT.critical_section)
-                exit(0);
-            break;
+            while(CONTEXT.critical_section) {}
+            exit(0);
         case SIGSEGV:
             std::cerr << boost::stacktrace::stacktrace() << std::endl;
             exit(1);
@@ -112,7 +110,7 @@ int main(int argc, char* argv[]){
         else if (cmd == "build"){
             CONTEXT.setContext(vm);
             build(vm);
-            }
+        }
         else if (cmd == "dump"){
             po::options_description dump_desc("dump options");
             dump_desc.add_options()
@@ -161,9 +159,7 @@ int main(int argc, char* argv[]){
             Unpacker unpacker(vm);
             while(true){
             	unpacker.run();
-                sleeping = true;
         		std::this_thread::sleep_for(std::chrono::seconds{vm["unpack_interval"].as<int>()});
-                sleeping = false;
             }
         }
         else if (cmd == "analyze"){
@@ -180,9 +176,7 @@ int main(int argc, char* argv[]){
             
             while(true){
             	analyzer.run();
-                sleeping = true;
         		std::this_thread::sleep_for(std::chrono::seconds{vm["analyze_interval"].as<int>()});
-                sleeping = false;
             }
         }
         else if (cmd == "recon"){

@@ -2,8 +2,7 @@
 #define RECON_PTREEDB_H
 
 #include "DBManager.h"
-#include "Recon_settings.h"
-#include "Utils.h"
+#include <common/utils.h>
 #include <syslog.h>
 #include <iostream>
 #include <stdexcept>
@@ -185,18 +184,16 @@ private:
     /** Pointer to the database manager */
     std::shared_ptr<RECON_DBManager> dbm;
   
-    /** Settings */
-    Ptree_config settings;
 public:
     Ptree();
+    static Ptree& ptree();
+    Ptree(Ptree const &) = delete;
+    void operator=(Ptree const &) = delete;
 
-	/** Constructor for ptree
-     * @param dbp Databse manager pointer, will be passed to created nodes
-     */
-    Ptree(std::shared_ptr<RECON_DBManager> dbp, const Ptree_config &settings_);
     ~Ptree();
     int get_mbar();
     int get_bq();
+    void set_db(std::shared_ptr<RECON_DBManager> dbm_);
     size_t get_num_samples();
     int get_max_ptree_nodes();
     int get_ptree_thresh_mult();
@@ -220,7 +217,6 @@ public:
      */
     std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z);
 
-    Ptree_config get_settings();
     /** Calculate marray after deletion of given element
      * @param z element for which subtraction has to be made
      * @resulting array to subtract
@@ -282,4 +278,6 @@ public:
 
 }
 }
+
+#define PTREE peaks::recon::Ptree::ptree()
 #endif //RECON_PTREEDB_H

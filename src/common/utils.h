@@ -8,6 +8,10 @@
 #include <map>
 #include <OpenPGP.h>
 #include <bits/forward_list.h>
+#include <NTL/ZZ_p.h>
+#include <NTL/ZZ.h>
+#include <iterator>
+#include <algorithm>
 using namespace OpenPGP;
 
 namespace peaks{
@@ -93,26 +97,40 @@ namespace Utils{
             std::make_pair(REPEATED_R, "RepeatedR.csv")
         };
     };
+    enum TABLES {
+        CERTIFICATE      = 1,
+        PUBKEY           = 2,
+        SIGNATURE        = 3,
+        SELF_SIGNATURE   = 4,
+        USER_ATTRIBUTES  = 5,
+        UNPACKER_ERRORS  = 6,
+        USERID           = 7,
+        UNPACKED         = 8,
+        PTREE            = 9,
+    };
 
-    const unsigned int fileNumber       = 8;
-    const unsigned int CERTIFICATE      = 1;
-    const unsigned int PUBKEY           = 2;
-    const unsigned int SIGNATURE        = 3;
-    const unsigned int SELF_SIGNATURE   = 4;
-    const unsigned int USER_ATTRIBUTES  = 5;
-    const unsigned int UNPACKER_ERRORS  = 6;
-    const unsigned int USERID           = 7;
-    const unsigned int UNPACKED         = 8;
-
+    const std::map<const unsigned int, std::string> TABLENAME{
+        std::make_pair(TABLES::CERTIFICATE, "gpg_keyserver"),
+        std::make_pair(TABLES::PUBKEY, "Pubkey"),
+        std::make_pair(TABLES::SIGNATURE, "Signatures"),
+        std::make_pair(TABLES::SELF_SIGNATURE, "selfSignaturesMetadata"),
+        std::make_pair(TABLES::USER_ATTRIBUTES, "UserAttribute"),
+        std::make_pair(TABLES::UNPACKER_ERRORS, "Unpacker_errors"),
+        std::make_pair(TABLES::USERID, "UserID"),
+        std::make_pair(TABLES::UNPACKED, "tmp_unpacker"),
+        std::make_pair(TABLES::PTREE, "ptree"),
+    };
+ 
     const std::map<const unsigned int, std::string> FILENAME{
-            std::make_pair(CERTIFICATE, "Certificate.csv"),
-            std::make_pair(PUBKEY, "PubKey.csv"),
-            std::make_pair(SIGNATURE, "Signatures.csv"),
-            std::make_pair(SELF_SIGNATURE, "SelfSignatures.csv"),
-            std::make_pair(USER_ATTRIBUTES, "UserAtt.csv"),
-            std::make_pair(UNPACKER_ERRORS, "UnpackerErrors.csv"),
-            std::make_pair(USERID, "UserID.csv"),
-            std::make_pair(UNPACKED, "Unpacked.csv"),
+        std::make_pair(TABLES::CERTIFICATE, "Certificate.csv"),
+        std::make_pair(TABLES::PUBKEY, "PubKey.csv"),
+        std::make_pair(TABLES::SIGNATURE, "Signatures.csv"),
+        std::make_pair(TABLES::SELF_SIGNATURE, "SelfSignatures.csv"),
+        std::make_pair(TABLES::USER_ATTRIBUTES, "UserAtt.csv"),
+        std::make_pair(TABLES::UNPACKER_ERRORS, "UnpackerErrors.csv"),
+        std::make_pair(TABLES::USERID, "UserID.csv"),
+        std::make_pair(TABLES::UNPACKED, "Unpacked.csv"),
+        std::make_pair(TABLES::PTREE, "Ptree.csv"),
     };
 
     const std::map<int, std::string> algorithms_map{
@@ -151,13 +169,13 @@ namespace Utils{
     /** @brief construct filename from the parameters 
      * Add together folder_name, i and ID to build the path to the file
      * @param folder_name folder in which the file are located
-     * @param i specific table file instance
-     * @param ID id of the current thread
+     * @param name specific table
+     * @param ID (optional) id of the current thread
      * @return filename
      */
-    std::string get_file_name(const std::string &folder_name, const unsigned int &i);
     std::string get_file_name(const std::string &folder_name, const std::string &name);
-    std::string get_file_name(const std::string &folder_name, const unsigned int &i, const std::thread::id &ID);
+    std::string get_file_name(const std::string &folder_name, const std::string &name, const std::thread::id &ID);
+    std::string get_file_name(const std::string &folder_name, const int &table);
 
     /** @brief create folder
      * @param folder_name folder to create
@@ -213,6 +231,7 @@ namespace Utils{
     OpenPGP::PGP::Packets get_ordered_packet(OpenPGP::PGP::Packets packet_list);
     std::string concat(const OpenPGP::PGP::Packets &packet_list);
     bool compare(const OpenPGP::Packet::Tag::Ptr &p1, const OpenPGP::Packet::Tag::Ptr &p2);
+    
     template <typename K, typename V>
     V get(const  std::map <K,V> & m, const K & key, const V & defval ) {
         typename std::map<K,V>::const_iterator it = m.find( key );
@@ -222,6 +241,54 @@ namespace Utils{
         return it->second;
     }
 
+    /** generate a random number bounded by max_val */
+    template<typename I> static I get_random(I max_val){
+        return static_cast <I> (rand()) / (static_cast <I> (RAND_MAX/max_val));
+    }
+    
+    /** pop from the front of a std::vector */
+    template<typename T>
+    T pop_front(std::vector<T>& vec)
+    {
+        assert(!vec.empty());
+        T a = vec[0];
+        vec.erase(vec.begin());
+        return a;
+    }
+
+    class ZZpHash {
+    public:
+        // id is returned as hash function
+        size_t operator()(const NTL::ZZ_p& z) const
+        {
+            NTL::ZZ a = NTL::rep(z);
+            return a%SIZE_MAX;
+        }
+    };
+ 
+    /** marshal NTL std::vector into suitable data for database insert */
+    std::string marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements);
+    
+    /** unmarshal NTL std::vector coming from a database query */
+    std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(const std::string &blob);
+    
+    /** convert a number in finite field (ZZ_p) into a bitstring representation */
+    //boost::dynamic_bitset<unsigned char> ZZp_to_bitset(NTL::ZZ_p num);
+    
+    std::string ZZp_to_bitstring(const NTL::ZZ_p &num);
+    
+    NTL::ZZ_p bytes_to_zz(const std::vector<unsigned char> &bytes);
+    
+    /** calculate ZZ int number from hex representation */
+    NTL::ZZ_p hex_to_zz(const std::string &hash);
+    
+    /** generate hex string from ZZ number*/
+    std::string zz_to_hex(const NTL::ZZ_p &num, size_t padding=32);
+    
+    /** swap endianess of an int */
+    int swap(int d);
+    
+    std::vector<NTL::ZZ_p> Zpoints(int num_samples);
 
     std::string toLower(const std::string& inputString);
     std::map<std::string, std::string> parse(const std::string& query);

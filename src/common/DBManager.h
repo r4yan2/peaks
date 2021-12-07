@@ -16,19 +16,6 @@
 namespace peaks{
 namespace common{
 
-struct DBSettings{
-    std::string db_user;
-    std::string db_password;
-    std::string db_host;
-    int db_port;
-    std::string db_database;
-    std::string tmp_folder;
-    std::string error_folder;
-    std::string filestorage_format;
-    int filestorage_maxsize;
-    int expire_interval;
-};
-
 class DBResult {
     private:
         std::unique_ptr<sql::ResultSet> res;
@@ -67,8 +54,9 @@ class DBQuery {
 };
 
 class DBManager {
-    public:
-        std::map<int, std::string> tables;
+    protected:
+        std::vector<unsigned int> tables;
+        std::map<unsigned int, std::shared_ptr<SynchronizedFile>> file_list;
     private:
         sql::Driver *driver;
         sql::Connection *con;
@@ -80,6 +68,22 @@ class DBManager {
             get_filestore_index_from_stash_stmt,
             store_filestore_index_to_stash_stmt;
         SynchronizedFile filestorage;
+    static std::pair<std::string, std::string> 
+        insert_certificate_stmt, 
+        insert_brokenKey_stmt, 
+        insert_pubkey_stmt, 
+        insert_signature_stmt, 
+        insert_self_signature_stmt, 
+        insert_userID_stmt,
+        insert_userAtt_stmt, 
+        insert_unpackerErrors_stmt, 
+        insert_unpacked_stmt;
+
+    static std::string 
+        create_unpacker_tmp_table,
+        update_gpg_keyserver,
+        drop_unpacker_tmp_table;
+
     public:
 
 
@@ -135,7 +139,7 @@ class DBManager {
 
         void execute_query(const std::string & stmt);
 
-        void lockTables(int selection=Utils::CERTIFICATE);
+        void lockTables();
         void unlockTables();
         std::string get_certificate_from_filestore(const std::string&, const int, const int);
         std::string get_certificate_from_filestore(const std::string &hash);
@@ -143,6 +147,19 @@ class DBManager {
         std::tuple<std::string, int> store_certificate_to_filestore(const std::string &);
         bool get_from_cache(const std::string &key, std::string & value);
         void store_in_cache(const std::string &key, const std::string &value);
+        
+        /** @brief Bulk-insert CSV into the database
+         * Insert multiple csv into the respective table 
+         * of the database via LOAD DATA INFILE operation
+         */
+        void insertCSV();
+        void insertCSV(const std::string &f, const unsigned int &t);
+
+        /** @brief Ready CSV files for writing tmp data
+         */
+        void openCSVFiles();
+        void flushCSVFiles();
+        void closeCSVFiles();
 
 };
 }

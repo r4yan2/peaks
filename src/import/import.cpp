@@ -30,14 +30,15 @@ void Importer::import() {
         log_option = LOG_PID;
     }
     if (vm.count("debug")){
-        std::cout << "debug output" << std::endl;
-        log_upto = LOG_UPTO(LOG_DEBUG);
+        int lev = CONTEXT.vm["debug"].as<int>();
+        std::cout << "Log level set to " << lev << std::endl;
+        log_upto = LOG_UPTO(lev);
     }
     else{
         log_upto = LOG_UPTO(LOG_INFO); 
     }
 
-    openlog("pgp_import", log_option, LOG_USER);
+    openlog("peaks", log_option, LOG_USER);
     setlogmask(log_upto);
  
     std::string filename = "";
@@ -59,12 +60,11 @@ void Importer::import() {
         std::cout << "Unable to connect to the database: "<< e.what() << std::endl;
         exit(0);
     }
-    unsigned int selection = Utils::CERTIFICATE;
     std::string status = "";
     dbm->get_from_cache("import_status", status);
     if (status == "ready"){
         if (!(vm.count("csv-only")))
-            import_csv(selection);
+            import_csv();
         dbm->store_in_cache("import_status", "done");
     }
         
@@ -111,7 +111,7 @@ void Importer::import() {
         generate_csv(files, path, nThreads, key_per_thread, vm.count("fastimport"));
     }
     if (!(vm.count("csv-only"))){
-        import_csv(selection);
+        import_csv();
     }
     if (vm.count("noclean") != 0){
         std::cout << Utils::getCurrentTime() << "Not removing temporary csv file as user request." << std::endl;
@@ -139,13 +139,13 @@ void Importer::generate_csv(std::vector<std::string> files, boost::filesystem::p
     pool->terminate();
 }
 
-void Importer::import_csv(unsigned int selection){
+void Importer::import_csv(){
 
     std::cout << Utils::getCurrentTime() << "Writing in DB" << std::endl;
     //std::cout << "Drop index" << std::endl;
     //dbm->drop_index_gpg_keyserver();
     dbm->store_in_cache("import_status", "ready");
-    Import::insert_csv(dbm, selection);
+    Import::insert_csv(dbm);
     dbm->store_in_cache("import_status", "done");
     //std::cout << "Rebuilding index" << std::endl;
     //dbm->build_index_gpg_keyserver();

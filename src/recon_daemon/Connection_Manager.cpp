@@ -1,13 +1,15 @@
 #include "Connection_Manager.h"
+#include <common/config.h>
+#include <common/utils.h>
 
+using namespace peaks::common;
 namespace peaks{
 namespace recon{
 
-Connection_Manager::Connection_Manager(const Connection_config & conn_settings):
+Connection_Manager::Connection_Manager():
     sockfd(-1),
     tmpfd(-1),
-    listenfd(-1),
-    settings(conn_settings)
+    listenfd(-1)
 {}
 
 void Connection_Manager::setup_listener(int portno){
@@ -62,8 +64,8 @@ peertype Connection_Manager::acceptor(std::vector<std::string> & addresses){
 
 void Connection_Manager::set_timeout(){
   struct timeval tv;
-  tv.tv_sec  = settings.async_timeout_sec;
-  tv.tv_usec = settings.async_timeout_usec;
+  tv.tv_sec  = CONTEXT.connsettings.async_timeout_sec;
+  tv.tv_usec = CONTEXT.connsettings.async_timeout_usec;
   setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
   setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 }
@@ -137,11 +139,11 @@ void Connection_Manager::close_connection(){
 int Connection_Manager::check_remote_config(){
 
     Peer_config* local_config = new Peer_config;
-    local_config->version = settings.peaks_version;
-    local_config->http_port = settings.peaks_http_port;
-    local_config->bq = settings.bq;
-    local_config->mbar = settings.mbar;
-    local_config->filters = settings.peaks_filters;
+    local_config->version = CONTEXT.connsettings.peaks_version;
+    local_config->http_port = CONTEXT.connsettings.peaks_http_port;
+    local_config->bq = CONTEXT.treesettings.bq;
+    local_config->mbar = CONTEXT.treesettings.mbar;
+    local_config->filters = CONTEXT.connsettings.peaks_filters;
 
 
     send_message(local_config, true);
@@ -282,8 +284,8 @@ std::string Connection_Manager::read_string_direct(){
    std::uint32_t size;
    std::string res = "failed";
    if (read_n_bytes(&size, sizeof(size), true)) {
-       size = RECON_Utils::swap(size);
-       if (size > settings.max_read_len) 
+       size = Utils::swap(size);
+       if (size > CONTEXT.connsettings.max_read_len) 
            syslog(LOG_WARNING, "Oversized message!");
        Buffer buf(size);
        read_n_bytes(buf.data(), size, true);
@@ -301,8 +303,8 @@ Message* Connection_Manager::read_message_async(){
 Message* Connection_Manager::read_message(bool tmp_socket, int signal) {
    std::uint32_t size;
    if (read_n_bytes(&size, sizeof(size), tmp_socket, signal)) {
-       size = RECON_Utils::swap(size);
-       if (size > settings.max_read_len) 
+       size = Utils::swap(size);
+       if (size > CONTEXT.connsettings.max_read_len) 
            syslog(LOG_WARNING, "Oversized message!");
        Buffer ibuf(size);
        if (read_n_bytes(ibuf.data(), size, tmp_socket, signal)) {

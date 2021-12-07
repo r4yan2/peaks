@@ -37,10 +37,6 @@ public:
 	void drop_index_gpg_keyserver();
 	void build_index_gpg_keyserver();
 
-    void openCSVFiles();
-
-    void insertCSV(const unsigned int &table);
-
     void UpdateIsExpired();
     void UpdateIsRevoked();
     void UpdateIsValid();
@@ -48,18 +44,6 @@ public:
     void UpdateSignatureIssuingUsername();
 
 private:
-
-    std::map<unsigned int, std::shared_ptr<SynchronizedFile>> file_list;
-
-    static std::pair<std::string, std::string> 
-        insert_pubkey_stmt, 
-        insert_signature_stmt, 
-        insert_self_signature_stmt,
-        insert_userID_stmt, 
-        insert_unpackerErrors_stmt, 
-        insert_certificate_stmt, 
-        insert_brokenKey_stmt, 
-        insert_userAtt_stmt;
 
     std::shared_ptr<DBQuery>
         get_signature_by_index;

@@ -21,6 +21,7 @@ Thread_Pool::Thread_Pool(const unsigned int &size):
 void Thread_Pool::Infinite_loop_function() {
 
     while (true) {
+        while (state != Pool_Status::WORK and state != Pool_Status::DONE) {};
         std::shared_ptr<Job> job = Request_Job();
         if (job == nullptr){
             break;
@@ -54,10 +55,12 @@ void Thread_Pool::Add_Jobs(const std::vector<std::shared_ptr<Job>> & new_jobs){
 }
 
 void Thread_Pool::Stop_Filling_UP(){
+    unique_lock <mutex> lock(queue_mutex);
     state = Pool_Status::WORK;
 }
 
 void Thread_Pool::Start_Filling_UP(){
+    unique_lock <mutex> lock(queue_mutex);
     state = Pool_Status::FILLING;
 }
 
@@ -65,13 +68,12 @@ void Thread_Pool::terminate(){
     state = Pool_Status::DONE;
     condition.notify_all();
     for (auto &th: pool_vect){
-        while (!th.joinable()){}
+        while (!done()){};
         th.join();
     }
 }
 
 bool Thread_Pool::done(){
-    unique_lock <mutex> lock(queue_mutex);
     if (state == Pool_Status::FILLING) return false;
     for (auto & j: queue)
         if (!j->done())
@@ -98,10 +100,9 @@ std::shared_ptr<Job> Thread_Pool::Request_Job(){
                 return j;
             }
         }
-        if (all_done && state == Pool_Status::DONE)
+        if (all_done && state == Pool_Status::DONE){
             return nullptr;
-        //condition.wait_for(lock, std::chrono::seconds{TIMEOUT});
-        condition.wait(lock);
+        }
     }
 }
 

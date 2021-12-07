@@ -8,7 +8,9 @@
 #include <common/DBManager.h>
 #include <common/DBStruct.h>
 #include <boost/algorithm/string.hpp>
+#include <common/config.h>
 
+using namespace peaks::settings;
 using namespace peaks::common;
 
 namespace peaks{
@@ -20,19 +22,6 @@ namespace unpacker{
  * keys after all operations
  */
 class UNPACKER_DBManager: public DBManager {
-    static std::pair<std::string, std::string> 
-        insert_pubkey_stmt, 
-        insert_signature_stmt, 
-        insert_self_signature_stmt, 
-        insert_userID_stmt,
-        insert_userAtt_stmt, 
-        insert_unpackerErrors_stmt, 
-        insert_unpacked_stmt;
-
-    static std::string 
-        create_unpacker_tmp_table,
-        update_gpg_keyserver,
-        drop_unpacker_tmp_table;
 public:
     /** @brief Database connector constructor
      * init the databasse connector with the settings that
@@ -46,11 +35,6 @@ public:
     ~UNPACKER_DBManager();
 
     void prepare_queries();
-
-    /** @brief Ready CSV files for writing tmp data
-     */
-    void openCSVFiles();
-    void flushCSVFiles();
 
     /** @brief Recover the certificates to unpack
      * Perform a query on the certificate table to
@@ -93,19 +77,6 @@ public:
      */
     void write_unpacked_csv(const OpenPGP::Key::Ptr &key, const DBStruct::Unpacker_errors &mod);
 
-    /** @brief Bulk-insert CSV into the database
-     * Insert multiple csv into the respective table 
-     * of the database via LOAD DATA INFILE operation
-     * @param f filename of the csv to insert in the database
-     * @param table target table 
-     */
-    void insertCSV(const std::string &f, const unsigned int &table);
-
-    /** @brief Parse filename and made correct call to insertCSV
-     * @param f filename to parse
-     */
-    void insertCSV(const std::string &f);
-
     /** @brief In case of error mark the certificate not analyzable
      * @param version version of the certificate (primary key)
      * @param fingerprint fingerprint of the certificate (primary key)
@@ -135,8 +106,6 @@ public:
 private:
 
     DBSettings settings;
-
-    std::map<unsigned int, std::ofstream> file_list;
 
     std::shared_ptr<DBQuery>
         get_analyzable_cert_stmt, 

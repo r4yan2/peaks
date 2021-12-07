@@ -6,16 +6,15 @@
 #include <map>
 #include <istream>
 #include <sstream>
-#include "Recon_settings.h"
-#include "Utils.h"
+#include <common/utils.h>
 #include "Bitset.h"
 #include <sys/syslog.h>
+#include <unordered_set>
 
 namespace peaks {
 namespace recon {
 
 typedef Bitset bitset;
-typedef Myset<NTL::ZZ_p> zset;
 
 /** Possible message types send/received during recon */
 namespace Msg_type{
@@ -102,11 +101,11 @@ class Buffer{
         void write_bytes(const std::vector<unsigned char>&);
 
         /** write a set composed of ZZ_p elements.
-         * First write the length of the zset
+         * First write the length of the zpset
          * Then proceed to write elements one by one
          * using the appropriate method
          */
-        void write_zset(const zset&);
+        void write_zpset(const zpset&);
 
         /** write a bitstring.
          * First write the bitlength of the string
@@ -124,7 +123,7 @@ class Buffer{
         void write_zz_p(const NTL::ZZ_p&, int pad_to = 0);
 
         /** write an array of ZZ_p elements.
-         * First write the length of the zset
+         * First write the length of the zpset
          * Then proceed to write elements one by one
          * using the appropriate method
          */
@@ -160,7 +159,7 @@ class Buffer{
          * the set is read as an array and 
          * converted into a set.
          */
-        zset read_zset();
+        zpset read_zpset();
 
         /** read a bistring from the buffer.
          * First the bitsize is read.
@@ -230,7 +229,7 @@ struct ReconRequestPoly: Message{
 struct ReconRequestFull: Message{
     ReconRequestFull():Message(Msg_type::ReconRequestFull){}
     bitset prefix;
-    zset elements;
+    zpset elements;
     void marshal(Buffer &buf);
     void unmarshal(Buffer &buf);
 };
@@ -242,7 +241,7 @@ struct ReconRequestFull: Message{
  */
 struct Elements: Message{
     Elements():Message(Msg_type::Elements){}
-    zset elements;
+    zpset elements;
     void marshal(Buffer &buf);
     void unmarshal(Buffer &buf);
 };
@@ -254,7 +253,7 @@ struct Elements: Message{
  */
 struct FullElements: Message{
     FullElements():Message(Msg_type::FullElements){}
-    zset elements;
+    zpset elements;
     void marshal(Buffer &buf);
     void unmarshal(Buffer &buf);
 };

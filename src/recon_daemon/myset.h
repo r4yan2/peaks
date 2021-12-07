@@ -26,6 +26,10 @@ template <typename T> class Myset{
         std::pair<std::vector<T>,std::vector<T>> symmetric_difference(Myset<T>& a); /**< perform a symmetric difference between two sets, return the two vector of differences this-a and a-this */
         std::vector<T> elements() const; /**< access to the internal NTL std::vector */
 };
+
+typedef Myset<NTL::ZZ_p> zpset;
+typedef Myset<NTL::ZZ> zset;
+
         
 }
 }

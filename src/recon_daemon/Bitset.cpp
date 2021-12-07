@@ -40,6 +40,11 @@ Bitset::Bitset(const std::string & src):
     n_bits(bytes.size()*8)
 {}
 
+Bitset::Bitset(const std::string &src, const int & size):
+    bytes(src.begin(), src.end()),
+    n_bits(size)
+{}
+
 bool Bitset::operator<(const Bitset & other){
     if (num_blocks() < other.num_blocks())
         return true;

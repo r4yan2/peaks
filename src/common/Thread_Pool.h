@@ -7,6 +7,7 @@
 #include <condition_variable>
 #include <queue>
 #include <fstream>
+#include <atomic>
 #define TIMEOUT 10
 
 
@@ -135,10 +136,10 @@ private:
  * WORK mean the jobs should be running now
  * DONE mean there are no jobs yet to be pushed into the Pool
  */
-enum class Pool_Status{
-    FILLING,
-    WORK,
-    DONE
+enum Pool_Status{
+    FILLING = 0,
+    WORK = 1,
+    DONE = 2
 };
 
 
@@ -203,7 +204,7 @@ public:
     bool done();
 
 private:
-    Pool_Status state;
+    std::atomic<int> state;
     std::vector<std::shared_ptr<Job>> queue;
     std::mutex queue_mutex;
     std::condition_variable condition;

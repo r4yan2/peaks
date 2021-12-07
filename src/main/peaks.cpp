@@ -66,6 +66,7 @@ void help(){
 void parse_config(std::istream& conf, po::variables_map &vm){
     po::options_description config("Configuration");
     config.add_options()
+        ("debug", po::value<int>()->default_value(5))
         ("mbar", po::value<int>()->default_value(5))
         ("bq", po::value<int>()->default_value(2))
         ("max_ptree_nodes", po::value<int>()->default_value(1000))
@@ -105,8 +106,8 @@ void parse_config(std::istream& conf, po::variables_map &vm){
         ("membership_config", po::value<std::string>()->default_value("/etc/peaks/memebership"))
         ("cppcms_config", po::value<std::string>()->default_value("/etc/peaks/config.js"))
         ("default_dump_path", po::value<std::string>()->default_value("/tmp/pgp_dump"))
-        ("tmp_folder", po::value<std::string>()->default_value("/tmp/peaks_import/"))
-        ("error_folder", po::value<std::string>()->default_value("/tmp/peaks_errors/"))
+        ("tmp_folder", po::value<std::string>()->default_value("/tmp/peaks_tmp"))
+        ("error_folder", po::value<std::string>()->default_value("/tmp/peaks_errors"))
         ;
 
     po::store(po::parse_config_file(conf, config, true), vm);

@@ -7,6 +7,8 @@
 #include <regex>
 #include <thread>
 #include "db.h"
+#include <recon_daemon/pTreeDB.h>
+
 
 using namespace std;
 using namespace OpenPGP;
@@ -116,6 +118,7 @@ void pr::readPublicKeyPacket(const string &arm, peaks::pks::CGI_DBManager *dbm){
 
     cout << "Submitting data" << endl;
     dbm->insert_gpg_keyserver(gk);
+    PTREE.insert(gk.hash);
     //if (exist) {
     //    dbm->update_gpg_keyserver(gk);
     //} else {

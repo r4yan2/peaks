@@ -1,15 +1,13 @@
 #include "peer.h"
+#include <common/utils.h>
 #include <common/config.h>
 
 namespace peaks{
 namespace recon{
-Peer::Peer(Ptree &new_tree, const Recon_config & peer_settings, const Connection_config & conn_settings, const Message_config & conf):
-    cn(conn_settings),
-    tree(std::move(new_tree)),
-    settings(peer_settings),
-    msg_config(conf)
+Peer::Peer():
+    cn()
 {
-    std::ifstream f(settings.membership_config);
+    std::ifstream f(CONTEXT.peersettings.membership_config);
     std::string addr;
     int port;
     while(f >> addr >> port){
@@ -23,7 +21,7 @@ Peer::Peer(Ptree &new_tree, const Recon_config & peer_settings, const Connection
 
 peertype Peer::choose_partner(){
     
-    int choice = RECON_Utils::get_random(membership.size());
+    int choice = Utils::get_random(membership.size());
     peertype peer = membership[choice];
     syslog(LOG_DEBUG, "choose as partner: %s", peer.first.c_str());
     int http_port = cn.init_peer(peer);
@@ -54,7 +52,7 @@ void Peer::serve(){
     
     syslog(LOG_DEBUG, "starting gossip server");
 
-    cn.setup_listener(settings.peaks_recon_port);
+    cn.setup_listener(CONTEXT.peersettings.peaks_recon_port);
     std::vector<std::string> addresses;
     std::transform(membership.begin(), membership.end(), std::back_inserter(addresses), (const std::string& (*)(const peertype&))std::get<0>);
 
@@ -77,7 +75,7 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
     syslog(LOG_DEBUG, "Should recover %d elements, starting double check!", int(elems.size()));
     std::vector<NTL::ZZ_p> elements;
     for (auto e: elems){
-        if (!(tree.has_key(RECON_Utils::zz_to_hex(e))))
+        if (!(PTREE.has_key(Utils::zz_to_hex(e))))
             elements.push_back(e);
     }
 
@@ -85,7 +83,7 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
     if (elements_size == 0){
         return;
     }
-    int c_size = settings.request_chunk_size;
+    int c_size = CONTEXT.peersettings.request_chunk_size;
     syslog(LOG_DEBUG, "Will recover: %d", int(elements_size));
     std::vector<std::string> keys;
     if (c_size > elements_size){
@@ -104,29 +102,23 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
         }
     }
     syslog(LOG_DEBUG, "fetched %d keys from peer", int(keys.size()));
-    if (settings.dry_run){
-        syslog(LOG_WARNING, "DRY RUN, exiting without inserting certificates");
+    if (CONTEXT.peersettings.dry_run){
+        syslog(LOG_WARNING, "DRY RUN, will NOT insert certificates");
         return;
     }
-    //std::vector<std::string> hashes = di.import(keys);
     
     std::shared_ptr<IMPORT_DBManager> dbm = std::make_shared<IMPORT_DBManager>();
-    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
+    dbm->begin_transaction();
     dbm->openCSVFiles();
 
     std::vector<std::string> hashes = Import::unpack_string_th(dbm, keys);
 
-    dbm->begin_transaction();
-    dbm->insertCSV(Utils::CERTIFICATE);
+    dbm->insertCSV();
 
     if (hashes.size() != elements.size()){
         syslog(LOG_WARNING, "number of recovered keys does not match number of hashes recovered!");
     }
-    /*
-    for (auto hash: elements)
-        if (std::find(hashes.begin(), hashes.end(), RECON_Utils::zz_to_hex(hash)) == hashes.end())
-            */
-    tree.update(hashes);
+    PTREE.update(hashes);
     dbm->end_transaction();
 }
 
@@ -147,7 +139,7 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
     buffer.write_int(chunk.size());
     for (auto zp: chunk){
         //hashquery are 16 byte long
-        int hashquery_len = settings.hashquery_len;
+        int hashquery_len = CONTEXT.peersettings.hashquery_len;
         buffer.write_int(hashquery_len);
         buffer.write_zz_p(zp, hashquery_len);
     }
@@ -194,8 +186,8 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
 }
 
 void Peer::interact_with_client(peertype &remote_peer){
-    Recon_manager recon = Recon_manager(cn, msg_config);
-    std::shared_ptr<Pnode> root = tree.get_root();
+    Recon_manager recon(cn);
+    std::shared_ptr<Pnode> root = PTREE.get_root();
     bitset newset(0);
     request_entry req = request_entry{.node = root, .key = newset};
     recon.push_request(req);
@@ -220,7 +212,7 @@ void Peer::interact_with_client(peertype &remote_peer){
                             recon.pop_bottom();
                             recon.handle_reply(msg, bottom.request);
                         } catch(std::invalid_argument &e){
-                            if((recon.bottom_queue_size() > settings.max_outstanding_recon_req) || 
+                            if((recon.bottom_queue_size() > CONTEXT.peersettings.max_outstanding_recon_req) || 
                                 (recon.request_queue_size() == 0)){
                                 if (recon.is_flushing()){
                                     recon.pop_bottom();
@@ -252,7 +244,7 @@ void Peer::interact_with_client(peertype &remote_peer){
 }
 
 void Peer::gossip(){
-    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(msg_config.P_SKS_STRING.c_str()));
+    NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(CONTEXT.msgsettings.P_SKS_STRING.c_str()));
     for (;;){
         try{
             syslog(LOG_DEBUG, "starting gossip client");
@@ -264,13 +256,13 @@ void Peer::gossip(){
             cn.close_connection();
         }
         syslog(LOG_DEBUG, "going to sleep...");
-        std::this_thread::sleep_for(std::chrono::seconds{settings.gossip_interval});
+        std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.peersettings.gossip_interval});
         syslog(LOG_DEBUG, "...resuming gossip");
     }
 }
 
 void Peer::client_recon(const peertype &peer){
-    zset response;
+    zpset response;
     std::vector<Message*> pending;
 
     int n=0; 
@@ -329,7 +321,7 @@ void Peer::client_recon(const peertype &peer){
             cn.send_message(error_msg);
             return;
         } 
-        else if ((comm.status == Communication_status::DONE) || (n >= settings.max_recover_size)){
+        else if ((comm.status == Communication_status::DONE) || (n >= CONTEXT.peersettings.max_recover_size)){
                 fetch_elements(peer, response.elements());
                 cn.close_connection();
                 return;
@@ -359,7 +351,7 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
         syslog(LOG_DEBUG, "Could not interpolate because size_diff (%d) > size of values(%d)!", (int)size_diff, (int)values.size());
         throw solver_exception();
         }
-    int mbar = tree.get_settings().mbar;
+    int mbar = CONTEXT.treesettings.mbar;
     if ((mbar + size_diff)%2 != 0) mbar--;
     int ma = (mbar + size_diff)/2;
     int mb = (mbar - size_diff)/2;
@@ -506,21 +498,21 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     int r_size = req->size;
     std::vector<NTL::ZZ_p> r_samples = req->samples;
     bitset key = req->prefix;
-    std::shared_ptr<Pnode> node = tree.node(key);
+    std::shared_ptr<Pnode> node = PTREE.node(key);
     std::vector<NTL::ZZ_p> l_samples = node->get_node_svalues();
     int l_size = node->get_num_elements();
     std::vector<NTL::ZZ_p> elements;
     std::vector<NTL::ZZ_p> local_elements, remote_elements;
 
     try{
-        std::tie(local_elements, remote_elements) = solve(r_samples, r_size, l_samples, l_size, tree.get_settings().points);
+        std::tie(local_elements, remote_elements) = solve(r_samples, r_size, l_samples, l_size, CONTEXT.treesettings.points);
     }
     //catch (solver_exception& e){
     catch (std::exception &e){
         if ((strncmp(e.what(),"low_mbar",8)) && 
                     (
                      (node->is_leaf()) ||
-                     (node->get_num_elements() < tree.get_settings().ptree_thresh_mult * tree.get_settings().mbar)
+                     (node->get_num_elements() < CONTEXT.treesettings.ptree_thresh_mult * CONTEXT.treesettings.mbar)
                      )
             ){
                 elements = node->elements();
@@ -538,8 +530,8 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
         }
     }
     Communication newcomm;
-    zset remote_elements_set(remote_elements);
-    zset local_elements_set(local_elements);
+    zpset remote_elements_set(remote_elements);
+    zpset local_elements_set(local_elements);
     newcomm.elements = remote_elements_set;
     Elements* m_elements = new Elements;
     m_elements->elements = local_elements_set; 
@@ -548,11 +540,11 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
 }
 
 Communication Peer::request_full_handler(ReconRequestFull* req){
-    Myset<NTL::ZZ_p> remote_set(req->elements);
-    Myset<NTL::ZZ_p> local_set;
+    zpset remote_set(req->elements);
+    zpset local_set;
     Communication newcomm;
     try{
-        std::shared_ptr<Pnode> node = tree.node(req->prefix);
+        std::shared_ptr<Pnode> node = PTREE.node(req->prefix);
         local_set.add(node->elements());
     } catch (std::exception& e){
         newcomm.status = Communication_status::ERROR;

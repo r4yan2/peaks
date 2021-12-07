@@ -19,7 +19,7 @@ class Importer{
          */
         void import();
         void generate_csv(std::vector<std::string> files, boost::filesystem::path &path, unsigned int nThreads, unsigned int key_per_thread, int fastimport);
-        void import_csv(unsigned int);
+        void import_csv();
         /** helper to remove content of given directory
          * @param foldername folder to clean
          */

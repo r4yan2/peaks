@@ -1,10 +1,10 @@
 #include "peer.h"
+#include <common/config.h>
 
 namespace peaks{
 namespace recon{
 
-Recon_manager::Recon_manager(Connection_Manager &conn_manager, const Message_config &msg_config):
-    settings(msg_config),
+Recon_manager::Recon_manager(Connection_Manager &conn_manager):
     cn(conn_manager)
 {}
 
@@ -15,7 +15,7 @@ void Recon_manager::push_bottom(bottom_entry &bottom){
 }
 
 void Recon_manager::prepend_request(request_entry &req){
-    if (request_queue.size() < settings.max_request_queue_len){
+    if (request_queue.size() < CONTEXT.msgsettings.max_request_queue_len){
         request_queue.push_front(req);
     }
 }
@@ -60,7 +60,7 @@ bool Recon_manager::is_flushing(){
 bool Recon_manager::done(){
     return ((request_queue.size() == 0) &&
             (bottom_queue.size() == 0) &&
-            (remote_set.size() < settings.max_recover_size));
+            (remote_set.size() < CONTEXT.peersettings.max_recover_size));
 }
 
 bool Recon_manager::bottom_queue_empty(){
@@ -69,10 +69,10 @@ bool Recon_manager::bottom_queue_empty(){
 
 void Recon_manager::send_request(request_entry &request){
     Message* msg;
-    if ((request.node->is_leaf()) || (request.node->get_num_elements() < (int) settings.split_threshold)){
+    if ((request.node->is_leaf()) || (request.node->get_num_elements() < (int) CONTEXT.treesettings.split_threshold)){
         msg = new ReconRequestFull;
         ((ReconRequestFull*) msg)->prefix = request.key;
-        ((ReconRequestFull*) msg)->elements = zset(request.node->elements());
+        ((ReconRequestFull*) msg)->elements = zpset(request.node->elements());
     }else{
         msg = new ReconRequestPoly;
         ((ReconRequestPoly*) msg)->prefix = request.key;
@@ -108,7 +108,7 @@ void Recon_manager::handle_reply(Message* msg, request_entry &request){
             }
         case (Msg_type::Elements):
             {
-                zset elements = ((Elements*)msg)->elements;
+                zpset elements = ((Elements*)msg)->elements;
                 remote_set.add(elements);
                 delete (Elements*) msg;
                 break;
@@ -116,8 +116,8 @@ void Recon_manager::handle_reply(Message* msg, request_entry &request){
         case (Msg_type::FullElements):
             {
                 std::vector<NTL::ZZ_p> elements = request.node->elements();
-                zset local_set = zset(elements);
-                zset local_needs, remote_needs;
+                zpset local_set = zpset(elements);
+                zpset local_needs, remote_needs;
                 std::tie(local_needs, remote_needs) = ((FullElements*)msg)->elements.symmetric_difference(local_set);
                 Elements* m_elements = new Elements;
                 m_elements->elements = remote_needs;

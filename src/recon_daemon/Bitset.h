@@ -42,6 +42,8 @@ class Bitset{
          */
         explicit Bitset(const bytestype &newbytes);
 
+        explicit Bitset(const std::string &src, const int & size);
+
         /** constructor from string take a string representation of bytes
          * @param bitstring
          */

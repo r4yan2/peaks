@@ -13,7 +13,6 @@
 #include <stdlib.h>
 #include <vector>
 #include <iostream>
-#include "Utils.h"
 #include <NTL/vector.h>
 #include <NTL/ZZ_p.h>
 #include <NTL/ZZ.h>
@@ -24,7 +23,6 @@
 #include "exception.h"
 #include "Message.h"
 #include <algorithm>
-#include "Recon_settings.h"
 #include <sys/syslog.h>
 
 
@@ -48,11 +46,10 @@ class Connection_Manager{
         int sockfd;
         int tmpfd;
         int listenfd;
-        Connection_config settings;
     public:
 
         /** default constructor */
-        Connection_Manager(const Connection_config &conn_settings);
+        Connection_Manager();
 
         /** init connection as client 
          * with given peer peer */

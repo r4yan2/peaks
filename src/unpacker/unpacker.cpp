@@ -87,7 +87,13 @@ Unpacker::Unpacker(po::variables_map &vm){
         for (auto &f: error_files)
         {
             std::cout << "\t" << f << std::endl;
-            dbm->insertCSV(f);
+            std::vector<std::string> fullpath, filename;
+            boost::split(fullpath, f, boost::is_any_of("/"));
+            for (auto const &x: Utils::FILENAME){
+                if (Utils::hasEnding(fullpath.back(), x.second)){
+                    dbm->insertCSV(f, x.first);
+                }
+            }
         }
     }
     
@@ -185,20 +191,12 @@ void Unpacker::run(){
 void Unpacker::store_keymaterial(){
     if (CONTEXT.vm.count("csv-only"))
         return; //nothing to do
-    bool data = false;
-    for (unsigned int i = 2; i <= Utils::fileNumber; i++){
-        for (const std::string & filename: Utils::get_files(CONTEXT.dbsettings.tmp_folder, i)){
-            dbm->insertCSV(filename, i);
-            data=true;
-        }
-    }
-    if (data){
-        dbm->UpdateSignatureIssuingFingerprint();
-        dbm->UpdateSignatureIssuingUsername();
-        dbm->UpdateIsExpired();
-        dbm->UpdateIsRevoked();
-        //dbm->UpdateIsValid();
-    }
+    dbm->insertCSV();
+    dbm->UpdateSignatureIssuingFingerprint();
+    dbm->UpdateSignatureIssuingUsername();
+    dbm->UpdateIsExpired();
+    dbm->UpdateIsRevoked();
+    //dbm->UpdateIsValid();
 }
 
 void unpack_key_th(std::shared_ptr<UNPACKER_DBManager> dbm, const vector<Key::Ptr> &pks){

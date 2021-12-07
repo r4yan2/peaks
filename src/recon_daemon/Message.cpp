@@ -23,33 +23,33 @@ void ReconRequestPoly::unmarshal(Buffer &buf){
 void ReconRequestFull::marshal(Buffer &buf){
     syslog(LOG_DEBUG, "Sending Recon Request Full for %s", Bitset::to_string(prefix).c_str());
     buf.write_bitset(prefix);
-    buf.write_zset(elements);
+    buf.write_zpset(elements);
 }
 
 void ReconRequestFull::unmarshal(Buffer &buf){
     prefix = buf.read_bitset();
-    elements = buf.read_zset();
+    elements = buf.read_zpset();
     syslog(LOG_DEBUG, "Sending Recon Request Full for %s", Bitset::to_string(prefix).c_str());
 }
 
 void Elements::marshal(Buffer &buf){
     syslog(LOG_DEBUG, "Sending Elements");
-    buf.write_zset(elements);
+    buf.write_zpset(elements);
 }
 
 void Elements::unmarshal(Buffer &buf){
     syslog(LOG_DEBUG, "Receiving Elements");
-    elements = buf.read_zset();
+    elements = buf.read_zpset();
 }
 
 void FullElements::marshal(Buffer &buf){
     syslog(LOG_DEBUG, "Sending Full Elements");
-    buf.write_zset(elements);
+    buf.write_zpset(elements);
 }
 
 void FullElements::unmarshal(Buffer &buf){
     syslog(LOG_DEBUG, "Receiving Full Elements");
-    elements = buf.read_zset();
+    elements = buf.read_zpset();
 }
 
 void SyncFail::marshal(Buffer &buf){

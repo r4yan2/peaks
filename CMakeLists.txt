@@ -62,6 +62,7 @@ find_library(libopenpgp
     NAMES libOpenPGP.a
     HINTS ${LIBRARY_DIR}
     )
+message(STATUS "PGP libraries:      ${libopenpgp}")
 
 find_library(libgmp
     NAMES libgmp.a
@@ -73,6 +74,7 @@ find_library(libntl
     NAMES libntl.a
     HINTS ${LIBRARY_DIR}
     )
+message(STATUS "NTL libraries:      ${libntl}")
 
 if(${CMAKE_BUILD_TYPE} STREQUAL "Docker")
 find_library(libnghttp2

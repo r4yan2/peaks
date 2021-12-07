@@ -1,6 +1,7 @@
 #ifndef UNPACKER_UNPACKER_H
 #define UNPACKER_UNPACKER_H
 
+#include <common/config.h>
 #include <Key.h>
 #include <Packets/Packet.h>
 #include "DBManager.h"
@@ -15,6 +16,8 @@
 #include <climits>
 #include <common/Thread_Pool.h>
 #include <thread>
+
+using namespace peaks::settings;
 
 namespace peaks{
 namespace unpacker{

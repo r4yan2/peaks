@@ -1,7 +1,5 @@
 #ifndef RECON_PEER_H
 #define RECON_PEER_H
-#include "Recon_settings.h"
-#include "Utils.h"
 #include <random>
 #include <NTL/ZZ_p.h>
 #include <NTL/ZZ.h>
@@ -39,7 +37,7 @@ enum class Communication_status {NONE, ERROR, DONE};
  */
 struct Communication{
     /** elements resulting from the current communication */
-    zset elements;
+    zpset elements;
     /** flag to mark if queued messages has to be send */
     bool send;
     /** status of the current message exchange */
@@ -72,21 +70,14 @@ class Peer{
     private:
         /** hold the Connection Manager reference*/
         Connection_Manager cn;
-        /** hold the ptree reference */
-        Ptree tree;
-        /** hold the settings for the peer */
-        Recon_config settings;
         /** hold the list of peers specified in membership file */
         std::vector<peertype> membership;
 
-        Message_config msg_config;
-
     public:
         /** 
-         * constructor take a ptree on which operate
-         * @param new_tree Init with the reference to the curren ptree
+         * constructor 
          */ 
-        Peer(Ptree &new_tree, const Recon_config &peer_settings, const Connection_config &conn_settings, const Message_config &conf);
+        Peer();
 
         /** choose random peer partner among the
          * one specified in membership
@@ -161,8 +152,6 @@ class Peer{
  */
 class Recon_manager{
     private:
-        Message_config settings;
-
         /** queue used to keep track of message */
         std::deque<request_entry> request_queue;
         
@@ -170,7 +159,7 @@ class Recon_manager{
         std::queue<bottom_entry> bottom_queue;
 
         /** track the remote peer key set */
-        zset remote_set;
+        zpset remote_set;
 
         /** used to know when to flush pending messages */
         bool flushing=false;
@@ -185,7 +174,7 @@ class Recon_manager{
         /** recon manager is initialized with a reference to the current connection manager 
          * @param conn_manager reference to initialized connection manage
          */
-        Recon_manager(Connection_Manager &conn_manager, const Message_config &msg_config);
+        Recon_manager(Connection_Manager &conn_manager);
         ~Recon_manager();
 
         /** push value to the bottom queue
