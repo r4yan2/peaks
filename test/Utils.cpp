@@ -1,7 +1,7 @@
-#include <../recon_daemon/Utils.h>
+#include <common/utils.h>
 #include "common.h"
 
-using namespace RECON_Utils;
+using namespace peaks::common::Utils;
 
 BOOST_AUTO_TEST_SUITE(RECON_UTILS)
 
@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE( test_hex_to_zz )
 {
     std::string hash = "4fc00a69e4";
     ZZ_p res = hex_to_zz(hash);
-    BOOST_CHECK_EQUAL(res, ZZ_p(342524324324));
+    BOOST_CHECK_EQUAL(res, ZZ_p(981014855759));
 }
 
 BOOST_AUTO_TEST_CASE( test_zz_to_hex )

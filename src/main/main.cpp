@@ -14,6 +14,7 @@
 #include <import/import.h>
 #include <analyzer/analyzer.h>
 #include <dump/dump.h>
+#include <sys/syslog.h>
 
 using namespace peaks::dump;
 using namespace peaks::import;
@@ -60,7 +61,7 @@ int main(int argc, char* argv[]){
 	    po::options_description global("Global options");
 	    global.add_options()
         ("help,h", "Print this help message")
-        ("debug,d", "Turn on debug output")
+        ("debug,d", po::value<int>(), "Turn on debug output")
         ("stdout,s", "Turn on debug on stdout")
         ("config,c", po::value<std::string>(), "Specify path of the config file (Default is in the same directory of peaks executable)")
         ("command", po::value<std::string>()->required(), "command to execute")
@@ -102,7 +103,22 @@ int main(int argc, char* argv[]){
             std::cout << "config file found!" << std::endl;
         else
             exit(0);
+ 
+        int log_option;
+        int log_upto;
 
+        if (vm.count("stdout")){
+            std::cout << "logging to stdout" << std::endl;
+            log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
+        }
+        else{
+            log_option = LOG_PID;
+        }
+        log_upto = LOG_UPTO(vm["debug"].as<int>());
+        std::string logname = "peaks" + cmd;
+        openlog(logname.c_str(), log_option, LOG_USER);
+        setlogmask(log_upto);
+ 
         if (cmd == "serve"){
             CONTEXT.setContext(vm);
             serve(vm);

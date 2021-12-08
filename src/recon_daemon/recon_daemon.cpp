@@ -6,29 +6,7 @@ namespace recon{
 
 //PEAKS_PTREE_BUILDER
 void build(po::variables_map &vm){
-    
     std::cout << "Starting ptree builder" << std::endl;
-
-    int log_option;
-    int log_upto;
-
-    if (vm.count("stdout")){
-        std::cout << "logging to stdout" << std::endl;
-        log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
-    }
-    else{
-        log_option = LOG_PID;
-    }
-    if (vm.count("debug")){
-        std::cout << "debug output" << std::endl;
-        log_upto = LOG_UPTO(LOG_DEBUG);
-    }
-    else{
-        log_upto = LOG_UPTO(LOG_INFO); 
-    }
-
-    openlog("peaks_recon_daemon", log_option, LOG_USER);
-    setlogmask(log_upto);
     syslog(LOG_NOTICE, "Ptree builder is starting up!");
     if (Utils::create_folders(vm["tmp_folder"].as<std::string>()) != 0){
         std::cout << "Unable to create temporary directories!Exiting..." << std::endl;

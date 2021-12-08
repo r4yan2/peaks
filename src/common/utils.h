@@ -230,6 +230,9 @@ namespace Utils{
     std::string calculate_hash(const Key::Ptr &k);
     OpenPGP::PGP::Packets get_ordered_packet(OpenPGP::PGP::Packets packet_list);
     std::string concat(const OpenPGP::PGP::Packets &packet_list);
+    int char2int(char input);
+    void hex2bin(const char* src, char* target);
+    NTL::ZZ_p hex2zz(const std::string &hash);
     bool compare(const OpenPGP::Packet::Tag::Ptr &p1, const OpenPGP::Packet::Tag::Ptr &p2);
     
     template <typename K, typename V>

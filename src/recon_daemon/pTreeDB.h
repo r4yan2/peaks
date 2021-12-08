@@ -186,6 +186,7 @@ private:
   
 public:
     Ptree();
+    Ptree(std::shared_ptr<RECON_DBManager> dbm_);
     static Ptree& ptree();
     Ptree(Ptree const &) = delete;
     void operator=(Ptree const &) = delete;

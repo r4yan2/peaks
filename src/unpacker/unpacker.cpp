@@ -19,26 +19,6 @@ using namespace OpenPGP;
 namespace po = boost::program_options;
 
 Unpacker::Unpacker(po::variables_map &vm){
-    int log_option;
-    int log_upto;
-
-    if (vm.count("stdout")){
-        std::cout << "logging to stdout" << std::endl;
-        log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
-    }
-    else{
-        log_option = LOG_PID;
-    }
-    if (vm.count("debug")){
-        std::cout << "debug output" << std::endl;
-        log_upto = LOG_UPTO(LOG_DEBUG);
-    }
-    else{
-        log_upto = LOG_UPTO(LOG_INFO); 
-    }
-
-    openlog("pgp_unpacker", log_option, LOG_USER);
-    setlogmask(log_upto);
     syslog(LOG_NOTICE, "Unpacker daemon is starting up!");
 
     nThreads = std::thread::hardware_concurrency() / 2 + 1;

@@ -353,6 +353,35 @@ std::string marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements){
     return res.substr(0,res.size() - 1);
 }
 
+int char2int(char input)
+{
+  if(input >= '0' && input <= '9')
+    return input - '0';
+  if(input >= 'A' && input <= 'F')
+    return input - 'A' + 10;
+  if(input >= 'a' && input <= 'f')
+    return input - 'a' + 10;
+  throw std::invalid_argument("Invalid input string");
+}
+
+// This function assumes src to be a zero terminated sanitized string with
+// an even number of [0-9a-f] characters, and target to be sufficiently large
+void hex2bin(const char* src, unsigned char* target)
+{
+  while(*src && src[1])
+  {
+    *(target++) = char2int(*src)*16 + char2int(src[1]);
+    src += 2;
+  }
+}
+
+NTL::ZZ_p hex2zz(const std::string &hash){
+    std::vector<unsigned char> bytes(hash.size()/2, 'a');
+    hex2bin(hash.c_str(), bytes.data());
+    NTL::ZZ_p el2 = NTL::conv<NTL::ZZ_p>(NTL::ZZFromBytes(bytes.data(), bytes.size()));
+    return el2;
+}
+
 NTL::ZZ_p hex_to_zz(const std::string &hash){
 
     std::vector<unsigned char> bytes;

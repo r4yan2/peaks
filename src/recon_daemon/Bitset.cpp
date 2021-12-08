@@ -24,10 +24,10 @@ Bitset::Bitset(int nbits):
 Bitset::Bitset(const NTL::ZZ_p &num)
 {
     NTL::ZZ znum = NTL::rep(num);
-    bytestype vec(NTL::NumBytes(znum));
-    BytesFromZZ(vec.data(), znum, vec.size());
-    bytes = vec;
-    n_bits = NumBits(num.modulus());
+    bytes = bytestype(NTL::NumBytes(znum));
+    BytesFromZZ(bytes.data(), znum, bytes.size());
+    n_bits = bytes.size()*8;
+    //n_bits = NumBits(num.modulus());
 }
 
 Bitset::Bitset(const bytestype &newbytes):

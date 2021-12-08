@@ -17,6 +17,17 @@ Ptree::Ptree():
     }
 }
 
+Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbm_):
+    root(NULL),
+    dbm(dbm_)
+{
+    Bitset bs(0);
+    try{
+        root = node(bs);
+    }catch(std::runtime_error &e){
+        //expected, tree need to be initialized explicitly when empty
+    }
+}
 Ptree& Ptree::ptree(){
     static Ptree instance;
     return instance;

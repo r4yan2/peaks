@@ -58,26 +58,24 @@ void DBManager::check_sql_mode(){
         mode = result->getString("mode");
     }
     else{
-        cerr << "Could not determine sql mode, refer to the README for further info" << std::endl;
+        syslog(LOG_WARNING, "Could not determine sql mode, refer to the README for further info");
         return;
     }
     if (mode.find("ONLY_FULL_GROUP_BY") != string::npos) {
-        cerr << "Found sql mode ONLY_FULL_GROUP_BY active, attempting to change" << '\n';
+        syslog(LOG_INFO, "Found sql mode ONLY_FULL_GROUP_BY active, attempting to change");
         execute_query("SET SESSION sql_mode=(SELECT REPLACE(@@SESSION.sql_mode,'ONLY_FULL_GROUP_BY',''))");
         unique_ptr<DBResult> result = sqlmode_query->execute();
         if (result->next()){
             mode = result->getString("mode");
             if (mode.find("ONLY_FULL_GROUP_BY") != string::npos) {
-                cerr << "Could not change sql mode, refer to the README for further info" << std::endl;
+                syslog(LOG_WARNING, "Could not change sql mode, refer to the README for further info");
                 exit(1);
             } else {
-                cerr << "SQL mode changed" << std::endl;
+                syslog(LOG_INFO, "SQL mode changed");
             }
         }
     }
-
 }
-
 
 void DBManager::init_database(const string &filename){
 
@@ -128,10 +126,19 @@ void DBManager::end_transaction(){
         execute_query("COMMIT");
         execute_query("SET AUTOCOMMIT = 1");
     }catch (exception &e){
-        syslog(LOG_WARNING, "begin transaction FAILED, data corruption may occur! - %s", e.what());
+        syslog(LOG_WARNING, "end transaction FAILED, data corruption may occur! - %s", e.what());
     }
 }
 
+void DBManager::rollback_transaction(){
+    try{
+        CONTEXT.critical_section = false;
+        execute_query("ROLLBACK");
+        execute_query("SET AUTOCOMMIT = 1");
+    }catch (exception &e){
+        syslog(LOG_WARNING, "end transaction FAILED, data corruption may occur! - %s", e.what());
+    }
+}
 
 void DBManager::lockTables(){
     try{
@@ -165,6 +172,7 @@ shared_ptr<DBQuery> DBManager::prepare_query(const std::string & stmt){
 }
 
 void DBManager::execute_query(const string & stmt){
+    syslog(LOG_INFO, stmt.c_str());
     unique_ptr<sql::Statement>(con->createStatement())->execute(stmt);
 }
 

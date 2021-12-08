@@ -135,6 +135,7 @@ class DBManager {
         std::shared_ptr<DBQuery> prepare_query(const std::string & query);
 
         void begin_transaction();
+        void rollback_transaction();
         void end_transaction();
 
         void execute_query(const std::string & stmt);

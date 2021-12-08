@@ -102,34 +102,34 @@ vector<pubkey> ANALYZER_DBManager::get_pubkey(const unsigned long &l) {
                     try {
                         temp_pk.e = conv<ZZ>(mpitodec(rawtompi(result->getString("e"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost RSA key e value" << endl;
+                        syslog(LOG_DEBUG, "Lost RSA key e value");
                     }
                     try {
                         temp_pk.n = conv<ZZ>(mpitodec(rawtompi(result->getString("n"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost RSA key n value" << endl;
+                        syslog(LOG_DEBUG, "Lost RSA key n value");
                     }
                     break;
                 case PKA::ID::DSA:
                     try {
                         temp_pk.p = conv<ZZ>(mpitodec(rawtompi(result->getString("p"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost DSA key p value" << endl;
+                        syslog(LOG_DEBUG, "Lost DSA key p value");
                     }
                     try {
                         temp_pk.q = conv<ZZ>(mpitodec(rawtompi(result->getString("q"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost DSA key q value" << endl;
+                        syslog(LOG_DEBUG, "Lost DSA key q value");
                     }
                     try {
                         temp_pk.g = conv<ZZ>(mpitodec(rawtompi(result->getString("g"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost DSA key g value" << endl;
+                        syslog(LOG_DEBUG, "Lost DSA key g value");
                     }
                     try {
                         temp_pk.y = conv<ZZ>(mpitodec(rawtompi(result->getString("y"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost DSA key y value" << endl;
+                        syslog(LOG_DEBUG, "Lost DSA key y value");
                     }
                     break;
                 case PKA::ID::ELGAMAL:
@@ -137,17 +137,17 @@ vector<pubkey> ANALYZER_DBManager::get_pubkey(const unsigned long &l) {
                     try {
                         temp_pk.p = conv<ZZ>(mpitodec(rawtompi(result->getString("p"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost ELGAMAL key p value" << endl;
+                        syslog(LOG_DEBUG, "Lost ELGAMAL key p value");
                     }
                     try {
                         temp_pk.g = conv<ZZ>(mpitodec(rawtompi(result->getString("g"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost ELGAMAL key g value" << endl;
+                        syslog(LOG_DEBUG, "Lost ELGAMAL key g value");
                     }
                     try {
                         temp_pk.y = conv<ZZ>(mpitodec(rawtompi(result->getString("y"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost ELGAMAL key y value" << endl;
+                        syslog(LOG_DEBUG, "Lost ELGAMAL key y value");
                     }
                     break;
                 case PKA::ID::ECDSA:
@@ -156,7 +156,7 @@ vector<pubkey> ANALYZER_DBManager::get_pubkey(const unsigned long &l) {
                     try {
                         temp_pk.p = conv<ZZ>(mpitodec(rawtompi(result->getString("p"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost CURVE key y value" << endl;
+                        syslog(LOG_DEBUG, "Lost CURVE key y value");
                     }
                     break;
                 default:
@@ -164,7 +164,7 @@ vector<pubkey> ANALYZER_DBManager::get_pubkey(const unsigned long &l) {
             }
             pk.push_back(temp_pk);
         } catch (exception &e){
-            cerr << "Impossible to get key due to: " << e.what() << endl;
+            syslog(LOG_DEBUG, "Impossible to get key due to: %s", e.what());
         }
     }
     return pk;
@@ -201,13 +201,13 @@ std::vector<DBStruct::signatures> ANALYZER_DBManager::get_signatures(const unsig
             try {
                 temp_s.s = conv<ZZ>(mpitodec(rawtompi(result->getString("s"))).c_str());
             } catch (exception &e) {
-                cerr << "Lost Signature s value" << endl;
+                syslog(LOG_DEBUG, "Lost Signature s value");
             }
             if (!PKA::is_RSA(temp_s.pubAlgorithm)) {
                 try {
                     temp_s.r = conv<ZZ>(mpitodec(rawtompi(result->getString("r"))).c_str());
                 } catch (exception &e) {
-                    cerr << "Lost Signature r value" << endl;
+                    syslog(LOG_DEBUG, "Lost Signature r value");
                 }
             }
             switch (temp_s.pubAlgorithm) {
@@ -217,34 +217,34 @@ std::vector<DBStruct::signatures> ANALYZER_DBManager::get_signatures(const unsig
                     try {
                         temp_s.pk_e = conv<ZZ>(mpitodec(rawtompi(result->getString("e"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost RSA key e value" << endl;
+                        syslog(LOG_DEBUG, "Lost RSA key e value");
                     }
                     try {
                         temp_s.pk_n = conv<ZZ>(mpitodec(rawtompi(result->getString("n"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost RSA key n value" << endl;
+                        syslog(LOG_DEBUG, "Lost RSA key n value");
                     }
                     break;
                 case PKA::ID::DSA:
                     try {
                         temp_s.pk_p = conv<ZZ>(mpitodec(rawtompi(result->getString("p"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost DSA key p value" << endl;
+                        syslog(LOG_DEBUG, "Lost DSA key p value");
                     }
                     try {
                         temp_s.pk_q = conv<ZZ>(mpitodec(rawtompi(result->getString("q"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost DSA key q value" << endl;
+                        syslog(LOG_DEBUG, "Lost DSA key q value");
                     }
                     try {
                         temp_s.pk_g = conv<ZZ>(mpitodec(rawtompi(result->getString("g"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost DSA key g value" << endl;
+                        syslog(LOG_DEBUG, "Lost DSA key g value");
                     }
                     try {
                         temp_s.pk_y = conv<ZZ>(mpitodec(rawtompi(result->getString("y"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost DSA key y value" << endl;
+                        syslog(LOG_DEBUG, "Lost DSA key y value");
                     }
                     break;
                 case PKA::ID::ELGAMAL:
@@ -252,17 +252,17 @@ std::vector<DBStruct::signatures> ANALYZER_DBManager::get_signatures(const unsig
                     try {
                         temp_s.pk_p = conv<ZZ>(mpitodec(rawtompi(result->getString("p"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost ELGAMAL key p value" << endl;
+                        syslog(LOG_DEBUG, "Lost ELGAMAL key p value");
                     }
                     try {
                         temp_s.pk_g = conv<ZZ>(mpitodec(rawtompi(result->getString("g"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost ELGAMAL key g value" << endl;
+                        syslog(LOG_DEBUG, "Lost ELGAMAL key g value");
                     }
                     try {
                         temp_s.pk_y = conv<ZZ>(mpitodec(rawtompi(result->getString("y"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost ELGAMAL key y value" << endl;
+                        syslog(LOG_DEBUG, "Lost ELGAMAL key y value");
                     }
                     break;
                 case PKA::ID::ECDSA:
@@ -271,7 +271,7 @@ std::vector<DBStruct::signatures> ANALYZER_DBManager::get_signatures(const unsig
                     try {
                         temp_s.pk_p = conv<ZZ>(mpitodec(rawtompi(result->getString("p"))).c_str());
                     } catch (exception &e) {
-                        cerr << "Lost CURVE key y value" << endl;
+                        syslog(LOG_DEBUG, "Lost CURVE key y value");
                     }
                     break;
                 default:
@@ -280,7 +280,7 @@ std::vector<DBStruct::signatures> ANALYZER_DBManager::get_signatures(const unsig
             ss.push_back(temp_s);
 
         } catch (exception &e) {
-            cerr << "Impossible to get signature due to: " << e.what() << endl;
+            syslog(LOG_DEBUG, "Impossible to get signature due to: %s", e.what());
         }
     }
     return ss;

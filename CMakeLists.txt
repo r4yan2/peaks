@@ -5,10 +5,6 @@ set(CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_CXX_FLAGS "-DGPG_COMPATIBLE -Wall -pthread -lstdc++ -pipe")
 
-if(NOT DEFINED TEST)
-    set(TEST "OFF")
-endif()
-
 add_definitions(-DGPG_COMPATIBLE)
 add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
 
@@ -108,6 +104,4 @@ add_subdirectory(${ANALYZER_DIR})
 add_subdirectory(${RECON_DIR})
 add_subdirectory(${MAIN_DIR})
 
-if(${TEST} STREQUAL "ON")
-    add_subdirectory(test)
-endif()
+add_subdirectory(test)

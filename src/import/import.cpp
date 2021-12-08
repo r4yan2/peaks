@@ -14,33 +14,8 @@ Importer::~Importer(){};
 
 // PEAKS_DB_MAIN
 void Importer::import() {
-
-    std::cout << Utils::getCurrentTime() << "Starting unpacker" << std::endl;
-
-    int log_option;
-    int log_upto;
-
+   syslog(LOG_NOTICE, "Dump_import is starting up!");
     po::variables_map vm = CONTEXT.vm;
-
-    if (vm.count("stdout")){
-        std::cout << "logging to stdout" << std::endl;
-        log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
-    }
-    else{
-        log_option = LOG_PID;
-    }
-    if (vm.count("debug")){
-        int lev = CONTEXT.vm["debug"].as<int>();
-        std::cout << "Log level set to " << lev << std::endl;
-        log_upto = LOG_UPTO(lev);
-    }
-    else{
-        log_upto = LOG_UPTO(LOG_INFO); 
-    }
-
-    openlog("peaks", log_option, LOG_USER);
-    setlogmask(log_upto);
- 
     std::string filename = "";
     auto it = CONTEXT.vm.find("init");
     if (it != CONTEXT.vm.end()){
@@ -51,7 +26,6 @@ void Importer::import() {
         }
     }
 
-   syslog(LOG_NOTICE, "Dump_import is starting up!");
     try{
         dbm = std::make_shared<IMPORT_DBManager>();
         Utils::create_folders(CONTEXT.dbsettings.tmp_folder);

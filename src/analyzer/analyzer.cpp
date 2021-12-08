@@ -9,7 +9,6 @@
 #include <common/utils.h>
 #include <string.h>
 #include <Misc/PKCS1.h>
-#include <sys/syslog.h>
 #include <gcrypt.h>
 #include <common/Thread_Pool.h>
 #include <common/config.h>
@@ -27,26 +26,6 @@ namespace analyzer{
 Analyzer::Analyzer(po::variables_map &vm):
     dbm(std::make_shared<ANALYZER_DBManager>())
 {
-    int log_option;
-    int log_upto;
-
-    if (vm.count("stdout")){
-        std::cout << "logging to stdout" << std::endl;
-        log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
-    }
-    else{
-        log_option = LOG_PID;
-    }
-    if (vm.count("debug")){
-        std::cout << "debug output" << std::endl;
-        log_upto = LOG_UPTO(LOG_DEBUG);
-    }
-    else{
-        log_upto = LOG_UPTO(LOG_INFO); 
-    }
-
-    openlog("pgp_analyzer", log_option, LOG_USER);
-    setlogmask(log_upto);
     syslog(LOG_NOTICE, "Analyzer daemon is starting up!");
     nThreads = thread::hardware_concurrency() / 2 + 1;
     limit = vm["max_unpacker_limit"].as<unsigned int>();
@@ -87,7 +66,6 @@ void Analyzer::run(){
         import_csv();
     }
     bool exist_rsa = false;
-    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
     dbm->open_files();
 
     shared_ptr<Thread_Pool> pool = make_shared<Thread_Pool>(nThreads);
