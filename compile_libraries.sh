@@ -9,16 +9,22 @@ __exists() {
 get="fetch"
 ! __exists fetch && get="curl -OL"
 
-PEAKS_PATH=$PWD
-PREFIX="$PWD"/lib
-LIB_PATH="$PWD"/lib/lib
-INCL_PATH="$PWD"/lib/include
-
-NCPU=`cat /proc/cpuinfo | grep processor | wc -l`
+if [ -z "$PREFIX" ]
+then
+    PREFIX=$PWD
+fi
+if [ -z "$NCPU" ]
+then
+    NCPU=1
+fi
 if [ -z "$BUILD" ]
 then
     BUILD="Release"
 fi
+
+PEAKS_PATH=$PWD
+LIB_PATH="$PREFIX"/lib
+INCL_PATH="$PREFIX"/include
 
 function compile_gmp () {
     if [ ! -d lib/gmp ];
@@ -246,13 +252,6 @@ function compile_docker () {
 }
 
 function compile_openpgp () {
-    if [ ! -d OpenPGP ]
-    then
-    
-        git submodule update --recursive --remote
-        git pull
-    fi
-    
     echo 'Compiling OpenPGP'
     
     cd OpenPGP

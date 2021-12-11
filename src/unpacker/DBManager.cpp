@@ -65,13 +65,12 @@ vector<DBStruct::gpg_keyserver_data> UNPACKER_DBManager::get_certificates(const 
     get_analyzable_cert_stmt->setString(1, to_string(l));
     std::unique_ptr<DBResult> result = get_analyzable_cert_stmt->execute();
     while(result->next()){
-        DBStruct::gpg_keyserver_data tmp_field = {
-                .version = result->getInt("version"),
-                .fingerprint = result->getString("fingerprint"),
-                .filename = result->getString("filename"),
-                .origin = result->getInt("origin"),
-                .len = result->getInt("len")
-        };
+        DBStruct::gpg_keyserver_data tmp_field;
+        tmp_field.version = result->getInt("version");
+        tmp_field.fingerprint = result->getString("fingerprint");
+        tmp_field.filename = result->getString("filename");
+        tmp_field.origin = result->getInt("origin");
+        tmp_field.len = result->getInt("len");
         tmp_field.certificate = get_certificate_from_filestore(tmp_field.filename, tmp_field.origin, tmp_field.len);
         certificates.push_back(tmp_field);
     }

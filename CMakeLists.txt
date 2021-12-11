@@ -3,15 +3,16 @@ project(peaks)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(CMAKE_CXX_FLAGS "-DGPG_COMPATIBLE -Wall -pthread -lstdc++ -pipe")
-
 add_definitions(-DGPG_COMPATIBLE)
 add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -march=native -g3 -rdynamic -O0")
-set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -march=native -Ofast")
-set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -march=x86-64 -mtune=generic -Os")
+if (NOT DEFINED CMAKE_CXX_FLAGS)
+    set(CMAKE_CXX_FLAGS "-Wall -pthread -lstdc++ -pipe")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -march=native -g3 -rdynamic -O0")
+    set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -march=native -Ofast")
+    set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -march=x86-64 -mtune=generic -Os")
+endif ()
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
     SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -19,15 +20,25 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
     SET(CMAKE_EXE_LINKER_FLAGS "-static")
 endif ()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 
-set(OPENPGP_DIR ${CMAKE_SOURCE_DIR}/OpenPGP)
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 set(BIN_DIR ${CMAKE_SOURCE_DIR}/lib/bin)
-set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
-set(LIBRARY_DIR ${CMAKE_SOURCE_DIR}/lib/lib)
-set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/lib/include)
 
+if (NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+endif ()
+
+if (DEFINED CMAKE_LIB_PREFIX)
+    set(LIB_DIR ${CMAKE_LIB_PREFIX})
+else ()
+    set(LIB_DIR lib)
+endif ()
+
+
+set(LIBRARY_DIR ${LIB_DIR}/lib)
+set(INCLUDE_DIR ${LIB_DIR}/include)
+set(BIN_DIR ${LIB_DIR}/bin)
+set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
 set(IMPORT_DIR ${CMAKE_SOURCE_DIR}/src/import)
 set(DUMP_DIR ${CMAKE_SOURCE_DIR}/src/dump)
 set(CGI_HANDLER_DIR ${CMAKE_SOURCE_DIR}/src/cgi_handler)
@@ -85,7 +96,6 @@ endif()
 
 include_directories(${INCLUDE_DIR})
 include_directories(${SRC_DIR})
-include_directories(${OPENPGP_DIR})
 include_directories(${COMMON_DIR})
 include_directories(${IMPORT_DIR})
 include_directories(${CGI_HANDLER_DIR})

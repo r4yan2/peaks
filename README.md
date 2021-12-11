@@ -50,19 +50,20 @@ Actual compiling can be done via `cmake` or `scons`. There is no real recommenda
 
 #### Cmake
 
-If you still don't have it installed cmake needs to be gathered first
+First of all install cmake if you still don't have it
 ```bash
 apt install cmake
 ```
 
 NTL, GMP and OpenPGP can be compiled running
-By default they will be installed in a local directory `lib`, so to not mess up with your base system
 
 ```bash
 BUILD=Release ./compile_libraries.sh
 ```
 
-To compile the keyserver:
+By default they will be installed in a local directory `lib`, so to not mess up with your base system
+
+In order to compile the keyserver:
 
 ```bash
 mkdir build && cd build/ \
@@ -82,9 +83,9 @@ or
 ```bash
 pip install scons
 ```
-Then, in the project main folder run `scons -jN` where N is the number of cpu to use, it will take care of the rest
+Then, in the project main folder run `scons -type=release -type=release -jN` where N is the number of cpu to use, it will take care of the rest
 
- ## Setup and Usage
+## Setup and Usage
 
 The main **peaks** executable accept the following commands:
 
@@ -109,11 +110,13 @@ In particular you need to change the **database configuration** according to you
 
 ### Database Initialization
 
+Peaks needs a mysql database running to store key material and runtime information
 You will need to have a collection of `pgp` dump that peaks will import.
 
+```bash
+peaks import --init <path_to_DB_initialization_file> --path <path_to_dump> --threads <N>
 ```
-peaks import --init <path_to_DB_initialization_file> --fastimport --path <path_to_dump> --threads <N>
-```
+
 * `init` will let peaks handle the initialization of the DB schema. A file has been prepared for this purpose under the `bin` subdirectory. In case restrictive database access is used probably peaks will not have the necessary permission to init the DB. The process can be completed manually before the first run by using the dedicated `schema.sql` in the `database` folder.
 * `fastimport` is used internally to initialize the main table of the database, this will allow for lazy initialization of the other required tables, in order to speed up the setup
 * `path` should point to the folder keeping the .pgp files
@@ -129,7 +132,7 @@ Note that with the current keydump peaks require a lot of space available on dis
 
 After succesfully importing the certificate you need to generate the ptree to reconcile with other keyservers
 
-```
+```bash
 peaks build
 ```
 

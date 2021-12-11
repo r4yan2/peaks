@@ -6,19 +6,26 @@ from glob import glob
 import hashlib
 import tarfile
 import zipfile
-import urllib.request
+import requests
 
 env = Environment(ENV=os.environ, CPPDEFINES=['GPG_COMPATIBLE', 'mpz_raw_64'])
 
 BOOST_SEARCH_PREFIXES = ['/usr/local','/opt/local','lib/boost',]
 BASEDIR = os.environ.get('PWD')
-LIBDIR_SCHEMA_DEFAULT='lib'
+PREFIX_SCHEMA_DEFAULT = 'lib'
+LIBDIR_SCHEMA_DEFAULT = 'lib/lib'
+INCDIR_SCHEMA_DEFAULT = 'lib/include'
+PREFIXDIR = os.path.join(BASEDIR, PREFIX_SCHEMA_DEFAULT)
+LIBDIR = os.path.join(BASEDIR, LIBDIR_SCHEMA_DEFAULT)
+INCDIR = os.path.join(BASEDIR, INCDIR_SCHEMA_DEFAULT)
 
 def _download(url, filename):
-    response = urllib.request.urlopen(url)
-    data = response.read()
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36'
+    }
+    response = requests.get(url, headers=headers)
     with open(filename, 'wb') as out:
-        out.write(data)
+        out.write(response.content)
 
 def _check_sha(filename, expected):
     # BUF_SIZE is totally arbitrary, change for your app!
@@ -43,7 +50,7 @@ def setup_gmp():
         if not os.path.exists(filename):
             download_url = 'https://gmplib.org/download/gmp/'+filename
             _download(download_url, filename)
-            if not _check_sha(filename, '5275bb04f4863a13516b2f39392ac5e272f5e1bb8057b18aec1c9b79d73d8fb2'):
+            if check and not _check_sha(filename, '5275bb04f4863a13516b2f39392ac5e272f5e1bb8057b18aec1c9b79d73d8fb2'):
                 print('ERROR: could not verify %s downloaded from %s' % (filename, download_url))
                 return False
 
@@ -52,7 +59,7 @@ def setup_gmp():
         patch_url = 'https://raw.githubusercontent.com/r4yan2/fastgcd/9605906557a397db0630d67dc7bbe5d60f2e2fc4/' + patch
         if not os.path.exists(patch):
             _download(patch_url, patch)
-        if not _check_sha(patch, 'fe3b261f2d93ce2647f3bcb969b7a1c5e4db054a3b6eb02694f722bb2999c1b6'):
+        if check and not _check_sha(patch, 'fe3b261f2d93ce2647f3bcb969b7a1c5e4db054a3b6eb02694f722bb2999c1b6'):
             print('ERROR: could not verify %s downloaded from %s' % (patch, patch_url))
             return False
 
@@ -64,7 +71,7 @@ def setup_gmp():
         os.system('patch -d %s -p 1 < %s' % (name, patch))
 
     ##### COMPILING
-    prefix = os.path.join(BASEDIR, LIBDIR_SCHEMA_DEFAULT)
+    prefix = PREFIXDIR
     if build_type == 'release':
         cflags = '-march=native -Ofast'
     elif build_type == 'debug':
@@ -74,8 +81,8 @@ def setup_gmp():
     os.chdir(name)
     os.system('./configure --prefix="%s" CFLAGS="%s"' % (prefix, cflags))
     os.system('make -j%d' % (num_jobs,))
-    #if build_type == 'release':
-    #    os.system('make check -j%d' % (num_jobs,))
+    if check:
+        os.system('make check -j%d' % (num_jobs,))
     os.system('make install')
 
     ##### CLEANUP
@@ -92,7 +99,7 @@ def setup_ntl():
         if not os.path.exists(filename):
             download_url = 'https://libntl.org/'+filename
             _download(download_url, filename)
-            if not _check_sha(filename, 'b90b36c9dd8954c9bc54410b1d57c00be956ae1db5a062945822bbd7a86ab4d2'):
+            if check and not _check_sha(filename, 'b90b36c9dd8954c9bc54410b1d57c00be956ae1db5a062945822bbd7a86ab4d2'):
                 print('ERROR: could not verify %s downloaded from %s' % (filename, download_url))
                 return False
     
@@ -101,8 +108,8 @@ def setup_ntl():
             archive.extractall()
 
     ##### COMPILING
-    prefix = os.path.join(BASEDIR, LIBDIR_SCHEMA_DEFAULT)
-    gmp_prefix = os.path.join(BASEDIR, LIBDIR_SCHEMA_DEFAULT)
+    prefix = PREFIXDIR
+    gmp_prefix = PREFIXDIR
     if build_type == 'release':
         cflags = '-O3 -fopenmp -D_GLIBCXX_PARALLEL -march=native'
         native = 'on'
@@ -118,8 +125,8 @@ def setup_ntl():
     os.chdir(os.path.join(name,'src'))
     os.system('./configure NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on NTL_STD_CXX11=on CXXFLAGS="%s" NATIVE="%s" TUNE="%s" PREFIX="%s" GMP_PREFIX="%s"' % (cflags, native, tune, prefix, gmp_prefix))
     os.system('make -j%d' % (num_jobs,))
-    #if build_type == 'release':
-    #    os.system('make check -j%d' % (num_jobs,))
+    if check:
+        os.system('make check -j%d' % (num_jobs,))
     os.system('make install')
 
     ##### CLEANUP
@@ -136,7 +143,7 @@ def setup_cppcms():
         if not os.path.exists(filename):
             download_url = 'https://netix.dl.sourceforge.net/project/cppcms/cppcms/2.0.0-beta2/cppcms-2.0.0.beta2.tar.bz2'
             _download(download_url, filename)
-            if not _check_sha(filename, '697031c7d141fdd215c6be5090b66e2106a63bb3e52f09ee8120e8efc6c08a21'):
+            if check and not _check_sha(filename, '697031c7d141fdd215c6be5090b66e2106a63bb3e52f09ee8120e8efc6c08a21'):
                 print('ERROR: could not verify %s downloaded from %s' % (filename, download_url))
                 return False
 
@@ -145,15 +152,15 @@ def setup_cppcms():
             archive.extractall()
 
     ##### COMPILING
-    prefix = os.path.join(BASEDIR, LIBDIR_SCHEMA_DEFAULT)
+    prefix = PREFIXDIR
     os.chdir(name)
     if not os.path.isdir('build'):
         os.mkdir('build')
     os.chdir('build')
     os.system('cmake -DCMAKE_BUILD_TYPE=%s -DCMAKE_INSTALL_PREFIX=%s ..' % (build_type, prefix))
     os.system('make -j%d' % (num_jobs,))
-    #if build_type == 'release':
-    #    os.system('make check -j%d' % (num_jobs,))
+    if check:
+        os.system('make check -j%d' % (num_jobs,))
     os.system('make install')
 
     ##### CLEANUP
@@ -166,10 +173,10 @@ def setup_openpgp():
     ######### DOWNLOAD
     filename = 'peaks.zip'
     name = 'OpenPGP'
-    prefix = os.path.join(BASEDIR, LIBDIR_SCHEMA_DEFAULT)
-    gmp_prefix = os.path.join(BASEDIR, LIBDIR_SCHEMA_DEFAULT)
-    gmp_lib = os.path.join(gmp_prefix, 'lib', 'libgmp.so')
-    gmp_incl = os.path.join(gmp_prefix, 'include')
+    prefix = PREFIXDIR
+    gmp_prefix = PREFIXDIR
+    gmp_lib = os.path.join(LIBDIR, 'libgmp.so')
+    gmp_incl = INCDIR
     if not os.path.isdir(name):
         if not os.path.exists(filename):
             download_url = 'https://github.com/r4yan2/OpenPGP/archive/refs/heads/' + filename
@@ -186,8 +193,8 @@ def setup_openpgp():
     os.chdir('build')
     os.system('cmake -DCMAKE_BUILD_TYPE="%s" -DCMAKE_INSTALL_PREFIX="%s" -DGMP_INCLUDES="%s" -DGMP_LIBRARIES="%s" -DGPG_COMPATIBLE=ON ..' % (build_type, prefix, gmp_incl, gmp_lib))
     os.system('make -j%d' % (num_jobs,))
-    #if build_type == 'release':
-    #    os.system('make test')
+    if check:
+        os.system('make test')
     os.system('make install')
 
     ##### CLEANUP
@@ -200,7 +207,7 @@ def fix_path(path):
     return str(os.path.abspath(path))
 
 def CheckLib(lib):
-    libItems = glob(os.path.join("lib/lib/", '%s*.*' % lib))
+    libItems = glob(os.path.join(BASEDIR, "lib/lib/", '%s*.*' % lib))
     return libItems
 
 def FindBoost(context, prefixes=BOOST_SEARCH_PREFIXES):
@@ -305,6 +312,7 @@ SetOption('num_jobs', num_jobs)
 cflags = '-Wall -pipe -std=c++14'
 build_type = ARGUMENTS.get('type')
 build_type = build_type and build_type.lower() or 'release'
+check = ARGUMENTS.get('check')
 
 if not build_type or build_type == 'release':
     optflags = '-march=native -Ofast'
@@ -340,11 +348,10 @@ BUILD_LIBS = {
 conf = Configure(env, custom_tests={'FindBoost': FindBoost})
 
 cpppath = ['#lib/include', '#src', '#src/cgi_handler']
-libpath = os.path.join(os.environ['PWD'], 'lib/lib')
 env.AppendUnique(CPPPATH=cpppath)
-env.AppendUnique(RPATH=libpath)
-env.AppendENVPath('LIB', libpath)
-env.AppendUnique(LIBPATH=libpath)
+env.AppendUnique(RPATH=LIBDIR)
+env.AppendENVPath('LIB', LIBDIR)
+env.AppendUnique(LIBPATH=LIBDIR)
 if ARGUMENTS.get('profile'):
     env.AppendUnique(LINKFLAGS=['-pg'])
 
@@ -362,4 +369,4 @@ for lib in libs:
         Exit(1)
 
 env.AppendUnique(LIBS=libs)
-SConscript(dirs = 'src', name='SConscript', exports={'env':env, 'Glob':Glob, 'cpppath':cpppath, 'Program':env.Program, 'libpath': libpath}, variant_dir='build', duplicate=0)
+SConscript(dirs = 'src', name='SConscript', exports={'env':env, 'Glob':Glob, 'cpppath':cpppath, 'Program':env.Program, 'libpath': LIBDIR}, variant_dir='build', duplicate=0)

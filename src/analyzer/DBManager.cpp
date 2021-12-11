@@ -83,18 +83,17 @@ vector<pubkey> ANALYZER_DBManager::get_pubkey(const unsigned long &l) {
     std::unique_ptr<DBResult> result = get_analyzable_pubkey_stmt->execute();
     while (result->next()) {
         try {
-            pubkey temp_pk = {
-                    version : result->getUInt("version"),
-                    fingerprint : result->getString("fingerprint"),
-                    pubAlgorithm : result->getInt("pubAlgorithm"),
-                    e : ZZ(0),
-                    n : ZZ(0),
-                    p : ZZ(0),
-                    q : ZZ(0),
-                    g : ZZ(0),
-                    y : ZZ(0),
-                    curve : result->getString("curveOID")
-            };
+            pubkey temp_pk;
+            temp_pk.version = result->getUInt("version");
+            temp_pk.fingerprint = result->getString("fingerprint");
+            temp_pk.pubAlgorithm = result->getInt("pubAlgorithm");
+            temp_pk.e = ZZ(0);
+            temp_pk.n = ZZ(0);
+            temp_pk.p = ZZ(0);
+            temp_pk.q = ZZ(0);
+            temp_pk.g = ZZ(0);
+            temp_pk.y = ZZ(0);
+            temp_pk.curve = result->getString("curveOID");
             switch (temp_pk.pubAlgorithm) {
                 case PKA::ID::RSA_ENCRYPT_ONLY:
                 case PKA::ID::RSA_SIGN_ONLY:
@@ -177,27 +176,26 @@ std::vector<DBStruct::signatures> ANALYZER_DBManager::get_signatures(const unsig
     std::unique_ptr<DBResult> result = get_analyzable_signature_stmt->execute();
     while (result->next()) {
         try {
-            signatures temp_s = {
-                    id : result->getUInt("id"),
-                    pubAlgorithm : result->getUInt("pubAlgorithm"),
-                    hashAlgorithm : result->getUInt("hashAlgorithm"),
-                    version : result->getUInt("version"),
-                    issuingFingerprint : result->getString("issuingFingerprint"),
-                    signedFingerprint : result->getString("signedFingerprint"),
-                    r : ZZ(0),
-                    s : ZZ(0),
-                    hashHeader : result->getString("hashHeader"),
-                    signedHash : result->getString("signedHash"),
-                    isExportable : result->getBoolean("isExportable"),
-                    pk_e : ZZ(0),
-                    pk_n : ZZ(0),
-                    pk_p : ZZ(0),
-                    pk_q : ZZ(0),
-                    pk_g : ZZ(0),
-                    pk_y : ZZ(0),
-                    pk_curve : result->getString("curveOID"),
-                    pk_status : result->getUInt("vulnerabilityCode"),
-            };
+            signatures temp_s;
+            temp_s.id = result->getUInt("id");
+            temp_s.pubAlgorithm = result->getUInt("pubAlgorithm");
+            temp_s.hashAlgorithm = result->getUInt("hashAlgorithm");
+            temp_s.version = result->getUInt("version");
+            temp_s.issuingFingerprint = result->getString("issuingFingerprint");
+            temp_s.signedFingerprint = result->getString("signedFingerprint");
+            temp_s.r = ZZ(0);
+            temp_s.s = ZZ(0);
+            temp_s.hashHeader = result->getString("hashHeader");
+            temp_s.signedHash = result->getString("signedHash");
+            temp_s.isExportable = result->getBoolean("isExportable");
+            temp_s.pk_e = ZZ(0);
+            temp_s.pk_n = ZZ(0);
+            temp_s.pk_p = ZZ(0);
+            temp_s.pk_q = ZZ(0);
+            temp_s.pk_g = ZZ(0);
+            temp_s.pk_y = ZZ(0);
+            temp_s.pk_curve = result->getString("curveOID");
+            temp_s.pk_status = result->getUInt("vulnerabilityCode");
             try {
                 temp_s.s = conv<ZZ>(mpitodec(rawtompi(result->getString("s"))).c_str());
             } catch (exception &e) {

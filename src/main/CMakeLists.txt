@@ -1,5 +1,9 @@
 add_executable(peaks main.cpp peaks.cpp)
 
+if (DEFINED CMAKE_INSTALL_PREFIX)
+    install(TARGETS peaks DESTINATION ${CMAKE_INSTALL_PREFIX})
+endif ()
+
 target_link_libraries(peaks recon_daemon)
 target_link_libraries(peaks dump)
 target_link_libraries(peaks common)

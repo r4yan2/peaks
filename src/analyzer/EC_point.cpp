@@ -1,6 +1,6 @@
 #include "EC_point.h"
 #include "Math_Support.h"
-#include "utils.h"
+#include <common/utils.h>
 
 using namespace NTL;
 namespace peaks{

@@ -20,10 +20,16 @@ void Importer::import() {
     auto it = CONTEXT.vm.find("init");
     if (it != CONTEXT.vm.end()){
         filename = it->second.as<std::string>();
-        if (filename != "") {
-            std::make_shared<DBManager>()->init_database(filename);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for mysql to initialize DB
+        if (filename == "")
+            filename = "schema.sql";
+
+        std::ifstream cFile(filename);
+        if (!cFile.is_open()){
+            std::cout << "Could not find init file for DB" << std::endl;
+            exit(0);
         }
+        std::make_shared<DBManager>()->init_database(filename);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for mysql to initialize DB
     }
 
     try{

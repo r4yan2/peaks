@@ -517,12 +517,11 @@ vector<DBStruct::node> CGI_DBManager::get_pnodes(){
     try{
         std::unique_ptr<DBResult> result = get_pnodes_stmt->execute();
         while (result->next()){
-            DBStruct::node node = DBStruct::node{
-                .key = result->getString("node_key"),
-                .key_size = result->getInt("key_size"),
-                .num_elements = result->getInt("num_elements"),
-                .leaf = result->getBoolean("leaf")
-            };
+            DBStruct::node node;
+            node.key = result->getString("node_key");
+            node.key_size = result->getInt("key_size");
+            node.num_elements = result->getInt("num_elements");
+            node.leaf = result->getBoolean("leaf");
             res.push_back(node);
         }
     }catch(exception &e){
