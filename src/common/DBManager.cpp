@@ -21,6 +21,7 @@ DBManager::DBManager():
     connection_properties["CLIENT_MULTI_STATEMENTS"] = true;
     connection_properties["OPT_CHARSET_NAME"] = "utf8";
     connection_properties["OPT_SET_CHARSET_NAME"] = "utf8";
+    connection_properties["OPT_LOCAL_INFILE"] = 1;
     con = driver->connect(connection_properties);
 }
 
