@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 add_definitions(-DGPG_COMPATIBLE)
 add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
 
-if (NOT DEFINED CMAKE_CXX_FLAGS)
+if (NOT DEFINED CMAKE_CXX_FLAGS OR "${CMAKE_CXX_FLAGS}" STREQUAL "")
     set(CMAKE_CXX_FLAGS "-Wall -pthread -lstdc++ -pipe")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -march=native -g3 -rdynamic -O0")
     set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
@@ -20,10 +20,6 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
     SET(CMAKE_EXE_LINKER_FLAGS "-static")
 endif ()
 
-
-set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
-set(BIN_DIR ${CMAKE_SOURCE_DIR}/lib/bin)
-
 if (NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 endif ()
@@ -31,7 +27,7 @@ endif ()
 if (DEFINED CMAKE_LIB_PREFIX)
     set(LIB_DIR ${CMAKE_LIB_PREFIX})
 else ()
-    set(LIB_DIR lib)
+    set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 endif ()
 
 

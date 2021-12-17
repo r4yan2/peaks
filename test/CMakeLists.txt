@@ -3,7 +3,7 @@ add_test(NAME peaks-test
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/bin/peaks-test )
 
-add_executable(peaks-test main.cpp ../src/main/peaks.cpp ./recon/pTree.cpp Utils.cpp ./recon/Bitset.cpp)
+add_executable(peaks-test main.cpp config.cpp ./recon/pTree.cpp Utils.cpp ./recon/Bitset.cpp)
 
 target_link_libraries(peaks-test recon_daemon)
 target_link_libraries(peaks-test common)

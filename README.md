@@ -197,7 +197,6 @@ Now will follow a list of the configuration options that could be modified from 
 |async_timeout_sec | 1|network timeout - second|NO|
 |async_timeout_usec | 0 |network timeout - millisecond|NO|
 |max_unpacker_limit | 10000|Upper limit to the number of certificates unpakced ad a time|YES|
-|unpack_on_import | 0     |unpack keys when fetching from other keyserver|NO|
 
 ### Membership file
 

@@ -8,9 +8,7 @@
 #include <cppcms/rpc_json.h>
 #include "db.h"
 #include "db_key.h"
-#include <boost/program_options.hpp>
 
-namespace po = boost::program_options;
 namespace peaks {
 namespace pks{
 
@@ -18,7 +16,7 @@ namespace pks{
  *  main method to launch the server part
  *  @param vm map of configuration options
  */
-void serve(po::variables_map &vm);
+void serve();
 
 
 class json_service: public cppcms::rpc::json_rpc_server{

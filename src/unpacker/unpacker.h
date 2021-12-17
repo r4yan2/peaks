@@ -5,7 +5,6 @@
 #include <Key.h>
 #include <Packets/Packet.h>
 #include "DBManager.h"
-#include <boost/program_options.hpp>
 #include <functional>
 #include <Misc/radix64.h>
 #include <syslog.h>
@@ -23,14 +22,14 @@ namespace peaks{
 namespace unpacker{
 class Unpacker{
     public:
-	    Unpacker(boost::program_options::variables_map &vm);
+	    Unpacker();
         void run();
         void store_keymaterial();
     private:
-        DBSettings db_settings;
-        unsigned int nThreads,limit,key_per_thread;
+        int nThreads, key_per_thread, limit;
         std::shared_ptr<UNPACKER_DBManager> dbm;
 };
+        void unpack();
         void unpack_key_th(std::shared_ptr<UNPACKER_DBManager> dbm, const std::vector<OpenPGP::Key::Ptr> &pks);
         void unpack_key(const OpenPGP::Key::Ptr &key, std::shared_ptr<UNPACKER_DBManager> &dbm);
         DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey, const std::string &uatt_id="");
@@ -45,6 +44,6 @@ class Unpacker{
         void handle_wrong_sig(DBStruct::signatures &ss, const OpenPGP::Packet::Key::Ptr &key, const OpenPGP::Packet::Key::Ptr &subkey,
                           const OpenPGP::Packet::Tag2::Ptr &sig);
 
-}
+};
 }
 #endif //UNPACKER_UNPACKER_H

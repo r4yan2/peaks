@@ -1,48 +1,17 @@
 #include "dump.h"
 #include <iostream>
+#include <common/config.h>
 
 namespace peaks{
 namespace dump{
-namespace Dump{
-    int dump(po::variables_map &vm){
-        int log_option;
-        int log_upto;
-
-        if (vm.count("stdout")){
-            std::cout << "logging to stdout" << std::endl;
-            log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
-        }
-        else{
-            log_option = LOG_PID;
-        }
-        if (vm.count("debug")){
-            std::cout << "debug output" << std::endl;
-            log_upto = LOG_UPTO(LOG_DEBUG);
-        }
-        else{
-            log_upto = LOG_UPTO(LOG_INFO); 
-        }
-
-        openlog("pgp_dump", log_option, LOG_USER);
-        setlogmask(log_upto);
-        syslog(LOG_NOTICE, "Starting Dump procedure!");
+    int dump(){
+        unsigned int nThreads = CONTEXT.get<int>("threads", 1);
     
-        unsigned int nThreads = std::thread::hardware_concurrency() / 2 + 1;
-    
-        if(vm.count("threads"))
-            nThreads = vm["threads"].as<unsigned int>();
-        
         syslog(LOG_NOTICE, "Using %d Threads", nThreads);
 
         std::shared_ptr<DUMP_DBManager> dbm = std::make_shared<DUMP_DBManager>();
 
-        std::string dump_path;
-        if (vm.count("outdir")){
-            dump_path = vm["outdir"].as<std::string>();
-            dbm->set_dump_path(dump_path);
-        }else{
-            dump_path = dbm->get_dump_path();
-        }
+        std::string dump_path = CONTEXT.get<std::string>("outdir", dbm->get_dump_path());
 
         try{
             if (Utils::get_files_number(dump_path) > 0){
@@ -59,11 +28,11 @@ namespace Dump{
         for (unsigned int i = 0; i < nThreads; i++)
             pool_vect[i] = std::thread([=] { pool->Infinite_loop_function(); });
         for (unsigned int i = Utils::CERTIFICATE; i <= Utils::USERID; i++){
-            std::shared_ptr<Job> j;
-            if (vm.count("outdir"))
-                j = std::make_shared<Job>([=] { dbm->dumplocalCSV(i); });
-            else
-                j = std::make_shared<Job>([=] { dbm->dumpCSV(i); });
+            std::shared_ptr<Job> j = std::make_shared<Job>([=] { dbm->dumpCSV(i); });;
+            //if (vm.count("outdir"))
+            //    j = std::make_shared<Job>([=] { dbm->dumplocalCSV(i); });
+            //else
+            //    j = std::make_shared<Job>([=] { dbm->dumpCSV(i); });
             pool->Add_Job(j);
         }
         
@@ -77,6 +46,5 @@ namespace Dump{
         syslog(LOG_NOTICE, "Dumping terminated!");
         return 0;
     }
-}
 }
 }

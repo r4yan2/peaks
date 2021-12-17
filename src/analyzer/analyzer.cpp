@@ -23,37 +23,39 @@ using namespace peaks::common::Utils;
 namespace peaks{
 namespace analyzer{
 
-Analyzer::Analyzer(po::variables_map &vm):
+void analyze(){
+    Analyzer alz;
+    
+    while(true){
+    	alz.run();
+    	std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.get<int>("analyze_interval")});
+    }
+}
+
+Analyzer::Analyzer():
     dbm(std::make_shared<ANALYZER_DBManager>())
 {
     syslog(LOG_NOTICE, "Analyzer daemon is starting up!");
-    nThreads = thread::hardware_concurrency() / 2 + 1;
-    limit = vm["max_unpacker_limit"].as<unsigned int>();
 
-    if(Utils::create_folders(vm["tmp_folder"].as<std::string>()) == -1){
+    if(Utils::create_folders(CONTEXT.get<std::string>("tmp_folder")) == -1){
         syslog(LOG_WARNING, "Unable to create temp folder");
         exit(-1);
     }
-    if (Utils::create_folders(vm["error_folder"].as<std::string>()) == -1){
+    if (Utils::create_folders(CONTEXT.get<std::string>("error_folder")) == -1){
         syslog(LOG_WARNING, "Unable to create temp folder");
         exit(-1);
     }
 
     syslog(LOG_INFO, "Starting pubkey analysis");
-    if(vm.count("threads"))
-        nThreads = vm["threads"].as<unsigned int>();
+    nThreads = CONTEXT.get<int>("threads", 1);
     
     syslog(LOG_NOTICE, "Using %d Threads", nThreads);
  
-    if(vm.count("limit"))
-        limit = vm["limit"].as<unsigned int>();
+    limit = CONTEXT.get<int>("limit", CONTEXT.get<int>("max_analyzer_limit"));
 
     syslog(LOG_NOTICE, "Limiting analysis to %u certificates", limit);
  
-    if(vm.count("keys"))
-        key_per_thread = vm["keys"].as<unsigned int>();
-    else
-        key_per_thread = 1 + ((limit - 1)/nThreads); 
+    key_per_thread = 1 + ((limit - 1)/nThreads);
      
 }
 

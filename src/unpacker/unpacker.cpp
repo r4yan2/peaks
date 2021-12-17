@@ -14,38 +14,39 @@
 namespace peaks{
 namespace unpacker{
 
+void unpack(){
+    Unpacker u;
+    while(true){
+    	u.run();
+    	std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.get<int>("unpack_interval")});
+    }
+}
+
 using namespace std;
 using namespace OpenPGP;
-namespace po = boost::program_options;
 
-Unpacker::Unpacker(po::variables_map &vm){
+Unpacker::Unpacker(){
     syslog(LOG_NOTICE, "Unpacker daemon is starting up!");
 
-    nThreads = std::thread::hardware_concurrency() / 2 + 1;
-    limit = vm["max_unpacker_limit"].as<unsigned int>();
-
-    if(vm.count("threads"))
-        nThreads = vm["threads"].as<unsigned int>();
-    
+    nThreads = CONTEXT.get<int>("threads", 1);
     syslog(LOG_NOTICE, "Using %d Threads", nThreads);
 
-    if(vm.count("limit"))
-        limit = vm["limit"].as<unsigned int>();
+    limit = CONTEXT.get<int>("limit", CONTEXT.get<int>("max_unpacker_limit"));
 
-    std::cout << "limiting analysis at " << limit << " keys" << std::endl;
+    syslog(LOG_INFO, "limiting analysis at %d keys", limit);
 
-    if(Utils::create_folders(vm["tmp_folder"].as<std::string>()) == -1){
+    if(Utils::create_folders(CONTEXT.get<std::string>("tmp_folder")) == -1){
         syslog(LOG_WARNING,  "Unable to create temp folder");
         exit(-1);
     }
 
-    if (Utils::create_folders(vm["error_folder"].as<std::string>()) == -1){
+    if (Utils::create_folders(CONTEXT.get<std::string>("error_folder")) == -1){
         syslog(LOG_WARNING,  "Unable to create error folder");
         exit(-1);
     }
     
     dbm = std::make_shared<UNPACKER_DBManager>();
-    if (CONTEXT.vm.count("reset")){
+    if (CONTEXT.get<bool>("reset")){
         //reset unpacking status
         dbm->execute_query("truncate Pubkey");
         dbm->execute_query("truncate Signatures");
@@ -60,7 +61,7 @@ Unpacker::Unpacker(po::variables_map &vm){
         exit(0);
     }
 
-    std::vector<std::string> error_files = Utils::dirlisting(vm["error_folder"].as<std::string>());
+    std::vector<std::string> error_files = Utils::dirlisting(CONTEXT.get<std::string>("error_folder"));
     if (error_files.size() > 0){
         std::cout << "Found files in unpacker error folder, proceding to error recovery" << std::endl;
         std::cout << "List of files to recover:" << std::endl;
@@ -77,10 +78,7 @@ Unpacker::Unpacker(po::variables_map &vm){
         }
     }
     
-    if(vm.count("keys"))
-        key_per_thread = vm["keys"].as<unsigned int>();
-    else
-        key_per_thread = 1 + ((limit - 1)/nThreads); 
+    key_per_thread = 1 + ((limit - 1)/nThreads);
 }
 
 void Unpacker::run(){
@@ -89,7 +87,7 @@ void Unpacker::run(){
     // resume session if any
     store_keymaterial(); 
     
-    if (CONTEXT.vm.count("recover")){
+    if (CONTEXT.get<bool>("recover")){
         std::cout << "Finished recovery, exiting" << std::endl;
         exit(0);
     }
@@ -102,9 +100,6 @@ void Unpacker::run(){
         return;
     }
     
-    key_per_thread = 1 + ((limit - 1)/nThreads); 
-    std::cout << "key per thread: " << key_per_thread << std::endl;
-
     std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>(nThreads);
 
     std::vector<std::shared_ptr<Job>> unpacking_jobs;
@@ -169,7 +164,7 @@ void Unpacker::run(){
 }
 
 void Unpacker::store_keymaterial(){
-    if (CONTEXT.vm.count("csv-only"))
+    if (CONTEXT.get<bool>("csv-only"))
         return; //nothing to do
     dbm->insertCSV();
     dbm->UpdateSignatureIssuingFingerprint();

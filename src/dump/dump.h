@@ -12,9 +12,7 @@ namespace po = boost::program_options;
 
 namespace peaks{
 namespace dump{
-namespace Dump{
-    int dump(po::variables_map &vm);
-}
+    int dump();
 }
 }
 

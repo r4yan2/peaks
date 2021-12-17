@@ -72,11 +72,8 @@ namespace peaks{
       /** if dry run is set recon daemon will only fetch certificates without importing them */
       unsigned long dry_run;
   
-      /** flag used to ignore logging for known bugs */
-      int ignore_known_bug;
-  
-      /** sks_zp_bytes + 1 */
-      int hashquery_len;
+      /** sks_zp_bytes - 1 */
+      long hashquery_len;
   
       int max_outstanding_recon_req;
   
@@ -112,7 +109,7 @@ namespace peaks{
       /** current finite field choosen by sks */
       std::string P_SKS_STRING;
       /** number of bytes which composes the P_SKS representation */
-      int sks_zp_bytes;
+      long sks_zp_bytes;
       /** max length for the recon request queue */
       int max_request_queue_len;
   };
@@ -122,6 +119,18 @@ namespace peaks{
     class Context {
         public:
 	        po::variables_map vm;
+            po::options_description 
+                internal_config,
+                generic_config,
+                db_config,
+                folder_config,
+                global,
+                dump_desc,
+                import_desc,
+                unpack_desc,
+                analyzer_desc,
+                recon_desc
+                ;
             settings::DBSettings dbsettings;
             settings::Ptree_config treesettings;
             settings::Connection_config connsettings;
@@ -134,8 +143,23 @@ namespace peaks{
             void setContext(const po::variables_map &);
             int filestorage_index;
             NTL::ZZ P_SKS;
+            std::string init_options(int argc, char* argv[]);
+            void parse_config(std::istream& conf, po::variables_map &vm);
+            void write_config();
+            bool has(const std::string &name);
+            template <typename T> T get(const std::string &name, T def = T()){
+                auto it = vm.find(name);
+                if (it != vm.end()){
+                    try{
+                        return (*it).second.as<T>();
+                    }catch(...){
+                        std::cerr << "Failed cast of " << name << " to " << typeid(def).name() << std::endl;
+                    }
+                }
+                return def;
+            }
         private:
-            Context(){}
+            Context();
     };
 }
 

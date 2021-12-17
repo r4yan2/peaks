@@ -5,10 +5,10 @@ namespace peaks{
 namespace recon{
 
 //PEAKS_PTREE_BUILDER
-void build(po::variables_map &vm){
+void build(){
     std::cout << "Starting ptree builder" << std::endl;
     syslog(LOG_NOTICE, "Ptree builder is starting up!");
-    if (Utils::create_folders(vm["tmp_folder"].as<std::string>()) != 0){
+    if (Utils::create_folders(CONTEXT.get<std::string>("tmp_folder")) != 0){
         std::cout << "Unable to create temporary directories!Exiting..." << std::endl;
         exit(1);
     }
@@ -35,48 +35,18 @@ void build(po::variables_map &vm){
     std::cout << std::endl;
     std::cout << "Writing resulting ptree to DB!" << std::endl;
     dbm->commit_memtree();
-    Utils::remove_directory_content(vm["tmp_folder"].as<std::string>());
+    Utils::remove_directory_content(CONTEXT.get<std::string>("tmp_folder"));
     std::cout << "Inserted " << entries << " entry!" << std::endl; 
     closelog();
     exit(0);
 }
 
-Recon::Recon(po::variables_map &vm){
-
-    std::cout << "Starting recon_daemon" << std::endl;
-    int log_option;
-    int log_upto;
-
-    if (vm.count("stdout")){
-        std::cout << "logging to stdout" << std::endl;
-        log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
-    }
-    else{
-        log_option = LOG_PID;
-    }
-    if (vm.count("debug")){
-        std::cout << "debug output" << std::endl;
-        log_upto = LOG_UPTO(LOG_DEBUG);
-    }
-    else{
-        log_upto = LOG_UPTO(LOG_INFO); 
-    }
-
-    openlog("peaks_recon_daemon", log_option, LOG_USER);
-    setlogmask(log_upto);
-
-    std::shared_ptr<Recon_mysql_DBManager> dbm = std::make_shared<Recon_mysql_DBManager>();
-    std::vector<NTL::ZZ_p> points = Utils::Zpoints(vm["num_samples"].as<int>());
-
-    server = vm.count("server-only");
-    client = vm.count("client-only");
-    peer = std::make_unique<Peer>();
-}
-
-void Recon::run(){
-    if (server)
+void recon(){
+    syslog(LOG_INFO, "Starting recon_daemon");
+    std::unique_ptr<Peer> peer = std::make_unique<Peer>();
+    if (CONTEXT.get<bool>("server-only"))
         peer->start_server();
-    else if (client)
+    else if (CONTEXT.get<bool>("client-only"))
         peer->start_client();
     else
         peer->start();

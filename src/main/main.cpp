@@ -3,10 +3,6 @@
 #include <syslog.h>
 #include <cstring>
 #include <thread>
-#include <csignal>
-#include <boost/stacktrace.hpp>
-
-#include "peaks.h"
 #include <common/config.h>
 #include <cgi_handler/pks.h>
 #include <recon_daemon/recon_daemon.h>
@@ -15,15 +11,9 @@
 #include <analyzer/analyzer.h>
 #include <dump/dump.h>
 #include <sys/syslog.h>
-
-using namespace peaks::dump;
-using namespace peaks::import;
-using namespace peaks::recon;
-using namespace peaks::pks;
-using namespace peaks::analyzer;
-using namespace peaks::unpacker;
-
-using namespace peaks;
+#include <csignal>
+#include <boost/stacktrace.hpp>
+#include <functional>
 
 /** \mainpage Peaks Keyserver Documentation
  *
@@ -37,6 +27,8 @@ using namespace peaks;
  
 /** signal handler when SIGINT or SIGTERM are catched
  */
+
+using namespace peaks;
 void signalHandler(int signum) {
     switch(signum){
         case SIGINT:
@@ -52,183 +44,111 @@ void signalHandler(int signum) {
     }
 }
 
-int main(int argc, char* argv[]){
-    std::signal(SIGINT, signalHandler);
-    std::signal(SIGTERM, signalHandler);
-    std::signal(SIGSEGV, signalHandler);
+   void help(){
+   
+       std::cout << std::endl;
+       std::cout << "Usage: peaks [OPTIONS] COMMAND [ARGS]" << std::endl;
+       std::cout << std::endl;
+   
+       std::cout << "Options:" << std::endl;
+       std::cout << "  -h, --help           Print this help message" << std::endl;
+       std::cout << "  -d, --debug          Turn on debug output" << std::endl;
+       std::cout << "  -c, --config         Path to the config file (If not provided it searches in the folder from which the executable is run)" << std::endl;
+       std::cout << "  -s, --stdout         Turn on debug on console" << std::endl;
+   
+       std::cout << "Commands and args:" << std::endl;
+       std::cout << std::endl;
+   
+       std::cout << "  serve                Start the webserver process" << std::endl;
+       std::cout << std::endl;
+   
+       std::cout << "  build                Build the prefix-tree" << std::endl;
+   
+       std::cout << std::endl;
+   
+       std::cout << "  import               Import certificates into Mysql" << std::endl;
+       std::cout << "    --init             Before loading keys initalize DB using specified file" << std::endl;
+       std::cout << "    --threads          Set number of threads to use" << std::endl;
+       std::cout << "    --path             Set the path of the dump" << std::endl;
+       std::cout << "    --csv-only         only create temporary csv file, do not import into DB" << std::endl;
+       std::cout << "    --import-only      only import temporary csv, do not create anything" << std::endl;
+       std::cout << "    --noclean          do not clean temporary folder" << std::endl;
+   
+       std::cout << std::endl;
+   
+       std::cout << "  dump                 Dump database into csv files, currently output in MySQL directory" << std::endl;
+       std::cout << "    --threads          Set number of threads to use" << std::endl;
+       std::cout << "    --outdir           Set the output directory" << std::endl;
+   
+       std::cout << std::endl;
+   
+       std::cout << "  unpack               Unpack certificate not analyzer during fastimport" << std::endl;
+       std::cout << "    --threads          Set number of threads to use" << std::endl;
+       std::cout << "    --csv-only         only create temporary csv file, do not import into DB" << std::endl;
+       std::cout << "    --limit            Set the limit on key to unpack" << std::endl;
+       std::cout << "    --recover          Recover previous broken session only" << std::endl;
+       std::cout << "    --reset            Reset DB unpacking status" << std::endl;
+   
+       std::cout << std::endl;
+   
+       std::cout << "  analyze              Perform security analysis on imported pubkeys" << std::endl;
+       std::cout << "    --threads          Set number of threads to use" << std::endl;
+       std::cout << "    --limit            Set the limit on key to analyze" << std::endl;
+   
+       std::cout << std::endl;
+   
+       std::cout << "  recon                Start the recon process" << std::endl;
+       std::cout << "    --client-only      Start only as client" << std::endl;
+       std::cout << "    --server-only      Start only as server" << std::endl;
+       std::cout << "    --dryrun           Recon without inserting into DB" << std::endl;
+   
+       std::cout << std::endl;
+       exit(0);
+   }
 
-    try{
-	    po::options_description global("Global options");
-	    global.add_options()
-        ("help,h", "Print this help message")
-        ("debug,d", po::value<int>(), "Turn on debug output")
-        ("stdout,s", "Turn on debug on stdout")
-        ("config,c", po::value<std::string>(), "Specify path of the config file (Default is in the same directory of peaks executable)")
-        ("command", po::value<std::string>()->required(), "command to execute")
-        ("subargs", po::value<std::vector<std::string> >(), "Arguments for command");
-
-	    po::positional_options_description pos;
-	    pos.add("command", 1).add("subargs", -1);
-
-	    po::variables_map vm;
-
-	    po::parsed_options parsed = po::command_line_parser(argc, argv).options(global).positional(pos).allow_unregistered().run();
-
-	    po::store(parsed, vm);
-
-        if (vm.count("help"))
-            help();
-
-        std::string cmd = vm["command"].as<std::string>();
-
-        std::vector<std::string> filenames;
-        if (vm.count("config"))
-            filenames.insert(filenames.begin(), vm["config"].as<std::string>());
-        filenames.push_back("peaks_config");
-        filenames.push_back("/var/lib/peaks/peaks_config");
-        filenames.push_back("/etc/peaks/peaks_config");
-
-        bool parsed_config = false;
-        for (auto filename: filenames){
-                std::cout << "searching config file " << filename << std::endl;
-                std::ifstream cFile(filename);
-                if (cFile.is_open()){
-                    parse_config(cFile, vm);
-                    parsed_config = true;
-                    break;
-                }
-        }
-
-        if (parsed_config)
-            std::cout << "config file found!" << std::endl;
-        else
-            exit(0);
- 
-        int log_option;
-        int log_upto;
-
-        if (vm.count("stdout")){
-            std::cout << "logging to stdout" << std::endl;
-            log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
-        }
-        else{
-            log_option = LOG_PID;
-        }
-        log_upto = LOG_UPTO(vm["debug"].as<int>());
-        std::string logname = "peaks" + cmd;
-        openlog(logname.c_str(), log_option, LOG_USER);
-        setlogmask(log_upto);
- 
-        if (cmd == "serve"){
-            CONTEXT.setContext(vm);
-            serve(vm);
-	    }
-        else if (cmd == "build"){
-            CONTEXT.setContext(vm);
-            build(vm);
-        }
-        else if (cmd == "dump"){
-            po::options_description dump_desc("dump options");
-            dump_desc.add_options()
-                ("threads,t", po::value<unsigned int>(), "set number of threads")
-                ("outdir,o", po::value<std::string>(), "set output dir");
-            std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-            opts.erase(opts.begin());
-            po::store(po::command_line_parser(opts).options(dump_desc).run(), vm);
-            CONTEXT.setContext(vm);
-            Dump::dump(vm);
-        }
-        else if (cmd == "import"){
-            po::options_description import_desc("import options");
-            import_desc.add_options()
-                ("init", po::value<std::string>(), "Before loading keys initalize DB using specified file")
-                ("threads,t", po::value<unsigned int>(), "set number of threads")
-                ("keys,k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-                ("path,p", po::value<boost::filesystem::path>(), "path to the dump")
-                ("csv-only", "stop certificate import after creating csv")
-                ("import-only", "start certificate import directly inserting csv into db")
-                ("fastimport,f", "fastimport")
-                ("selection,s", po::value<int>()->default_value(-1), "select which table to import")
-                ("noclean,n", "do not clean temporary folder");
-
-            std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-            opts.erase(opts.begin());
-            po::store(po::command_line_parser(opts).options(import_desc).run(), vm);
-            CONTEXT.setContext(vm);
-            Importer importer;
-            importer.import();
-            }
-        else if (cmd == "unpack"){
-            po::options_description unpack_desc("unpack options");
-            unpack_desc.add_options()
-                ("threads,t", po::value<unsigned int>(), "set number of threads")
-                ("keys,k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-                ("limit,l", po::value<unsigned int>(), "set limit to how many keys to unpack per run")
-                ("csv-only", "stop certificate import after creating csv")
-                ("recover", "recover")
-                ("reset", "reset");
-
-            std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-            opts.erase(opts.begin());
-            po::store(po::command_line_parser(opts).options(unpack_desc).run(), vm);
-            CONTEXT.setContext(vm);
-            Unpacker unpacker(vm);
-            while(true){
-            	unpacker.run();
-        		std::this_thread::sleep_for(std::chrono::seconds{vm["unpack_interval"].as<int>()});
-            }
-        }
-        else if (cmd == "analyze"){
-            po::options_description analyzer_desc("analyzer options");
-            analyzer_desc.add_options()
-                ("threads,t", po::value<unsigned int>(), "set number of threads")
-                ("keys,k", po::value<unsigned int>(), "set how many keys a thread has to analyze")
-                ("limit,l", po::value<unsigned int>(), "set limit to how many keys to unpack per run");
-            std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-            opts.erase(opts.begin());
-            po::store(po::command_line_parser(opts).options(analyzer_desc).run(), vm);
-            CONTEXT.setContext(vm);
-            Analyzer analyzer(vm);
-            
-            while(true){
-            	analyzer.run();
-        		std::this_thread::sleep_for(std::chrono::seconds{vm["analyze_interval"].as<int>()});
-            }
-        }
-        else if (cmd == "recon"){
-            po::options_description recon_desc("recon options");
-            recon_desc.add_options()
-                ("server-only", "start only sever part of recon")
-                ("client-only", "start only client part of recon")
-                ("dryrun", "dryrun");
-            std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-            opts.erase(opts.begin());
-            po::store(po::command_line_parser(opts).options(recon_desc).run(), vm);	
-            CONTEXT.setContext(vm);
-            Recon recon(vm);
-            recon.run();
-            }
-        else{
-                std::cout << "Unrecognized command " << cmd << std::endl;
-                help();
-            }
- 
-    po::notify(vm); // throws on error, so do after help in case 
-                      // there are any problems 
-    } 
-    catch(boost::program_options::required_option& e) 
-    { 
-        std::cout << "Missing required option " << e.what() << std::endl;
-        help();
-    } 
-    catch(boost::program_options::error& e) 
-    { 
-        std::cout << "Wrong option parameter " << e.what() << std::endl;
-        help();
-    } 
-    catch(std::exception &e){
-        std::cout << e.what() << std::endl;
-        help();
+    void write_config(){
+        CONTEXT.write_config();
+        exit(0);
     }
-}
 
+   int main(int argc, char* argv[]){
+        std::signal(SIGINT, signalHandler);
+        std::signal(SIGTERM, signalHandler);
+        std::signal(SIGSEGV, signalHandler);
+        std::map<std::string, std::function<void()>> command_map = {
+            std::make_pair("help", help),
+            std::make_pair("generate_config", write_config),
+            std::make_pair("import", import::import),
+            std::make_pair("unpack", unpacker::unpack),
+            std::make_pair("recon", recon::recon),
+            std::make_pair("build", recon::build),
+            std::make_pair("serve", pks::serve),
+            std::make_pair("dump", dump::dump),
+            std::make_pair("analyze", analyzer::analyze)
+        };
+        try{
+            std::string err = "";
+            std::string cmd = CONTEXT.init_options(argc, argv);
+            auto it = command_map.find(cmd);
+            if (it == command_map.end()){
+                std::cerr << "command " << cmd << " not recognized" << std::endl; 
+                help();
+                exit(0);
+            }
+            it->second();
+        } 
+        catch(boost::program_options::required_option& e) 
+        { 
+            std::cerr << "Missing required option " << e.what() << std::endl;
+            help();
+        } 
+        catch(boost::program_options::error& e) 
+        { 
+            std::cerr << "Wrong option parameter " << e.what() << std::endl;
+            help();
+        } 
+        catch(std::exception &e){
+            std::cerr << e.what() << std::endl;
+            help();
+        }
+   }

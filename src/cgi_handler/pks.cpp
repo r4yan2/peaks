@@ -1215,11 +1215,11 @@ string Pks::genEntry(DB_Key *keyInfo) {
                                userID.c_str());
 }
 
-void serve(po::variables_map &vm){
+void serve(){
     cppcms::json::value cfg;
     cfg["service"]["api"] = "http";
-    cfg["service"]["port"] = vm["http_port"].as<int>();
-    cfg["service"]["ip"] = vm["pks_bind_ip"].as<std::string>();
+    cfg["service"]["port"] = CONTEXT.get<int>("http_port");
+    cfg["service"]["ip"] = CONTEXT.get<std::string>("pks_bind_ip");
     cfg["http"]["script_names"][0] = "/pks";
     cfg["file_server"]["enable"] = true;
     cfg["file_server"]["document_root"] = "static";
@@ -1229,28 +1229,6 @@ void serve(po::variables_map &vm){
     //cfg["file_server"]["alias"][1]["url"] = "/js";
     //cfg["file_server"]["alias"][1]["path"] = "static/js";
 
-    int log_option;
-    int log_upto;
-
-    if (vm.count("stdout")){
-        std::cout << "logging to stdout" << std::endl;
-        log_option = LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID;
-    }
-    else{
-        log_option = LOG_PID;
-    }
-    if (vm.count("debug")){
-        std::cout << "debug output" << std::endl;
-        log_upto = LOG_UPTO(LOG_DEBUG);
-    }
-    else{
-        log_upto = LOG_UPTO(LOG_INFO); 
-    }
-
-    openlog("peaks_serve", log_option, LOG_USER);
-    setlogmask(log_upto);
- 
-    syslog(LOG_NOTICE, "peaks server is starting up!");
     try {
         cppcms::service srv(cfg);
         srv.applications_pool().mount(cppcms::applications_factory<Pks>());

@@ -27,9 +27,7 @@ max_outstanding_recon_req = 100
 sks_bitstring = 0
 async_timeout_sec = 1
 async_timeout_usec = 0
-ignore_known_bug = 1
 max_unpacker_limit = 10000
-unpack_on_import = 0
 filestorage_format = /tmp/peaks_filestorage_%d.pgp
 filestorage_maxsize = 100
 

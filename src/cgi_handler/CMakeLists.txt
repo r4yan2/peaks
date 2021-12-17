@@ -3,7 +3,7 @@ set(SOURCE_FILES pks.cpp db.cpp encoder.cpp mitpgpskin.cpp PacketReader.cpp db_k
 set(TEMPLATES_FOLDER ${CGI_HANDLER_DIR}/templates)
 set(TEMPLATES ${TEMPLATES_FOLDER}/certificate.tmpl ${TEMPLATES_FOLDER}/index.tmpl ${TEMPLATES_FOLDER}/homepage.tmpl ${TEMPLATES_FOLDER}/vindex.tmpl)
 
-set(CPPCMS_TMPL_CC ${LIB_DIR}/bin/cppcms_tmpl_cc)
+set(CPPCMS_TMPL_CC ${BIN_DIR}/cppcms_tmpl_cc)
 
 add_custom_command(
         OUTPUT mitpgpskin.cpp

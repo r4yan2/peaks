@@ -9,16 +9,8 @@ namespace po = boost::program_options;
 namespace peaks{
 namespace recon{
 
-void build(po::variables_map &vm);
-class Recon{
-    private:
-        std::unique_ptr<Peer> peer;
-        int server, client;
-    public:
-        Recon(po::variables_map &vm);
-        void run();
-};
-
+void build();
+void recon();
 }
 }
 #endif

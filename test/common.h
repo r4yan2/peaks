@@ -1,10 +1,11 @@
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
-#include <main/peaks.h>
 #include <NTL/ZZ_p.h>
 #include <sstream>
 #include <common/config.h>
+#include <vector>
+#include <string>
 
 namespace po = boost::program_options;
 using namespace peaks;
@@ -18,9 +19,10 @@ struct test_global_fixture{
     
       std::istringstream config("");
 
-      parse_config( config, vm );
-
-      CONTEXT.setContext(vm);
+      std::vector<char*> argv;
+      argv.push_back("test");
+      argv.push_back(nullptr);
+      CONTEXT.init_options(argv.size()-1, argv.data());
 
     }
 

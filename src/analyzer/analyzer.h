@@ -6,14 +6,14 @@
 #include <boost/program_options.hpp>
 #include <common/DBStruct.h>
 
-namespace po = boost::program_options;
 using namespace peaks::common;
 namespace peaks{
 namespace analyzer{
+    void analyze();
 
 class Analyzer {
 public:
-    Analyzer(po::variables_map &vm);
+    Analyzer();
     void run();
     void import_csv();
     void analyze_pubkeys(const std::vector<DBStruct::pubkey> &pks, const std::shared_ptr<ANALYZER_DBManager> &) const;

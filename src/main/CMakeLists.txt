@@ -1,4 +1,4 @@
-add_executable(peaks main.cpp peaks.cpp)
+add_executable(peaks main.cpp)
 
 if (DEFINED CMAKE_INSTALL_PREFIX)
     install(TARGETS peaks DESTINATION ${CMAKE_INSTALL_PREFIX})
