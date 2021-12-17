@@ -24,7 +24,7 @@ target_link_libraries(peaks z)
 target_link_libraries(peaks bz2)
 target_link_libraries(peaks crypto)
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
+if (${CMAKE_BUILD_TYPE} STREQUAL "STATIC")
     target_link_libraries(peaks ${libmariadb})
     target_link_libraries(peaks ${libnghttp2})
     target_link_libraries(peaks ssl)
@@ -33,12 +33,12 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
     target_link_libraries(peaks ssh2)
 endif()
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
-add_custom_command(TARGET peaks POST_BUILD
-    COMMAND strip peaks
-    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-    COMMENT "Running strip on binary")
-endif ()
+#if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
+#add_custom_command(TARGET peaks POST_BUILD
+#    COMMAND strip peaks
+#    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+#    COMMENT "Running strip on binary")
+#endif ()
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 add_custom_command(TARGET peaks POST_BUILD

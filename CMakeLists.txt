@@ -12,9 +12,14 @@ if (NOT DEFINED CMAKE_CXX_FLAGS OR "${CMAKE_CXX_FLAGS}" STREQUAL "")
     set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -march=native -Ofast")
     set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -march=x86-64 -mtune=generic -Os")
+    set(CMAKE_CXX_FLAGS_STATIC "${CMAKE_CXX_FLAGS_DOCKER}")
 endif ()
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "Docker")
+set(suffix "so")
+
+if (${CMAKE_BUILD_TYPE} STREQUAL "Static")
+    set(suffix "a")
+    set(Boost_USE_STATIC_LIBS   ON)
     SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     SET(BUILD_SHARED_LIBS OFF)
     SET(CMAKE_EXE_LINKER_FLAGS "-static")
@@ -53,13 +58,15 @@ find_package(Boost REQUIRED
     filesystem
     )
 find_library(cppcms_lib
-    NAMES libcppcms.so libcppcms.a
+    NAMES libcppcms.${suffix}
     HINTS ${LIBRARY_DIR}
     )
+message(STATUS "CppCMS library:     ${cppcms_lib}")
 find_library(booster_lib
-    NAMES libbooster.so libbooster.a
+    NAMES libbooster.${suffix}
     HINTS ${LIBRARY_DIR}
     )
+message(STATUS "Booster library:     ${boosters_lib}")
 
 find_library(libopenpgp
     NAMES libOpenPGP.a
@@ -78,17 +85,6 @@ find_library(libntl
     HINTS ${LIBRARY_DIR}
     )
 message(STATUS "NTL libraries:      ${libntl}")
-
-if(${CMAKE_BUILD_TYPE} STREQUAL "Docker")
-find_library(libnghttp2
-    NAMES libnghttp2.a
-    HINTS ${LIB_DIR}/nghttp2/lib/
-    )
-find_library(libmariadb
-    NAMES libmariadbclient.a
-    HINTS ${LIB_DIR}/mariadb/lib/mariadb/
-    )
-endif()
 
 include_directories(${INCLUDE_DIR})
 include_directories(${SRC_DIR})
