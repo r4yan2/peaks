@@ -48,4 +48,3 @@ add_custom_command(TARGET peaks POST_BUILD
 endif ()
 
 target_link_libraries(peaks dl)
-target_link_libraries(peaks backtrace)

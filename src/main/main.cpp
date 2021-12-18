@@ -12,7 +12,7 @@
 #include <dump/dump.h>
 #include <sys/syslog.h>
 #include <csignal>
-#include <boost/stacktrace.hpp>
+#include <execinfo.h>
 #include <functional>
 
 /** \mainpage Peaks Keyserver Documentation
@@ -30,6 +30,7 @@
 
 using namespace peaks;
 void signalHandler(int signum) {
+    fprintf(stderr, "Error: signal %d:\n", signum);
     switch(signum){
         case SIGINT:
         case SIGTERM:
@@ -37,7 +38,10 @@ void signalHandler(int signum) {
             while(CONTEXT.critical_section) {}
             exit(0);
         case SIGSEGV:
-            std::cerr << boost::stacktrace::stacktrace() << std::endl;
+            void *array[10];
+            size_t size;
+            size = backtrace(array, 10);
+            backtrace_symbols_fd(array, size, STDERR_FILENO);
             exit(1);
         default:
             syslog(LOG_WARNING, "Error: unkown signal caught: %d", signum);
