@@ -1,4 +1,6 @@
 #include "config.h"
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
 #include <boost/program_options/variables_map.hpp>
 #include <common/utils.h>
 #include <syslog.h>
@@ -9,7 +11,7 @@ using namespace peaks::common;
 Context::Context(){
     global.add_options()
         ("help,h", "Print this help message")
-        ("debug,d", po::value<int>(), "Turn on debug output")
+        ("debug,d", po::value<int>()->default_value(LOG_ERR), "Turn on debug output")
         ("stdout,s", "Turn on debug on stdout")
         ("config,c", po::value<std::string>(), "Specify path of the config file (Default is in the same directory of peaks executable)")
         ("command", po::value<std::string>()->required(), "command to execute")
@@ -190,24 +192,19 @@ std::string Context::init_options(int argc, char* argv[]){
        }
     }
     
-   if (parsed_config){
+    if (parsed_config){
         std::cerr << "config file found!" << std::endl;
-    }
-    else{
+    }else{
         std::cerr << "config file NOT found! Proceeding with default options" << std::endl;
         std::istringstream empty("");
         parse_config(empty, vm);
     }
     setContext(vm);
     
-
     std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
     if (!opts.size()) return "help";
-    opts.erase(opts.begin());
-    po::store(po::command_line_parser(opts).options(import_desc).run(), vm);
-    po::notify(vm); // throws on error, so do after help in case of problems
- 
-    if (vm.count("help")) return "help";
+    std::string cmd = vm["command"].as<std::string>();
+
     int log_option;
     int log_upto;
     
@@ -220,10 +217,30 @@ std::string Context::init_options(int argc, char* argv[]){
     }
     log_upto = LOG_UPTO(vm["debug"].as<int>());
  
-    std::string cmd = vm["command"].as<std::string>();
     std::string logname = "peaks" + cmd;
     openlog(logname.c_str(), log_option, LOG_USER);
     setlogmask(log_upto);
+
+    opts.erase(opts.begin());
+    po::command_line_parser subcommand_parser(opts);
+    std::map<std::string, po::options_description> command_map = {
+        std::make_pair("import", import_desc),
+        std::make_pair("unpack", unpack_desc),
+        std::make_pair("recon", recon_desc),
+        std::make_pair("dump", dump_desc),
+        std::make_pair("analyze", analyzer_desc)
+    };
+
+    auto it = command_map.find(cmd);
+    if (it == command_map.end())
+        return cmd;
+
+    subcommand_parser.options((*it).second);
+
+    po::store(subcommand_parser.run(), vm);
+    po::notify(vm); // throws on error, so do after help in case of problems
+    setContext(vm);
+ 
     return cmd;
    }
    
