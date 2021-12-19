@@ -23,13 +23,28 @@ typedef Ptree* ptree_ptr;
 
 Bitset generate_child_key(const Bitset&, int, int);
 
+std::vector<NTL::ZZ_p> generate_svalues();
+
+/** generate a new child for the given parent
+ * @param parent pointer to the parent node (usually this method is called by the parent, so it's a pointer to this, which need to be wrapped into a smart pointer, thus the need to inherit from std::enable_shared_from_this
+ * @param child_index is the index of the child with respect to the other child (max index = 2^mbar)
+ * @return pointer to the new child
+ */
+void new_child(const Bitset& parent_key, int child_index, pnode_ptr &n);
+
+/** Calculate marray for given element, with the default interpolation points
+ * @param z new element of the tree
+ * @return calculated vector
+ */
+std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z);
+
+
 /** Node class, inherit bunch of methods from Ptree and inherit the possibility to share 'this' reference with new nodes
  */
 class Pnode: public std::enable_shared_from_this<Pnode>{
     
 private:
-    Ptree* tree;
-
+  Ptree* tree;
     /** node key is the identifier of the node */
     Bitset node_key;
 
@@ -46,12 +61,12 @@ private:
     std::vector<NTL::ZZ_p> node_elements;
 
 public:
-    Pnode();
+    Pnode(Ptree *ref);
+    Pnode(Ptree *ref, Bitset parent_key, int child_index);
+    Pnode(const Pnode & n);
 
     /** like ptree nodes are initialized keeping a reference to the database manager */
-    Pnode(Ptree* pointer);
     ~Pnode();
-    Pnode(const Pnode & n);
 
     pnode_ptr getReference();
     
@@ -79,12 +94,12 @@ public:
      * @param elements new vector elements for the node
      */
     void set_node_elements(const std::vector<NTL::ZZ_p> &elements);
-    
-    /** getter for node key
-     * @return key as string
-     */
-    Bitset get_node_key() const;
 
+    /** getter for node key
+      * @return key as string
+      */
+    Bitset get_node_key() const;
+   
     /** getter for the node svalues
      * @return std vector of node svalues
      */
@@ -186,7 +201,6 @@ private:
   
 public:
     Ptree();
-    Ptree(std::shared_ptr<RECON_DBManager> dbm_);
     static Ptree& ptree();
     Ptree(Ptree const &) = delete;
     void operator=(Ptree const &) = delete;
@@ -212,12 +226,6 @@ public:
      */
     pnode_ptr get_root();
     
-    /** Calculate marray for given element, with the default interpolation points
-     * @param z new element of the tree
-     * @return calculated vector
-     */
-    std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z);
-
     /** Calculate marray after deletion of given element
      * @param z element for which subtraction has to be made
      * @resulting array to subtract
@@ -250,13 +258,6 @@ public:
      * @param hash md5hash to insert as new element of the tree
      */
     void insert(const std::string &hash);
-
-    /** generate a new child for the given parent
-     * @param parent pointer to the parent node (usually this method is called by the parent, so it's a pointer to this, which need to be wrapped into a smart pointer, thus the need to inherit from std::enable_shared_from_this
-     * @param child_index is the index of the child with respect to the other child (max index = 2^mbar)
-     * @return pointer to the new child
-     */
-    pnode_ptr new_child(const Bitset& parent_key, int child_index);
 
     /** search for the nearest parent of the given key, up to the root
      * @param key key to search in the tree

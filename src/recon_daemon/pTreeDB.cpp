@@ -6,10 +6,10 @@ namespace peaks{
 namespace recon{
 
 Ptree::Ptree():
-    root(NULL),
+    root(std::make_shared<Pnode>(this)),
     dbm(std::make_shared<Recon_mysql_DBManager>())
 {
-    Bitset bs(0);
+    Bitset bs;
     try{
         root = node(bs);
     }catch(std::runtime_error &e){
@@ -17,17 +17,6 @@ Ptree::Ptree():
     }
 }
 
-Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbm_):
-    root(NULL),
-    dbm(dbm_)
-{
-    Bitset bs(0);
-    try{
-        root = node(bs);
-    }catch(std::runtime_error &e){
-        //expected, tree need to be initialized explicitly when empty
-    }
-}
 Ptree& Ptree::ptree(){
     static Ptree instance;
     return instance;
@@ -43,7 +32,7 @@ pnode_ptr Ptree::get_root(){
     return root;
 }
 
-std::vector<NTL::ZZ_p> Ptree::add_element_array(const NTL::ZZ_p &z){
+std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z){
     std::vector<NTL::ZZ_p> marray(CONTEXT.treesettings.num_samples);
     for(size_t i=0; i<CONTEXT.treesettings.num_samples; i++){
         marray[i] = CONTEXT.treesettings.points[i] - z;
@@ -64,8 +53,8 @@ std::vector<NTL::ZZ_p> Ptree::delete_element_array(const NTL::ZZ_p &z){
 }
 
 bool Ptree::create(){
-    root = new_child(Bitset(), -1);
-    root->commit_node(true);
+  root->commit_node(true);
+  return false;
 }
 
 int Ptree::get_mbar(){
@@ -105,7 +94,7 @@ int Ptree::get_sks_bitstring(){
 }
 pnode_ptr Ptree::get_node(const Bitset& key){
     DBStruct::node n = dbm->get_node(key);
-    pnode_ptr nd (new Pnode(this));
+    pnode_ptr nd = std::make_shared<Pnode>(this);
     nd->set_node_key(key);
     nd->set_node_svalues(n.svalues);
     nd->set_num_elements(n.num_elements);
@@ -145,7 +134,8 @@ void Ptree::update(const std::vector<std::string> &hash_to_insert){
     syslog(LOG_DEBUG, "inserted %d hashes into the ptree", int(hash_to_insert.size()));
 }
 
-Bitset generate_child_key(const Bitset& parent_key, int bq, int c_idx){
+Bitset generate_child_key(const Bitset& parent_key, int c_idx){
+    int bq = CONTEXT.treesettings.bq;
     Bitset child_key(parent_key);
     child_key.resize(child_key.size() + bq);
 
@@ -160,36 +150,22 @@ Bitset generate_child_key(const Bitset& parent_key, int bq, int c_idx){
     return child_key;
 }
 
-pnode_ptr Ptree::new_child(const Bitset& parent_key, int child_index){
-    pnode_ptr n (new Pnode(this));
-    n->set_leaf(true);
-    n->set_num_elements(0);
-    Bitset key;
-    if (child_index >= 0){
-        key = generate_child_key(
-                parent_key,
-                get_bq(),
-                child_index);
-    }
-    n->set_node_key(key);
+std::vector<NTL::ZZ_p> generate_svalues(){
     std::vector<NTL::ZZ_p> svalues(CONTEXT.treesettings.num_samples);
     for (size_t i=0; i < CONTEXT.treesettings.num_samples; i++){
         NTL::ZZ_p z(1);
         svalues[i] = z;
     }
-    n->set_node_svalues(svalues);
-    return n;
+    return svalues;
 }
 
 pnode_ptr Ptree::node(Bitset &key){
-    Bitset target_key;
-    if (key.size() != 0)
-        target_key = key;
+    Bitset target_key(key);
     pnode_ptr n;
     while(1){
         try{
             n = get_node(target_key);
-            break;
+            return n;
         } catch (std::exception &e){
             syslog(LOG_DEBUG, "Search for node %s failed -- %s -- searching for the nearest parent...", Bitset::to_string(target_key).c_str(), e.what());
         }
@@ -213,7 +189,14 @@ void Ptree::remove(const std::string &hash){
     remove(elem);
 }
 
-Pnode::Pnode(){}
+Pnode::Pnode(Ptree *ref):
+  tree(ref),
+  node_key(Bitset(0)),
+  node_svalues(generate_svalues()),
+  leaf(true),
+  num_elements(0),
+  node_elements()
+{}
 
 Pnode::Pnode(const Pnode & n):
     tree(n.tree),
@@ -224,11 +207,13 @@ Pnode::Pnode(const Pnode & n):
     node_elements(n.get_node_elements())
 {}
 
-Pnode::Pnode(Ptree* pointer):
-    tree(pointer),
-    node_key(),
+Pnode::Pnode(Ptree* ref, Bitset parent_key, int child_index):
+    tree(ref),
+    node_key(generate_child_key(parent_key, child_index)),
+    node_svalues(generate_svalues()),
     leaf(true),
-    num_elements()
+    num_elements(0),
+    node_elements()
 {}
 
 Pnode::~Pnode(){}
@@ -277,7 +262,7 @@ pnode_ptr Pnode::children(int c_index){
     if (is_leaf())
         throw std::runtime_error("requested child of leaf node");
     Bitset key = get_node_key();
-    Bitset child_key = generate_child_key(key, tree->get_bq(), c_index);
+    Bitset child_key = generate_child_key(key, c_index);
     pnode_ptr child = tree->node(child_key);
     return child;
 }
@@ -287,7 +272,7 @@ std::vector<pnode_ptr> Pnode::children(){
     if (is_leaf()){
         return result;
     }
-    int num_children = 1 << tree->get_bq();
+    int num_children = 1 << CONTEXT.treesettings.bq;
 
     for (int i=0; i<num_children; i++)
         result.push_back(children(i));
@@ -383,9 +368,8 @@ int Pnode::next(const Bitset &bs, int depth){
 }
 
 int Pnode::next_peaks(const Bitset &bs, int depth){
-    int bq = tree->get_bq();
-    int start = depth * bq;
-    int end = start + bq;
+    int start = depth * CONTEXT.treesettings.bq;
+    int end = start +CONTEXT.treesettings.bq;
     return bs.slice(start, end).to_int();
 }
 
@@ -394,16 +378,16 @@ int Pnode::next_hockeypuck(const Bitset &bs, int depth){
         throw std::runtime_error("Requested child of a leaf node");
     }
     int childIndex = 0;
-    for (int i=0; i<tree->get_bq(); i++){
+    for (int i=0; i < CONTEXT.treesettings.bq; i++){
         auto mask = 1 << uint32_t(i);
-        if (bs.test((depth*tree->get_bq())+i)) childIndex |= mask;
+        if (bs.test((depth*CONTEXT.treesettings.bq)+i)) childIndex |= mask;
     }
     return childIndex;
 }
 
 int Pnode::next_sks(const Bitset &bs, int depth){
-    int lowbit = depth * tree->get_bq();
-    int highbit = lowbit + tree->get_bq() - 1;
+    int lowbit = depth * CONTEXT.treesettings.bq;
+    int highbit = lowbit + CONTEXT.treesettings.bq - 1;
     int lowbyte = lowbit / 8;
     lowbit = lowbit % 8;
     int highbyte = highbit / 8;
@@ -432,11 +416,11 @@ void Pnode::split(int depth){
     commit_node();
 
     //create child nodes
-    uint32_t num = 1 << uint32_t(tree->get_bq());
+    uint32_t num = 1 << uint32_t(CONTEXT.treesettings.bq);
     std::vector<pnode_ptr> child_vec;
 
     for (uint32_t i=0; i < num; i++){
-        pnode_ptr child_node = tree->new_child(get_node_key(), i);
+        pnode_ptr child_node = std::make_shared<Pnode>(tree, get_node_key(), i);
         child_node->commit_node(true);
         child_vec.push_back(child_node);
     }
@@ -446,7 +430,7 @@ void Pnode::split(int depth){
 
         int index = next(bs, depth);
         pnode_ptr child_node = child_vec[index];
-        std::vector<NTL::ZZ_p> marray = tree->add_element_array(z);
+        std::vector<NTL::ZZ_p> marray = add_element_array(z);
         child_node->insert(z, marray, bs, depth+1);
     }
 }
@@ -454,7 +438,7 @@ pnode_ptr Pnode::parent(){
     Bitset key = get_node_key();
     if (key.size()==0) throw std::runtime_error("requested parent of root node");
     Bitset parent_key(key);
-    parent_key.resize(key.size() - tree->get_bq());
+    parent_key.resize(key.size() - CONTEXT.treesettings.bq);
     return tree->get_node(parent_key);
 }
 
