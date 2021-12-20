@@ -1,0 +1,134 @@
+name: peaks
+base: core20
+version: '0.1'
+summary: Peaks - An OpenPGP Keyserver
+description: |
+  Snap for peaks, the OpenPGP Keyserver
+grade: stable
+confinement: strict
+architectures:
+    - build-on: amd64
+
+apps:
+  peaks:
+    command: bin/peaks
+    plugs:
+      - network
+      - network-bind
+      - home
+
+parts:
+  peaks:
+    plugin: cmake
+    cmake-parameters: 
+      - -DCMAKE_BUILD_TYPE=DOCKER
+      - -DCMAKE_LIB_PREFIX="$SNAPCRAFT_STAGE/usr"
+      - -DCMAKE_INSTALL_PREFIX="/bin"
+      - -DCMAKE_CXX_FLAGS="-Wall -pthread -lstdc++ -pipe"
+    source: https://github.com/r4yan2/peaks.git
+    after: 
+      - cppcms
+      - openpgp
+      - ntl
+    build-packages:
+      - build-essential
+      - cmake
+      - m4 
+      - curl 
+      - python
+      - python3
+      - libcurl4-openssl-dev
+      - libpcre3-dev
+      - libicu-dev
+      - libgcrypt20-dev
+      - zlib1g-dev
+      - libbz2-dev
+      - libssl-dev
+      - libboost-program-options-dev
+      - libboost-system-dev
+      - libboost-filesystem-dev
+      - libboost-test-dev
+      - libmysqlcppconn-dev
+    stage-packages:
+      - libboost-filesystem1.71.0
+      - libboost-program-options1.71.0                            
+      - libmysqlcppconn7v5
+      - libasn1-8-heimdal
+      - libbrotli1
+      - libcurl4
+      - libgssapi3-heimdal                            
+      - libhcrypto4-heimdal
+      - libheimbase1-heimdal
+      - libheimntlm0-heimdal                                 
+      - libhx509-5-heimdal
+      - libicu66                                                       
+      - libkrb5-26-heimdal              
+      - libldap-2.4-2
+      - libmysqlclient21
+      - libnghttp2-14
+      - libpsl5
+      - libroken18-heimdal
+      - librtmp1
+      - libsasl2-2
+      - libssh-4
+      - libwind0-heimdal
+
+  gmp:
+    plugin: autotools
+    source: https://gmplib.org/download/gmp/gmp-6.1.2.tar.bz2
+    build-packages:
+      - wget
+    override-pull: |
+      snapcraftctl pull
+      wget https://raw.githubusercontent.com/r4yan2/fastgcd/9605906557a397db0630d67dc7bbe5d60f2e2fc4/gmp-6.1.2.patch
+      patch -p 1 < gmp-6.1.2.patch
+    autotools-configure-parameters:
+      - CFLAGS="-O3"
+      - --prefix="/usr"
+
+  ntl:
+    plugin: autotools
+    source: https://libntl.org/ntl-10.5.0.tar.gz
+    source-subdir: ntl-10.5.0/src
+    override-pull: |
+      wget https://libntl.org/ntl-10.5.0.tar.gz
+      tar -xf ntl-10.5.0.tar.gz
+    after:
+      - gmp
+    autotools-configure-parameters:
+      - NTL_THREADS=on 
+      - NTL_THREAD_BOOST=on 
+      - NTL_EXCEPTIONS=on
+      - NTL_STD_CXX11=on 
+      - CXXFLAGS="-O3 -fopenmp -D_GLIBCXX_PARALLEL" 
+      - NATIVE="off" 
+      - TUNE="generic"
+      - PREFIX=/usr 
+      - GMP_PREFIX="$SNAPCRAFT_STAGE/usr/"
+
+  cppcms:
+    plugin: cmake
+    source: https://netix.dl.sourceforge.net/project/cppcms/cppcms/2.0.0-beta2/cppcms-2.0.0.beta2.tar.bz2
+    cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_PREFIX=/usr
+    stage-packages:
+      - libicu66     
+
+  openpgp:
+    plugin: cmake
+    source: https://github.com/r4yan2/OpenPGP.git
+    override-pull: |
+      snapcraftctl pull
+      git checkout peaks
+    after: 
+      - gmp
+    build-packages:
+      - libgmp-dev
+    cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DGMP_INCLUDES="$SNAPCRAFT_STAGE/usr/include"
+      - -DGMP_LIBRARIES="$SNAPCRAFT_STAGE/usr/lib/libgmp.so" 
+      - -DGPG_COMPATIBLE=ON
+

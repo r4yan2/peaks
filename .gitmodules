@@ -2,6 +2,3 @@
 	path = OpenPGP
 	url = git://github.com/r4yan2/OpenPGP.git
 	branch = peaks
-[submodule "peaks-snap"]
-	path = peaks-snap
-	url = https://github.com/r4yan2/peaks-snap
