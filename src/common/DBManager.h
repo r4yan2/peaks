@@ -1,10 +1,12 @@
 #ifndef DBMANAGER_H
 #define DBMANAGER_H
 
+#include <cppconn/connection.h>
 #include <cppconn/resultset.h>
 #include <cppconn/prepared_statement.h>
 #include <cppconn/driver.h>
 
+#include <ios>
 #include <memory>
 #include <vector>
 #include <string>
@@ -18,9 +20,9 @@ namespace common{
 
 class DBResult {
     private:
-        std::unique_ptr<sql::ResultSet> res;
+        sql::ResultSet * res;
     public:
-        DBResult(std::unique_ptr<sql::ResultSet> &);
+        DBResult(sql::ResultSet *);
         ~DBResult();
         bool next();
         std::string getString(const std::string & attribute);
@@ -36,14 +38,17 @@ class DBResult {
 
 class DBQuery {
     private:
+        std::string query;
         std::shared_ptr<sql::PreparedStatement> stmt;
         std::vector<std::istream *> trash_bin;
+        int pos;
 
     public:
 
-        DBQuery(std::shared_ptr<sql::PreparedStatement> & stmt_);
+        DBQuery(sql::Connection * con, const std::string & stmt_);
         ~DBQuery();
 
+        void refresh(sql::Connection * con);
         std::unique_ptr<DBResult> execute();
         void setBlob(int, const std::string &);
         void setBlob(int, std::istream *);
@@ -144,7 +149,7 @@ class DBManager {
         void unlockTables();
         std::string get_certificate_from_filestore(const std::string&, const int, const int);
         std::string get_certificate_from_filestore(const std::string &hash);
-        std::shared_ptr<std::istream> get_certificate_stream_from_filestore(const std::string &filename, const int, const int);
+        std::shared_ptr<std::istream> get_certificate_stream_from_filestore(const std::string &filename, const int);
         std::tuple<std::string, int> store_certificate_to_filestore(const std::string &);
         bool get_from_cache(const std::string &key, std::string & value);
         void store_in_cache(const std::string &key, const std::string &value);
@@ -153,7 +158,7 @@ class DBManager {
          * Insert multiple csv into the respective table 
          * of the database via LOAD DATA INFILE operation
          */
-        void insertCSV();
+        void insertCSV(bool lock=false);
         void insertCSV(const std::string &f, const unsigned int &t);
 
         /** @brief Ready CSV files for writing tmp data

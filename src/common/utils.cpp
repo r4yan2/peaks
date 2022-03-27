@@ -353,6 +353,27 @@ std::string marshall_vec_zz_p(const std::vector<NTL::ZZ_p> &elements){
     return res.substr(0,res.size() - 1);
 }
 
+std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(const std::string &blob){
+  NTL::ZZ_p::init(CONTEXT.P_SKS);
+  std::vector<NTL::ZZ_p> elements;
+  std::istringstream is(blob);
+  NTL::ZZ_p elem;
+  while (is >> elem)
+      elements.push_back(elem);
+  return elements;
+  /*
+    std::vector<NTL::ZZ_p> res;
+    if (blob == "")
+        return res;
+    std::vector<std::string> splitted;
+    boost::split(splitted, blob, boost::is_any_of("\t "));
+    for (auto str: splitted)
+        res.push_back(NTL::conv<NTL::ZZ_p>(NTL::conv<NTL::ZZ>(str.c_str())));
+    return res;
+    */
+}
+
+
 int char2int(char input)
 {
   if(input >= '0' && input <= '9')
@@ -395,29 +416,11 @@ NTL::ZZ_p hex_to_zz(const std::string &hash){
 }
 
 NTL::ZZ_p bytes_to_zz(const std::vector<unsigned char> &bytes){
+    NTL::ZZ_p::init(CONTEXT.P_SKS);
     NTL::ZZ_p elem;
     //std::reverse(bytes.begin(), bytes.end());
     elem = NTL::conv<NTL::ZZ_p>(NTL::ZZFromBytes(bytes.data(), bytes.size()));
     return elem;
-}
-
-std::vector<NTL::ZZ_p> unmarshall_vec_zz_p(const std::string &blob){
-  std::vector<NTL::ZZ_p> elements;
-  std::istringstream is(blob);
-  NTL::ZZ_p elem;
-  while (is >> elem)
-      elements.push_back(elem);
-  return elements;
-  /*
-    std::vector<NTL::ZZ_p> res;
-    if (blob == "")
-        return res;
-    std::vector<std::string> splitted;
-    boost::split(splitted, blob, boost::is_any_of("\t "));
-    for (auto str: splitted)
-        res.push_back(NTL::conv<NTL::ZZ_p>(NTL::conv<NTL::ZZ>(str.c_str())));
-    return res;
-    */
 }
 
 std::string ZZp_to_bitstring(const NTL::ZZ_p &num){

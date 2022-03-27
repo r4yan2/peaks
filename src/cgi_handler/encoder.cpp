@@ -10,6 +10,12 @@ const std::string base64_encoder::b64map =
     "abcdefghijklmnopqrstuvwxyz"
     "0123456789+/";
 
+
+bool base64_encoder::encode(const std::string &in, std::string &out)
+{
+    out = OpenPGP::ascii2radix64(in);
+    return true;
+}
 bool base64_encoder::encode(const vector<char>& in, vector<char>& out)
 {
     string tmp = OpenPGP::ascii2radix64(string(in.begin(), in.end()));
@@ -48,6 +54,13 @@ bool base64_encoder::encode(const vector<char>& in, vector<char>& out)
     return true;*/
 }
 
+bool radix64::encode(const std::string &in, std::string &out)
+{
+    std::istringstream in_(in);
+    if(!this->encode(in_, out))
+        return false;
+    return true;
+}
 bool radix64::encode(std::istream& in, std::string& out)
 {
     vector<char> data;

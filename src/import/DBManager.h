@@ -29,6 +29,7 @@ public:
     void write_self_signature_csv(const DBStruct::signatures &ss);
     void write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod);
     void write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_data);
+    void write_gpg_keyserver_table(const DBStruct::gpg_keyserver_data &gpg_data);
 
     void write_broken_key_csv(std::ifstream &file_cert, const std::string &error);
 
@@ -46,6 +47,7 @@ public:
 private:
 
     std::shared_ptr<DBQuery>
+        insert_gpg_keyserver,
         get_signature_by_index;
 };
 

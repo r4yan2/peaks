@@ -31,19 +31,13 @@ namespace Import {
             std::tuple<std::string, int> res = dbm->store_certificate_to_filestore(key->raw());
             read_gpg_keyserver_data(key, &gpg_keyserver_table, std::get<0>(res), std::get<1>(res), key_str.size());
             hashes.push_back(gpg_keyserver_table.hash);
-            dbm->write_gpg_keyserver_csv(gpg_keyserver_table);
+            //dbm->write_gpg_keyserver_csv(gpg_keyserver_table);
+            dbm->write_gpg_keyserver_table(gpg_keyserver_table);
         }
         return hashes;
     }
 
-    void insert_csv(std::shared_ptr<IMPORT_DBManager> & dbm_){
-        //dbm_->lockTables();
-        dbm_->insertCSV();
-        //dbm_->unlockTables();
-    }
-
     void unpack_dump_th(std::shared_ptr<IMPORT_DBManager> & dbm, const vector<std::string> &files, const bool &fast){
-
         for (const auto &f : files) {
             try{
                 std::cout << "----------------------- " << f << " -----------------------" << std::endl;

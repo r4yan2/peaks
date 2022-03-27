@@ -1,11 +1,44 @@
-README
-======
+Intro
+-----
+
+Peaks is an OpenPGP keyserver aiming to be fast, reliable, documented and able to sync with SKS keyserver
+
+Contents
+-------
+
+* Install
+    * Snap
+    * Docker
+    * Compile
+* Configuration
+    * Database
+    * Config and membership
+* Usage
+* Docker-compose
 
 
+Install
+-------
 
-# Peaks Compilation and Usage
+## Snap
 
-## Get
+[![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/peaks)
+
+By far the easieast and comfy solution, just
+
+```bash
+sudo snap install peaks
+```
+
+## Docker
+
+```bash
+docker pull peaks:latest
+```
+
+**Note**: the docker container is suitable to be used as stand alone binary
+
+## Compile
 
 Be sure to download the full repo (including submodules)
 
@@ -19,9 +52,6 @@ or if you have just downloaded the zip archive of this repository without the su
 cd peaks/
 git submodule update --init --recursive
 ```
-
-## Compile
-### Dependencies
 
 Peaks depends on:
 * build-essential (and cmake)
@@ -41,14 +71,10 @@ Peaks depends on:
 **On Debian/Ubuntu you can install part of the dependencies with**
 
 ```bash
-apt-get install -y build-essential m4 curl python git libcurl4-openssl-dev libpcre3-dev libicu-dev libgcrypt20-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libboost-test-dev libmysqlcppconn-dev
+apt-get install -y build-essential m4 curl python git libcurl4-openssl-dev libpcre3-dev libicu-dev libgcrypt20-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libboost-test-dev libmysqlcppconn-dev libssl-dev
 ```
 
-### Compiling
-
-Actual compiling can be done via `cmake` or `scons`. There is no real recommendations here, use what you prefer, when in doubt, use cmake
-
-#### Cmake
+### Cmake
 
 First of all install cmake if you still don't have it
 ```bash
@@ -58,37 +84,58 @@ apt install cmake
 NTL, GMP and OpenPGP can be compiled running
 
 ```bash
-BUILD=Release ./compile_libraries.sh
+BUILD=Release PREFIX=/usr/local ./compile_libraries.sh
 ```
 
-By default they will be installed in a local directory `lib`, so to not mess up with your base system
-
-In order to compile the keyserver:
+Then, to compile the keyserver:
 
 ```bash
-mkdir build && cd build/ \
-&& cmake -DCMAKE_BUILD_TYPE=Release .. \
-&& make -j<insert_your_favourite_number_here>
+mkdir build && cd build/
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_LIB_PREFIX=/usr/local -DCMAKE_INSTALL_PREFIX=/usr/local/bin ..
+make
 ```
 
-The binary will output in the **bin** subdirectory
+`-DCMAKE_LIB_PREFIX` and `-DCMAKE_INSTALL_PREFIX` can be customized to suit your needs
 
-#### Scons 
+Configuration
+-----
 
-To use `Scons` as build system first of all you need to install it via
+## Database
+
+peaks require a mysql 5.6 or 5.7 installation to work.
+Using the ![docker image](https://hub.docker.com/_/mysql/) is perhaps the easiest and most straghtforward way to configure a mysql server, more on this in the [relevant section](#Docker)
+
+In order to specify the database parameters to peaks you need to tweak the peaks settings, more on this in the upcoming sections
+
+## Config and membership
+
+Peaks will look for a configuration file `peaks_config` in one of the following locations:
+
+* the current location
+* `/var/lib/peaks/peaks_config`
+* `/etc/peaks/peaks_config`
+
+To generate a default configuration file
+
 ```bash
-apt install scons
+peaks config > peaks_config
 ```
-or
-```bash
-pip install scons
-```
-Then, in the project main folder run `scons -type=release -type=release -jN` where N is the number of cpu to use, it will take care of the rest
 
-## Setup and Usage
+Most of the default parameters will do just fine for most cases.
+In particular you need to change the **database configuration** according to your system setup, otherwise peaks will hang or complain or both.
+
+Please take a look into the [dedicated section](#options) to know more about the config.
+
+In the configuration file it will be required to set up the location of the *membership* file
+For those new to the keyserver, a membership file holds the information of the peer which agreed to synchronize key material with you. More info in the [membership](#membership) section
+
+
+Usage
+-----
 
 The main **peaks** executable accept the following commands:
 
+* config - will output a default configuration for peaks
 * import - will import the pgp dump into the database
 * build - proceed to create the ptree
 * serve - serve the pgp infrastructure through the web interface
@@ -98,19 +145,8 @@ The main **peaks** executable accept the following commands:
 
 `peaks -h` will give the list of accepted commands and options
 
-Peaks will look for the **required** configuration file `peaks_config` in one of the following locations:
+## Initialization
 
-* the same location of the `peaks` binary
-* `/var/lib/peaks/peaks_config`
-* `/etc/peaks/peaks_config`
-
-Please take a look into the dedicated section to know more about the config.
-
-In particular you need to change the **database configuration** according to your system setup before actually using peaks
-
-### Database Initialization
-
-Peaks needs a mysql database running to store key material and runtime information
 You will need to have a collection of `pgp` dump that peaks will import.
 
 ```bash
@@ -118,17 +154,19 @@ peaks import --init <path_to_DB_initialization_file> --path <path_to_dump> --thr
 ```
 
 * `init` will let peaks handle the initialization of the DB schema. A file has been prepared for this purpose under the `bin` subdirectory. In case restrictive database access is used probably peaks will not have the necessary permission to init the DB. The process can be completed manually before the first run by using the dedicated `schema.sql` in the `database` folder.
-* `fastimport` is used internally to initialize the main table of the database, this will allow for lazy initialization of the other required tables, in order to speed up the setup
 * `path` should point to the folder keeping the .pgp files
 * `threads` is the number of threads to use to parse the key material
 
-Note that with the current keydump peaks require a lot of space available on disk:
+**Note**: to reduce the operation time and the I/O stress on the target machine peaks will **not** import certificate in the database, just their metadata, so you should not remove them after the import procedure
 
-* `30GB` are needed to store temporary data, which will be deleted at the end of the importing phase
-* the actual database will be a minimum of `25GB` in size, but it will grow with use
+In case you would like to discard the imported certificate data just connect to a mysql shell and issue
 
+```sql
+use gpg_keyserver;
+truncate gpg_keyserver;
+```
 
-### Build the prefix tree
+## Build the prefix tree
 
 After succesfully importing the certificate you need to generate the ptree to reconcile with other keyservers
 
@@ -136,7 +174,17 @@ After succesfully importing the certificate you need to generate the ptree to re
 peaks build
 ```
 
-### Usage
+## Start up the server process
+
+To be able to query peaks from the web interface (and to allow other keyserver to fetch key-material from you) run
+
+```bash
+peaks serve
+```
+
+
+
+## Reconcile
 
 To keep-up with other keyservers you need to start the daemon(s) provided with
 peaks:
@@ -151,12 +199,6 @@ To start reconciling please setup the config file and the **membership** file ac
 
 ```bash
 peaks recon
-```
-
-To be able to query peaks from the web interface (and to allow other keyserver to fetch key-material from you) run
-
-```bash
-peaks serve
 ```
 
 To run the daemon for the unpacking of key material (needed to allow humans to search keys from the web interface). This process will run in batch to avoid using too much resources, it will take a while to complete

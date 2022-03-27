@@ -9,6 +9,7 @@ Ptree::Ptree():
     root(std::make_shared<Pnode>(this)),
     dbm(std::make_shared<Recon_mysql_DBManager>())
 {
+    NTL::ZZ_p::init(CONTEXT.P_SKS);
     Bitset bs;
     try{
         root = node(bs);
@@ -17,7 +18,21 @@ Ptree::Ptree():
     }
 }
 
+Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbm_):
+    root(std::make_shared<Pnode>(this)),
+    dbm(dbm_)
+{
+    Bitset bs;
+    try{
+        root = node(bs);
+    }catch(std::runtime_error &e){
+        //expected, tree need to be initialized explicitly when empty
+    }
+}
+
+
 Ptree& Ptree::ptree(){
+    NTL::ZZ_p::init(CONTEXT.P_SKS);
     static Ptree instance;
     return instance;
 }

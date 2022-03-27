@@ -5,6 +5,7 @@
 namespace peaks{
 namespace recon{
 Peer::Peer():
+    ptree(),
     cn()
 {
     std::ifstream f(CONTEXT.peersettings.membership_config);
@@ -75,7 +76,7 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
     syslog(LOG_DEBUG, "Should recover %d elements, starting double check!", int(elems.size()));
     std::vector<NTL::ZZ_p> elements;
     for (auto e: elems){
-        if (!(PTREE.has_key(Utils::zz_to_hex(e))))
+        if (!(ptree.has_key(Utils::zz_to_hex(e))))
             elements.push_back(e);
     }
 
@@ -118,7 +119,7 @@ void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &el
     if (hashes.size() != elements.size()){
         syslog(LOG_WARNING, "number of recovered keys does not match number of hashes recovered!");
     }
-    PTREE.update(hashes);
+    ptree.update(hashes);
     dbm->end_transaction();
 }
 
@@ -187,7 +188,7 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
 
 void Peer::interact_with_client(peertype &remote_peer){
     Recon_manager recon(cn);
-    std::shared_ptr<Pnode> root = PTREE.get_root();
+    std::shared_ptr<Pnode> root = ptree.get_root();
     bitset newset(0);
     request_entry req = request_entry{.node = root, .key = newset};
     recon.push_request(req);
@@ -498,7 +499,7 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     int r_size = req->size;
     std::vector<NTL::ZZ_p> r_samples = req->samples;
     bitset key = req->prefix;
-    std::shared_ptr<Pnode> node = PTREE.node(key);
+    std::shared_ptr<Pnode> node = ptree.node(key);
     std::vector<NTL::ZZ_p> l_samples = node->get_node_svalues();
     int l_size = node->get_num_elements();
     std::vector<NTL::ZZ_p> elements;
@@ -544,7 +545,7 @@ Communication Peer::request_full_handler(ReconRequestFull* req){
     zpset local_set;
     Communication newcomm;
     try{
-        std::shared_ptr<Pnode> node = PTREE.node(req->prefix);
+        std::shared_ptr<Pnode> node = ptree.node(req->prefix);
         local_set.add(node->elements());
     } catch (std::exception& e){
         newcomm.status = Communication_status::ERROR;

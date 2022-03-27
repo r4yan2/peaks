@@ -201,6 +201,7 @@ private:
   
 public:
     Ptree();
+    Ptree(std::shared_ptr<RECON_DBManager> dbm_);
     static Ptree& ptree();
     Ptree(Ptree const &) = delete;
     void operator=(Ptree const &) = delete;
@@ -281,5 +282,5 @@ public:
 }
 }
 
-#define PTREE peaks::recon::Ptree::ptree()
+//#define PTREE peaks::recon::Ptree()
 #endif //RECON_PTREEDB_H

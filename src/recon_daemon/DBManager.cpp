@@ -3,10 +3,12 @@
 #include <sstream>
 #include <thread>
 #include "DBManager.h"
+#include "NTL/ZZ_p.h"
 #include <common/config.h>
 #include <common/utils.h>
 #include <recon_daemon/Bitset.h>
 #include <OpenPGP.h>
+#include <recon_daemon/Message.h>
 
 using namespace peaks::common;
 using namespace std;
@@ -70,10 +72,14 @@ void Recon_mysql_DBManager::insert_node(const DBStruct::node &n){
   try{
     insert_pnode_stmt->setString(1, n.key);
     insert_pnode_stmt->setInt(2, n.key_size);
-    insert_pnode_stmt->setString(3, Utils::marshall_vec_zz_p(n.svalues));
+    Buffer tmp;
+    tmp.write_zz_array(n.svalues);
+    insert_pnode_stmt->setString(3, tmp.to_str());
     insert_pnode_stmt->setInt(4, n.num_elements);
     insert_pnode_stmt->setBoolean(5, n.leaf);
-    insert_pnode_stmt->setString(6, Utils::marshall_vec_zz_p(n.elements));
+    tmp.clear();
+    tmp.write_zz_array(n.elements);
+    insert_pnode_stmt->setString(6, tmp.to_str());
     insert_pnode_stmt->execute();
   }
   catch (std::exception &e){
@@ -83,10 +89,14 @@ void Recon_mysql_DBManager::insert_node(const DBStruct::node &n){
   
 void Recon_mysql_DBManager::update_node(const DBStruct::node &n){
   try{
-    update_pnode_stmt->setString(1, Utils::marshall_vec_zz_p(n.svalues));
+    Buffer tmp;
+    tmp.write_zz_array(n.svalues);
+    update_pnode_stmt->setString(1, tmp.to_str());
     update_pnode_stmt->setInt(2, n.num_elements);
     update_pnode_stmt->setBoolean(3, n.leaf);
-    update_pnode_stmt->setString(4, Utils::marshall_vec_zz_p(n.elements));
+    tmp.clear();
+    tmp.write_zz_array(n.elements);
+    update_pnode_stmt->setString(4, tmp.to_str());
     update_pnode_stmt->setString(5, n.key);
     update_pnode_stmt->setInt(6, n.key_size);
     update_pnode_stmt->execute();
@@ -101,13 +111,16 @@ DBStruct::node Recon_mysql_DBManager::get_node(const Bitset& k){
   get_pnode_stmt->setInt(2, k.size());
   std::unique_ptr<DBResult> result = get_pnode_stmt->execute();
   result->next();
+
+  std::vector<NTL::ZZ_p> node_svalues = Buffer(result->getString("node_svalues")).read_zz_array();
+  std::vector<NTL::ZZ_p> node_elements = Buffer(result->getString("node_elements")).read_zz_array();
   DBStruct::node n = {
       k.blob(),
       k.size(),
-      Utils::unmarshall_vec_zz_p(result->getString("node_svalues")),
+      node_svalues,
       result->getInt("num_elements"),
       result->getBoolean("leaf"),
-      Utils::unmarshall_vec_zz_p(result->getString("node_elements"))
+      node_elements,
   };
   return n;
 }
@@ -236,10 +249,14 @@ void Recon_memory_DBManager::commit_memtree(){
     csv_file = ofstream(CONTEXT.dbsettings.tmp_folder + "ptree.csv");
     try{
         for (const auto& entry: memory_storage){
-            std::string node_svalues = Utils::marshall_vec_zz_p(std::get<0>(entry.second)); 
-            std::string node_elements = Utils::marshall_vec_zz_p(std::get<3>(entry.second)); 
-		    csv_file << '"' << hexlify(entry.first.first) << "\","; //node key
-		    csv_file << '"' << entry.first.second << "\","; // node key size
+            Buffer tmp;
+            tmp.write_zz_array(std::get<0>(entry.second));
+            std::string node_svalues = tmp.to_str();
+            tmp.clear();
+            tmp.write_zz_array(std::get<3>(entry.second));
+            std::string node_elements = tmp.to_str(); 
+		        csv_file << '"' << hexlify(entry.first.first) << "\","; //node key
+		        csv_file << '"' << entry.first.second << "\","; // node key size
             csv_file << '"' << node_svalues << "\","; // svalues
             csv_file << '"' << std::get<1>(entry.second) << "\","; //num elements
             csv_file << '"' << std::get<2>(entry.second) << "\","; // leaf

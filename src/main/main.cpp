@@ -121,7 +121,7 @@ void signalHandler(int signum) {
         std::signal(SIGSEGV, signalHandler);
         std::map<std::string, std::function<void()>> command_map = {
             std::make_pair("help", help),
-            std::make_pair("generate_config", write_config),
+            std::make_pair("config", write_config),
             std::make_pair("import", import::import),
             std::make_pair("unpack", unpacker::unpack),
             std::make_pair("recon", recon::recon),

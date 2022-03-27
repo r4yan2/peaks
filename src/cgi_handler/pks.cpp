@@ -205,7 +205,7 @@ void Pks::post(const string& arm){
 void Pks::get(const string& id) {
     syslog(LOG_INFO, "Looking up key with id: %s", id.c_str());
     // Query key from database
-    std::shared_ptr<istream> bin_key;
+    std::string bin_key;
     int exit_code = dbm->searchKey(id, bin_key);
 
     if(exit_code == SUCCESS) {
@@ -216,7 +216,7 @@ void Pks::get(const string& id) {
         r64.add_headers("Version: peaks 1.0");
         r64.add_headers("Comment: Hostname: localhost");
 
-        if(!r64.encode(*bin_key, pubkey)) {
+        if(!r64.encode(bin_key, pubkey)) {
             syslog(LOG_ERR, "Failed to encode key in radix64 with id %s!", id.c_str());
         }
         // Content initialization

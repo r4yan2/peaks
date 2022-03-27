@@ -454,7 +454,10 @@ void Connection_Manager::write_message(Buffer &buffer, Message* m, bool wrap){
             ((Config_ok*)m)->marshal(partial_buffer);
             delete ((Config_ok*) m);
             break;
-                                      
+        case Msg_type::Done:
+            break; //empty
+        case Msg_type::Flush:
+            break; //empty
         default:
             syslog(LOG_ERR, "Unrecognized Message %d", m->type);
             break;

@@ -21,6 +21,10 @@ void Buffer::set_read_only(){
     it = buf.begin();
 }
 
+void Buffer::clear(){
+  buf.clear();
+}
+
 int Buffer::size() const{
     return buf.size();
 }

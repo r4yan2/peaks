@@ -49,30 +49,30 @@ public:
 	 * @param key query string
 	 * @return success status
 	 */
-    int searchKey(std::string key, std::shared_ptr<std::istream> & result);
+    int searchKey(std::string key, std::string & result);
 
 	/**
 	 * Query the database searching for certificates with id
 	 * ending in <keyID>
 	 * @param keyID id to search
-	 * @return pointer to the certificate blob (stream)
+	 * @return certificate blob (stream)
 	 */
-	std::shared_ptr<std::istream> shortIDQuery(const std::string &keyID);
+	std::string shortIDQuery(const std::string &keyID);
 
 	/**
 	 * Query the database searching for certificates with id
 	 * equal to <keyID>
 	 * @param keyID id to search
-	 * @return pointer to the certificate blob (stream)
+	 * @return certificate blob (stream)
 	 */
-	std::shared_ptr<std::istream> longIDQuery(const std::string &keyID);
+	std::string longIDQuery(const std::string &keyID);
 	/**
 	 * Query the database searching for certificates with
 	 * fingerprint equal to <fp>
 	 * @param fp fingerprint to search
-	 * @return pointer to the certificate blob
+	 * @return certificate blob
 	 */
-	std::shared_ptr<std::istream> fingerprintQuery(const std::string &fp);
+	std::string fingerprintQuery(const std::string &fp);
 
 	/**
 	 * normal index query entrypoint

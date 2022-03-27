@@ -14,7 +14,7 @@ namespace import{
 void import() {
     syslog(LOG_NOTICE, "Dump_import is starting up!");
     if (CONTEXT.has("init")){
-        std::string filename = CONTEXT.get("init", "schema.sql");
+        std::string filename = CONTEXT.get<std::string>("init", "schema.sql");
         std::ifstream cFile(filename);
         if (!cFile.is_open()){
             std::cout << "Could not find init file for DB" << std::endl;
@@ -105,13 +105,13 @@ void generate_csv(std::shared_ptr<IMPORT_DBManager> dbm, std::vector<std::string
 void import_csv(std::shared_ptr<IMPORT_DBManager> dbm){
 
     std::cout << Utils::getCurrentTime() << "Writing in DB" << std::endl;
-    //std::cout << "Drop index" << std::endl;
-    //dbm->drop_index_gpg_keyserver();
+    std::cout << "Drop index" << std::endl;
+    dbm->drop_index_gpg_keyserver();
     dbm->store_in_cache("import_status", "ready");
-    Import::insert_csv(dbm);
+    dbm->insertCSV();
     dbm->store_in_cache("import_status", "done");
-    //std::cout << "Rebuilding index" << std::endl;
-    //dbm->build_index_gpg_keyserver();
+    std::cout << "Rebuilding index" << std::endl;
+    dbm->build_index_gpg_keyserver();
 }
 
 }

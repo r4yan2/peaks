@@ -30,8 +30,8 @@ void pr::readPublicKeyPacket(const string &arm, peaks::pks::CGI_DBManager *dbm){
             if (p->get_tag() == Packet::PUBLIC_KEY){
                 // Verifico se la chiave è già presente nel DB ed eventualmente mergio
                 string q = hexlify(dynamic_pointer_cast<Packet::Tag6>(p)->get_fingerprint());
-                std::shared_ptr<istream> query = dbm -> fingerprintQuery(q);
-                if(query){ exist = pr::manageMerge(key, query); }
+                std::string query = dbm -> fingerprintQuery(q);
+                if(query != ""){ exist = pr::manageMerge(key, query); }
                 break;
             }
         }
@@ -118,7 +118,7 @@ void pr::readPublicKeyPacket(const string &arm, peaks::pks::CGI_DBManager *dbm){
 
     cout << "Submitting data" << endl;
     dbm->insert_gpg_keyserver(gk);
-    PTREE.insert(gk.hash);
+    peaks::recon::Ptree().insert(gk.hash);
     //if (exist) {
     //    dbm->update_gpg_keyserver(gk);
     //} else {
@@ -131,9 +131,8 @@ void pr::readPublicKeyPacket(const string &arm, peaks::pks::CGI_DBManager *dbm){
     cout << "Upload of the key finished" << endl;
 }
 
-bool pr::manageMerge(PublicKey::Ptr key, std::shared_ptr<istream> & query){
+bool pr::manageMerge(PublicKey::Ptr key, const std::string & content){
     cout << "Key already in the database, proceeding with merge" << endl;
-    std::string content{ std::istreambuf_iterator<char>(*query), std::istreambuf_iterator<char>() };
     const Key::Ptr oldKey = make_shared<Key>(content);
     try{
         key->merge(oldKey);

@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "DBManager.h"
+#include "common/DBStruct.h"
 #include <boost/program_options.hpp>
 #include <common/config.h>
 
@@ -26,6 +27,7 @@ IMPORT_DBManager::IMPORT_DBManager():DBManager()
 void IMPORT_DBManager::prepare_queries() {
     get_signature_by_index = prepare_query("SELECT id "
                                      "FROM Signatures WHERE r = (?) and s = (?)");
+    insert_gpg_keyserver = prepare_query("INSERT INTO gpg_keyserver (version,ID,fingerprint,hash,is_unpacked,error_code,filename,origin,len) VALUES (?,?,?,?,?,?,?,?,?)");
 }
 
 IMPORT_DBManager::~IMPORT_DBManager()
@@ -55,6 +57,23 @@ void IMPORT_DBManager::build_index_gpg_keyserver(){
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `id` (`ID`);");
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `fingerprint` (`fingerprint`, `version`);");
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `HASH` (`hash` ASC);");
+}
+
+void IMPORT_DBManager::write_gpg_keyserver_table(const DBStruct::gpg_keyserver_data &gpg_data){
+    try{
+        insert_gpg_keyserver->setInt(1, gpg_data.version);
+        insert_gpg_keyserver->setString(2, gpg_data.ID);
+        insert_gpg_keyserver->setString(3, gpg_data.fingerprint);
+        insert_gpg_keyserver->setString(4, gpg_data.hash);
+        insert_gpg_keyserver->setInt(5, 0);
+        insert_gpg_keyserver->setInt(6, 0);
+        insert_gpg_keyserver->setString(7, gpg_data.filename);
+        insert_gpg_keyserver->setInt(8, gpg_data.origin);
+        insert_gpg_keyserver->setInt(9, gpg_data.len);
+        insert_gpg_keyserver->execute();
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_gpg_keyserver_csv FAILED, the key will not have the certificate in the database! - %s", e.what());
+    }
 }
 
 void IMPORT_DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_data &gpg_data){

@@ -80,6 +80,10 @@ class Buffer{
 	    */ 
         void set_read_only();
 
+        /** clear buffer
+         */
+        void clear();
+
         std::vector<unsigned char> vector() const;
         std::string to_str() const;
         char* c_str() const;

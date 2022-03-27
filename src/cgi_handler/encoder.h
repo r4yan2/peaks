@@ -38,6 +38,7 @@ class base64_encoder : public base_encoder
 {
 public:
     virtual bool encode(const vector<char>& in, vector<char>& out);
+    virtual bool encode(const std::string& in, std::string& out);
     virtual bool decode(const vector<char>& in, vector<char>& out) 
     { 
         return false;
@@ -78,7 +79,7 @@ public:
     }
 
     virtual bool encode(std::istream& in, std::string& out);
-
+    virtual bool encode(const std::string &in, std::string& out);
     virtual bool encode(const vector<char>& in, vector<char>& out);
     virtual bool decode(const vector<char>& in, vector<char>& out)
     { 

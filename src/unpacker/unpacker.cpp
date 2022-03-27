@@ -103,6 +103,7 @@ void Unpacker::run(){
     std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>(nThreads);
 
     std::vector<std::shared_ptr<Job>> unpacking_jobs;
+    dbm->openCSVFiles();
 
     for (unsigned int i = 0; i < gpg_data.size();){
         std::vector<Key::Ptr> pks;
@@ -176,8 +177,6 @@ void Unpacker::store_keymaterial(){
 
 void unpack_key_th(std::shared_ptr<UNPACKER_DBManager> dbm, const vector<Key::Ptr> &pks){
     
-    dbm->openCSVFiles();
-
     int i = 0;
     for (const auto &pk : pks) {
         try{

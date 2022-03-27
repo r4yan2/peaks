@@ -103,7 +103,7 @@ void CGI_DBManager::prepare_queries(){
 CGI_DBManager::~CGI_DBManager() {
 }
 
-int CGI_DBManager::searchKey(string key, std::shared_ptr<std::istream> & blob){
+int CGI_DBManager::searchKey(string key, std::string & blob){
     // Strip "0x" from key string
     key.erase(0, 2);
     // Detect input type by lenght
@@ -125,10 +125,10 @@ int CGI_DBManager::searchKey(string key, std::shared_ptr<std::istream> & blob){
             return ERROR; // Invalid search string lenght
     }
     // Check the result pointer
-    return blob ? SUCCESS : KEY_NOT_FOUND;
+    return blob != "" ? SUCCESS : KEY_NOT_FOUND;
 }
 
-std::shared_ptr<istream> CGI_DBManager::shortIDQuery(const string &keyID) {
+std::string CGI_DBManager::shortIDQuery(const string &keyID) {
 
     check_database_connection();
     // Get the 32 MSBs of the key IDs
@@ -139,13 +139,13 @@ std::shared_ptr<istream> CGI_DBManager::shortIDQuery(const string &keyID) {
         std::string filename = result->getString("filename");
         int origin = result->getInt("origin");
         int len = result->getInt("len");
-        return get_certificate_stream_from_filestore(filename, origin, len);
+        return get_certificate_from_filestore(filename, origin, len);
     } else {
-        return NULL;
+        return "";
     }
 }
 
-std::shared_ptr<istream> CGI_DBManager::longIDQuery(const string &keyID) {
+std::string CGI_DBManager::longIDQuery(const string &keyID) {
     check_database_connection();
     // Perform the query on the full key IDs
 
@@ -155,13 +155,13 @@ std::shared_ptr<istream> CGI_DBManager::longIDQuery(const string &keyID) {
         std::string filename = result->getString("filename");
         int origin = result->getInt("origin");
         int len = result->getInt("len");
-        return get_certificate_stream_from_filestore(filename, origin, len);
+        return get_certificate_from_filestore(filename, origin, len);
     } else {
-        return NULL;
+        return "";
     }
 }
 
-std::shared_ptr<istream> CGI_DBManager::fingerprintQuery(const string &fp) {
+std::string CGI_DBManager::fingerprintQuery(const string &fp) {
     check_database_connection();
     // Query on the fingerprints
     fprint_stmt->setString(1, fp);
@@ -170,9 +170,9 @@ std::shared_ptr<istream> CGI_DBManager::fingerprintQuery(const string &fp) {
         std::string filename = result->getString("filename");
         int origin = result->getInt("origin");
         int len = result->getInt("len");
-        return get_certificate_stream_from_filestore(filename, origin, len);
+        return get_certificate_from_filestore(filename, origin, len);
     } else {
-        return NULL;
+        return "";
     }
 }
 

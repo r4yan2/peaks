@@ -108,6 +108,7 @@ bool DBManager::ensure_database_connection(){
     driver = get_driver_instance();
     con = driver->connect(connection_properties);
     con->setSchema(CONTEXT.dbsettings.db_database);
+    check_sql_mode();
     return connected;
 }
 
@@ -115,6 +116,9 @@ void DBManager::begin_transaction(){
     try{
         CONTEXT.critical_section = true;
         execute_query("SET AUTOCOMMIT = 0");
+        execute_query("SET UNIQUE_CHECKS = 0");
+        execute_query("SET sql_log_bin = 0");
+        execute_query("SET foreign_key_checks = 0");
         execute_query("START TRANSACTION");
     }catch (exception &e){
         syslog(LOG_WARNING, "begin transaction FAILED, data corruption may occur! - %s", e.what());
@@ -126,6 +130,9 @@ void DBManager::end_transaction(){
         CONTEXT.critical_section = false;
         execute_query("COMMIT");
         execute_query("SET AUTOCOMMIT = 1");
+        execute_query("SET UNIQUE_CHECKS = 1");
+        execute_query("SET sql_log_bin = 1");
+        execute_query("SET foreign_key_checks = 1");
     }catch (exception &e){
         syslog(LOG_WARNING, "end transaction FAILED, data corruption may occur! - %s", e.what());
     }
@@ -136,6 +143,9 @@ void DBManager::rollback_transaction(){
         CONTEXT.critical_section = false;
         execute_query("ROLLBACK");
         execute_query("SET AUTOCOMMIT = 1");
+        execute_query("SET UNIQUE_CHECKS = 1");
+        execute_query("SET sql_log_bin = 1");
+        execute_query("SET foreign_key_checks = 1");
     }catch (exception &e){
         syslog(LOG_WARNING, "end transaction FAILED, data corruption may occur! - %s", e.what());
     }
@@ -143,11 +153,6 @@ void DBManager::rollback_transaction(){
 
 void DBManager::lockTables(){
     try{
-        execute_query("SET AUTOCOMMIT = 0");
-        execute_query("SET UNIQUE_CHECKS = 0");
-        execute_query("SET sql_log_bin = 0");
-        execute_query("SET foreign_key_checks = 0");
-
         string s = accumulate(++tables.begin(), tables.end(), Utils::TABLENAME.at(tables[0]), [](string &a, unsigned int &b){return a + std::string(" WRITE, ") + Utils::TABLENAME.at(b);});
         string lockQuery = std::string("LOCK TABLES ") + s + std::string(" WRITE");
         
@@ -167,13 +172,12 @@ void DBManager::unlockTables(){
 }
 
 shared_ptr<DBQuery> DBManager::prepare_query(const std::string & stmt){
-    shared_ptr<sql::PreparedStatement> query = std::shared_ptr<sql::PreparedStatement>(con->prepareStatement(stmt));
-    shared_ptr<DBQuery> res = std::make_shared<DBQuery>(query);
+    shared_ptr<DBQuery> res = std::make_shared<DBQuery>(con, stmt);
     return res; 
 }
 
 void DBManager::execute_query(const string & stmt){
-    syslog(LOG_INFO, stmt.c_str());
+    syslog(LOG_INFO, "Execute query %s", stmt.c_str());
     unique_ptr<sql::Statement>(con->createStatement())->execute(stmt);
 }
 
@@ -201,7 +205,7 @@ tuple<std::string, int> DBManager::store_certificate_to_filestore(const std::str
 
 
 string DBManager::get_certificate_from_filestore(const std::string &filename, const int start, const int length){
-    shared_ptr<std::istream> file = get_certificate_stream_from_filestore(filename, start, length);
+    shared_ptr<std::istream> file = get_certificate_stream_from_filestore(filename, start);
     string buffer(length, ' ');
     file->read(&buffer[0], length); 
     return buffer;
@@ -224,10 +228,19 @@ string DBManager::get_certificate_from_filestore(const std::string &hash){
     return get_certificate_from_filestore(filename, start, length);
 }
 
-shared_ptr<std::istream> DBManager::get_certificate_stream_from_filestore(const std::string &filename, const int start, const int length){
+shared_ptr<std::istream> DBManager::get_certificate_stream_from_filestore(const std::string &filename, const int start){
     shared_ptr<std::istream> file = std::make_shared<std::ifstream>(filename, std::ios::in | std::ios::binary);
     file->seekg(start);
     return file;
+  //auto init_buf = std::make_unique<substreambuf>(start, length);
+  //return std::make_unique<std::istream>(
+  //  init_buf->open(filename, std::ios_base::in | std::ios::binary)
+  //);
+    //std::shared_ptr<std::ifstream> file = std::make_shared<std::ifstream>(filename, std::ios::in | std::ios::binary);
+    //std::shared_ptr<std::streambuf> filebuf = std::make_shared<std::streambuf>(file->rdbuf());
+    //std::shared_ptr<substreambuf> subuf = std::make_shared<substreambuf>(filebuf, start, length);
+    //std::shared_ptr<std::istream> res = std::make_shared<std::istream>(subuf);
+    //return res;
 }
 
 bool DBManager::get_from_cache(const string &key, std::string &value){
@@ -276,13 +289,17 @@ void DBManager::closeCSVFiles(){
     }
 }
 
-void DBManager::insertCSV(){
+void DBManager::insertCSV(bool lock){
+    if (lock) lockTables();
     for (const auto &it: file_list){
         string f = it.second->get_name();
         auto table = it.first;
         it.second->close();
+        begin_transaction();
         insertCSV(f, table);
+        end_transaction();
     }
+    if (lock) unlockTables();
 }
 
 void DBManager::insertCSV(const string &f, const unsigned int &table){
@@ -322,9 +339,7 @@ void DBManager::insertCSV(const string &f, const unsigned int &table){
         try{
             execute_query(statement);
             if (table == Utils::UNPACKED){
-                begin_transaction();
                 execute_query(update_gpg_keyserver);
-                end_transaction();
                 execute_query(drop_unpacker_tmp_table);
             }
             backoff = 0;
@@ -449,9 +464,14 @@ string DBManager::drop_unpacker_tmp_table = "DROP TEMPORARY TABLE tmp_unpacker;"
 
 
 
-DBQuery::DBQuery(shared_ptr<sql::PreparedStatement> & stmt_):
-    stmt(stmt_)
+DBQuery::DBQuery(sql::Connection * con, const std::string & stmt_):
+    query(stmt_),
+    stmt(std::shared_ptr<sql::PreparedStatement>(con->prepareStatement(stmt_)))
 {
+}
+
+void DBQuery::refresh(sql::Connection * con){
+    stmt = std::shared_ptr<sql::PreparedStatement>(con->prepareStatement(query));
 }
 
 DBQuery::~DBQuery(){
@@ -486,21 +506,21 @@ void DBQuery::setBoolean(const int pos, const bool value){
 }
 
 unique_ptr<DBResult> DBQuery::execute(){
-    if (stmt->getMetaData()->getColumnCount()){
-        unique_ptr<sql::ResultSet> res = std::unique_ptr<sql::ResultSet>(stmt->executeQuery());
-        return make_unique<DBResult>(res);
+    syslog(LOG_INFO, "Execute prepared query %s", query.c_str());
+    if (stmt->execute()){
+        unique_ptr<DBResult> res = std::make_unique<DBResult>(stmt->getResultSet());
+        return res;
     }
-    else{
-        stmt->execute();
-        return 0;
-    }
+    return 0;
 }
 
-DBResult::DBResult(unique_ptr<sql::ResultSet> & res_):
-    res(move(res_))
-{}
+DBResult::DBResult(sql::ResultSet * res_):
+    res(res_)
+{
+}
 
 DBResult::~DBResult(){
+    free(res);
 }
 
 bool DBResult::next(){

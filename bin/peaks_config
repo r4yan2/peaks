@@ -8,12 +8,11 @@ ptree_thresh_mult = 10
 P_SKS_STRING = 530512889551602322505127520352579437339
 #sks_zp_bytes = 17 #Bytes of P_SKS
 #hashquery_len = 16
-reconciliation_timeout = 45
 version = 1.1.6
 recon_port = 11372
 http_port = 11373
-pks_bind_ip = 127.0.0.1
-filters = yminsky.dedup,yminsky.merge
+pks_bind_ip = 0.0.0.0
+filters = yminsky.dedup #,yminsky.merge
 name = peaks_recon
 gossip_interval = 60
 unpack_interval = 300
@@ -39,7 +38,7 @@ db_port = 3306
 db_database = gpg_keyserver
 
 # File and folders settings
-membership_config = /etc/peaks/membership
+membership_config = ./membership
 default_dump_path = /tmp/pgp_dump/
-tmp_folder = /tmp/peaks_unique/
-error_folder = /tmp/peaks_errors/
+tmp_folder = ./peaks_unique/
+error_folder = ./peaks_error/
