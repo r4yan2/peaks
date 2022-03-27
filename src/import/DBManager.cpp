@@ -8,6 +8,7 @@
 #include "common/DBStruct.h"
 #include <boost/program_options.hpp>
 #include <common/config.h>
+#include <common/FileManager.h>
 
 using namespace std;
 
@@ -89,7 +90,7 @@ void IMPORT_DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_dat
         f << '"' << to_string(gpg_data.origin) << "\",";
         f << '"' << to_string(gpg_data.len) << "\",";
         f << "\n";
-		file_list.at(Utils::CERTIFICATE)->write(f.str());
+		FILEMANAGER.write(file_list.at(Utils::CERTIFICATE), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_gpg_keyserver_csv FAILED, the key will not have the certificate in the database! - %s", e.what());
     }
@@ -110,7 +111,7 @@ void IMPORT_DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
         }
         f << '"' << pubkey.curve<< "\",";
         f << "\n";
-		file_list.at(Utils::PUBKEY)->write(f.str());
+		FILEMANAGER.write(file_list.at(Utils::PUBKEY), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_pubkey_csv FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
     }
@@ -123,7 +124,7 @@ void IMPORT_DBManager::write_userID_csv(const DBStruct::userID &uid) {
         f << '"' << hexlify(uid.fingerprint) << "\",";
         f << '"' << uid.name << "\",";
         f << "\n";
-		file_list.at(Utils::USERID)->write(f.str());
+		FILEMANAGER.write(file_list.at(Utils::USERID), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_userID_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
     }
@@ -138,7 +139,7 @@ void IMPORT_DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
         f << '"' << ua.encoding << "\",";
         f << '"' << hexlify(ua.image) << "\",";
         f << "\n";
-		file_list.at(Utils::USER_ATTRIBUTES)->write(f.str());
+		FILEMANAGER.write(file_list.at(Utils::USER_ATTRIBUTES), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_userAttributes_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
     }
@@ -176,7 +177,7 @@ void IMPORT_DBManager::write_signature_csv(const DBStruct::signatures &ss) {
         f << '"' << ss.isExpired << "\",";
         f << '"' << ss.isRevocation << "\",";
         f << "\n";
-		file_list.at(Utils::SIGNATURE)->write(f.str());
+		FILEMANAGER.write(file_list.at(Utils::SIGNATURE), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s", e.what());
     }
@@ -199,7 +200,7 @@ void IMPORT_DBManager::write_self_signature_csv(const DBStruct::signatures &ss) 
         f << '"' << ss.isPrimaryUserId << "\",";
         f << '"' << ss.signedUsername << "\",";
         f << "\n";
-		file_list.at(Utils::SELF_SIGNATURE)->write(f.str());
+		FILEMANAGER.write(file_list.at(Utils::SELF_SIGNATURE), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_self_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s", e.what());
     }
@@ -213,7 +214,7 @@ void IMPORT_DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors 
             f << '"' << hexlify(mod.fingerprint) << "\"";
             f << '"' << c << "\",";
             f << "\n";
-			file_list.at(Utils::UNPACKER_ERRORS)->write(f.str());
+			FILEMANAGER.write(file_list.at(Utils::UNPACKER_ERRORS), f.str());
         }
     }catch (exception &e){
         syslog(LOG_CRIT, "write_unpackerErrors_csv FAILED, the error of the unpacking will not be in the database! - %s", e.what());

@@ -4,6 +4,7 @@
 #include <numeric>
 #include <sstream>
 #include "config.h"
+#include <common/FileManager.h>
 #include <common/Thread_Pool.h>
 #include <tuple>
 
@@ -48,7 +49,7 @@ void DBManager::connect_schema(){
     vector<char> buf(sz + 1);
     snprintf(&buf[0], buf.size(), format.c_str(), idx);
     string tmp(buf.data(), buf.size());
-    filestorage.open(tmp, true);
+    filestorage_handler = FILEMANAGER.openFile(tmp, true);
 }
 
 void DBManager::check_sql_mode(){
@@ -182,7 +183,7 @@ void DBManager::execute_query(const string & stmt){
 }
 
 tuple<std::string, int> DBManager::store_certificate_to_filestore(const std::string &certificate){
-    if (filestorage.size() + certificate.size() > CONTEXT.dbsettings.filestorage_maxsize * 1024 * 1024){
+    if (FILEMANAGER.querySize(filestorage_handler) + certificate.size() > CONTEXT.dbsettings.filestorage_maxsize * 1024 * 1024){
         // create new file
         int idx = CONTEXT.filestorage_index + 1;
         string format = CONTEXT.dbsettings.filestorage_format;
@@ -190,7 +191,7 @@ tuple<std::string, int> DBManager::store_certificate_to_filestore(const std::str
         vector<char> buf(sz + 1);
         snprintf(&buf[0], buf.size(), format.c_str(), idx);
         string tmp(buf.data(), buf.size());
-        filestorage.open(tmp, true);
+        filestorage_handler = FILEMANAGER.openFile(tmp, true);
     try{
         store_filestore_index_to_stash_stmt->setInt(1, idx);
         store_filestore_index_to_stash_stmt->execute();
@@ -199,8 +200,8 @@ tuple<std::string, int> DBManager::store_certificate_to_filestore(const std::str
     }
         
     }
-    size_t orig = filestorage.write(certificate);
-    return make_tuple(filestorage.get_name(), orig);
+    size_t orig = FILEMANAGER.write(filestorage_handler, certificate);
+    return make_tuple(FILEMANAGER.queryName(filestorage_handler), orig);
 }
 
 
@@ -274,27 +275,27 @@ void DBManager::store_in_cache(const string &key, const std::string &value){
 void DBManager::openCSVFiles() {
     // Open files
     for (const auto &it: tables)
-	    file_list[it] = make_shared<SynchronizedFile>(Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, it));
+	    file_list[it] = FILEMANAGER.openFile(Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, it));
 }
 
 void DBManager::flushCSVFiles(){
     for (auto &it: file_list){
-        it.second->flush();
+        FILEMANAGER.flushFile(it.second);
     }
 }
 
 void DBManager::closeCSVFiles(){
     for (auto &it: file_list){
-        it.second->close();
+        FILEMANAGER.closeFile(it.second);
     }
 }
 
 void DBManager::insertCSV(bool lock){
     if (lock) lockTables();
     for (const auto &it: file_list){
-        string f = it.second->get_name();
+        string f = Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, it.first);
         auto table = it.first;
-        it.second->close();
+        FILEMANAGER.closeFile(it.second);
         begin_transaction();
         insertCSV(f, table);
         end_transaction();
@@ -520,7 +521,8 @@ DBResult::DBResult(sql::ResultSet * res_):
 }
 
 DBResult::~DBResult(){
-    free(res);
+    if (res != NULL)
+        free(res);
 }
 
 bool DBResult::next(){

@@ -40,8 +40,6 @@ public:
     void write_analyzed_sign_csv(const DBStruct::signatures &s);
 
 private:
-    std::map<unsigned int, std::shared_ptr<SynchronizedFile>> file_list;
-
     void prepare_queries();
 
     std::shared_ptr<DBQuery>

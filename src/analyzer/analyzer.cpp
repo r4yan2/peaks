@@ -79,7 +79,7 @@ void Analyzer::run(){
         for (unsigned int j = 0; i < pk.size() && j < key_per_thread; j++, i++){
             pks.push_back(pk[i]);
         }
-        pool->Add_Job([=] { analyze_pubkeys(pks, dbm); });
+        pool->Add_Job([=] { analyze_pubkeys(pks); });
     }
 
     pool->Stop_Filling_UP();
@@ -109,6 +109,7 @@ void Analyzer::run(){
     pool->Stop_Filling_UP();
 
     pool->terminate();
+    dbm->closeCSVFiles();
     import_csv();
     syslog(LOG_NOTICE, "Analyzer daemon is stopping!");
 }
@@ -126,8 +127,10 @@ void Analyzer::import_csv(){
     syslog(LOG_NOTICE, "Writing completed");
 }
 
-void Analyzer::analyze_pubkeys(const vector<DBStruct::pubkey> &pks, const std::shared_ptr<ANALYZER_DBManager> &dbm) const {
-
+void Analyzer::analyze_pubkeys(const vector<DBStruct::pubkey> &pks) const {
+    std::shared_ptr<ANALYZER_DBManager> dbm = make_shared<ANALYZER_DBManager>();
+    dbm->open_files();
+    
     for (const auto &pk: pks){
         try{
             analyze_pubkey(pk, dbm);

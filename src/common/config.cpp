@@ -242,7 +242,7 @@ std::string Context::init_options(int argc, char* argv[]){
     setContext(vm);
  
     return cmd;
-   }
+}
    
    void Context::write_config(){
         po::options_description minimal("Minimal config");

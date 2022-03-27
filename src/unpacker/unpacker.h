@@ -30,7 +30,7 @@ class Unpacker{
         std::shared_ptr<UNPACKER_DBManager> dbm;
 };
         void unpack();
-        void unpack_key_th(std::shared_ptr<UNPACKER_DBManager> dbm, const std::vector<OpenPGP::Key::Ptr> &pks);
+        void unpack_key_th(const std::vector<OpenPGP::Key::Ptr> &pks);
         void unpack_key(const OpenPGP::Key::Ptr &key, std::shared_ptr<UNPACKER_DBManager> &dbm);
         DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey, const std::string &uatt_id="");
         DBStruct::pubkey get_publicKey_data(const OpenPGP::Packet::Tag::Ptr &p, const OpenPGP::Packet::Key::Ptr &priKey);

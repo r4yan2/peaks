@@ -12,7 +12,6 @@
 #include <string>
 
 #include <common/utils.h>
-#include <common/Thread_Pool.h>
 #include "DBStruct.h"
 
 namespace peaks{
@@ -61,7 +60,7 @@ class DBQuery {
 class DBManager {
     protected:
         std::vector<unsigned int> tables;
-        std::map<unsigned int, std::shared_ptr<SynchronizedFile>> file_list;
+        std::map<unsigned int, unsigned int> file_list;
     private:
         sql::Driver *driver;
         sql::Connection *con;
@@ -72,7 +71,7 @@ class DBManager {
             get_certificate_from_filestore_stmt,
             get_filestore_index_from_stash_stmt,
             store_filestore_index_to_stash_stmt;
-        SynchronizedFile filestorage;
+        unsigned int filestorage_handler;
     static std::pair<std::string, std::string> 
         insert_certificate_stmt, 
         insert_brokenKey_stmt, 

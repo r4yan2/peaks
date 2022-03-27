@@ -153,7 +153,7 @@ void Unpacker::run(){
                 continue;
             }
         }
-        unpacking_jobs.push_back(std::make_shared<Job>([=] {unpack_key_th(dbm, pks); }));
+        unpacking_jobs.push_back(std::make_shared<Job>([=] {unpack_key_th(pks); }));
         pool->Add_Job(unpacking_jobs.back());
     }
     pool->Stop_Filling_UP();
@@ -165,7 +165,7 @@ void Unpacker::run(){
 }
 
 void Unpacker::store_keymaterial(){
-    if (CONTEXT.get<bool>("csv-only"))
+    if (CONTEXT.get<bool>("csv-only", false))
         return; //nothing to do
     dbm->insertCSV();
     dbm->UpdateSignatureIssuingFingerprint();
@@ -175,13 +175,15 @@ void Unpacker::store_keymaterial(){
     //dbm->UpdateIsValid();
 }
 
-void unpack_key_th(std::shared_ptr<UNPACKER_DBManager> dbm, const vector<Key::Ptr> &pks){
+void unpack_key_th(const vector<Key::Ptr> &pks){
+    std::shared_ptr<UNPACKER_DBManager> dbm = make_shared<UNPACKER_DBManager>();
+    dbm->openCSVFiles(); // just recover handlers
     
     int i = 0;
     for (const auto &pk : pks) {
         try{
-            printf ("\rProgress: %d", ++i);
-            fflush(stdout);
+            //printf ("\rProgress: %d", ++i);
+            //fflush(stdout);
             unpack_key(pk, dbm);
         }catch(exception &e) {
             syslog(LOG_WARNING, "Key not analyzed due to not meaningfulness (%s). is_analyzed will be set equals to -1", e.what());

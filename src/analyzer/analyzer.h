@@ -16,7 +16,7 @@ public:
     Analyzer();
     void run();
     void import_csv();
-    void analyze_pubkeys(const std::vector<DBStruct::pubkey> &pks, const std::shared_ptr<ANALYZER_DBManager> &) const;
+    void analyze_pubkeys(const std::vector<DBStruct::pubkey> &pks) const;
     void analyze_signatures(const std::vector<DBStruct::signatures> &ss, const std::shared_ptr<ANALYZER_DBManager> &) const;
 
     void analyze_RSA_modulus_common_factor(const std::shared_ptr<ANALYZER_DBManager> &dbm, const unsigned int &nThreads);

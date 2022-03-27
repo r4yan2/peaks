@@ -4,6 +4,7 @@
 
 #include "DBManager.h"
 #include <common/config.h>
+#include <common/FileManager.h>
 
 using namespace peaks::common;
 using namespace std;
@@ -57,7 +58,6 @@ void UNPACKER_DBManager::prepare_queries(){
 
 
 UNPACKER_DBManager::~UNPACKER_DBManager(){
-    closeCSVFiles();
 };
 
 vector<DBStruct::gpg_keyserver_data> UNPACKER_DBManager::get_certificates(const unsigned long &l) {
@@ -126,7 +126,7 @@ void UNPACKER_DBManager::write_unpacked_csv(const OpenPGP::Key::Ptr &key, const 
             f << '"' << "1" << "\",";
         }
         f << "\n";
-        file_list.at(Utils::TABLES::UNPACKED)->write(f.str());
+        FILEMANAGER.write(file_list.at(Utils::TABLES::UNPACKED), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_unpacked_csv FAILED, the key will result not UNPACKED in the database! - %s", e.what());
     }
@@ -147,7 +147,7 @@ void UNPACKER_DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
         }
         f << '"' << pubkey.curve<< "\",";
         f << "\n";
-        file_list.at(Utils::TABLES::PUBKEY)->write(f.str());
+        FILEMANAGER.write(file_list.at(Utils::TABLES::PUBKEY), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_pubkey_csv FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
     }
@@ -160,7 +160,7 @@ void UNPACKER_DBManager::write_userID_csv(const DBStruct::userID &uid) {
         f << '"' << hexlify(uid.fingerprint) << "\",";
         f << '"' << uid.name << "\",";
         f << "\n";
-        file_list.at(Utils::TABLES::USERID)->write(f.str());
+        FILEMANAGER.write(file_list.at(Utils::TABLES::USERID), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_userID_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
     }
@@ -176,7 +176,7 @@ void UNPACKER_DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
         f << '"' << ua.encoding << "\",";
         f << '"' << hexlify(ua.image) << "\",";
         f << "\n";
-        file_list.at(Utils::TABLES::USER_ATTRIBUTES)->write(f.str());
+        FILEMANAGER.write(file_list.at(Utils::TABLES::USER_ATTRIBUTES), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_userAttributes_csv FAILED, the UserID not have the results of the unpacking in the database! - %s",
                           e.what());
@@ -215,7 +215,7 @@ void UNPACKER_DBManager::write_signature_csv(const DBStruct::signatures &ss) {
         f << '"' << ss.isExpired << "\",";
         f << '"' << ss.isRevocation << "\",";
         f << "\n";
-        file_list.at(Utils::TABLES::SIGNATURE)->write(f.str());
+        FILEMANAGER.write(file_list.at(Utils::TABLES::SIGNATURE), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s",
                           e.what());
@@ -239,7 +239,7 @@ void UNPACKER_DBManager::write_self_signature_csv(const DBStruct::signatures &ss
         f << '"' << ss.isPrimaryUserId << "\",";
         f << '"' << ss.signedUsername << "\",";
         f << "\n";
-        file_list.at(Utils::TABLES::SELF_SIGNATURE)->write(f.str());
+        FILEMANAGER.write(file_list.at(Utils::TABLES::SELF_SIGNATURE), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_self_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s",
                           e.what());
@@ -255,7 +255,7 @@ void UNPACKER_DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_error
             f << '"' << c << "\",";
             f << "\n";
         }
-        file_list.at(Utils::TABLES::UNPACKER_ERRORS)->write(f.str());
+        FILEMANAGER.write(file_list.at(Utils::TABLES::UNPACKER_ERRORS), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_unpackerErrors_csv FAILED, the error of the unpacking will not be in the database! - %s",
                           e.what());

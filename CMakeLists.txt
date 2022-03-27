@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project(peaks)
 
 set(CMAKE_CXX_STANDARD 14)
+SET( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 
 add_definitions(-DGPG_COMPATIBLE)
 add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
