@@ -140,7 +140,7 @@ JsonRPC.prototype.asyncCall = function(name,id,params,on_result,on_error) {
 					on_error({'type': 'response', 'error' : response.error });
 				}
 				else {
-					on_result(response.result);
+					on_result(params, response.result);
 				}
 			}
 			else {

@@ -1,12 +1,12 @@
 var currentTab = 'main';
 var tabs = [
   ['main', 'flex'],
-  ['ptree', 'block', initPtreeStats],
-  ['certificates', 'block', initCertificatesStats],
-  ['userattributes', 'block', initUserattributesStats],
-  ['pubkey', 'block', initPubkeyStats],
-  ['signature', 'block', initSignatureStats],
-  ['userid', 'block', initUseridStats],
+  ['ptree', 'block', 1],
+  ['certificates', 'block', 1],
+  ['userattributes', 'block', 1],
+  ['pubkey', 'block', 1],
+  ['signature', 'block', 1],
+  ['userid', 'block', 1],
 ];
 
 function switchTab(ev, el){
@@ -19,7 +19,7 @@ function switchTab(ev, el){
     tabElem = document.getElementsByClassName(tab[0])[0];
     tabElem.style.display = (tab[0] === el ? tab[1] : 'none');
     if (tab[0] === el && tab.length === 3){
-        tab[2]();
+        loadTabData(el);
     }
   });
   currentTab = el;
@@ -42,6 +42,7 @@ function makeChart(id, chartData, retry=10){
 
 function makePtreeChart1(values){
   // num elements buckets
+  var progress = document.getElementById('treeAnimationProgress');
   const data = {
     datasets: [{
         data: values["num_elements_ptree_stats"],
@@ -352,7 +353,14 @@ function color(i){
   return NAMED_COLORS[i%NAMED_COLORS.length];
 }
 
+function removeLoader(className){
+  var parentElement = document.getElementsByClassName(className)[0];
+  var loaders = parentElement.getElementsByClassName("loader")
+  Array.prototype.forEach.call(loaders, el => el.style.display = 'none');
+}
+
 function makePubkeyChart1(values){
+
 
   const algorithms = values["generic"]["algorithms_map"];
   const years = values["generic"]["years"];
@@ -947,26 +955,6 @@ function range(start, stop, step) {
     return result;
 };
 
-//var xhr = new XMLHttpRequest();  
-//xhr.open("post", '/pks/numbers');  
-// Required by JSON-RPC over HTTP  
-//xhr.setRequestHeader("Content-Type","application/json");  
-//var request = '{"method":"ptree_stats"}'; 
-//
-//xhr.onreadystatechange = function() {  
-//   if (xhr.readyState === 4) {  
-//    var res;  
-//    if(xhr.status === 200) {  
-//        // Don't call eval in real code use some parser  
-//        var result = JSON.parse(xhr.responseText);  
-//        console.log(result);  
-//    }  
-//    else {  
-//        res = 'Invalid Status ' + xhr.status;  
-//    }  
-//} 
-//}  
-//xhr.send(request);  
 function addRows(table, content) {
   let tableRef = document.getElementById(table);
   for (var key in content) {
@@ -980,57 +968,33 @@ function addRows(table, content) {
   }
 }
 
-var ptreeInitialized = false;
-function initPtreeStats(){
-    if (ptreeInitialized) return;
-    let values = rpc.get_stats("ptree");
+function addRowsPtree(values){
     addRows("ptree-table", values["generic"]);
-    makePtreeChart1(values);
-    makePtreeChart2(values);
-    ptreeInitialized = true;
 }
 
-var certificatesInitialized = false;
-function initCertificatesStats(){
-  if (certificatesInitialized) return;
-  let values = rpc.get_stats("certificates");
-  makeCertificateChart(values);
-  certificatesInitialized = true;
+var isInitializedDict = {};
+makeChartFunctions = {
+    'userid': [makeUseridChart1],
+    'signature': [makeSignatureChart1],
+    'pubkey': [makePubkeyChart1, makePubkeyVulnerabilityChart1],
+    'userattributes': [makeUserattributesChart1],
+    'certificates': [makeCertificateChart],
+    'ptree': [makePtreeChart1, makePtreeChart2, addRowsPtree],
+};
+
+function loadTabData(tab){
+    if (isInitializedDict[tab] !== undefined)
+        return; // already done
+    rpc.get_stats(tab);
 }
 
-var userattributesInitialized = false;
-function initUserattributesStats(){
-  if (userattributesInitialized) return;
-  let value = rpc.get_stats("userattributes");
-  makeUserattributesChart1(value);
-  userattributesInitialized = true;
-}
-
-var pubkeyInitialized = false;
-function initPubkeyStats(){
-  if (pubkeyInitialized) return;
-  let value = rpc.get_stats("pubkey");
-  makePubkeyChart1(value);
-  makePubkeyVulnerabilityChart1(value);
-  pubkeyInitialized = true;
-}
-
-var signatureInitialized = false;
-function initSignatureStats(){
-  if (signatureInitialized) return;
-  let value = rpc.get_stats("signature");
-  makeSignatureChart1(value);
-  signatureInitialized = true;
-}
-
-var useridInitialized = false;
-function initUseridStats(){
-  if (useridInitialized) return;
-  let value = rpc.get_stats("userid");
-  makeUseridChart1(value);
-  useridInitialized = true;
-}
 var rpc;
 function main() {
     rpc = new JsonRPC('/pks/numbers/rpc', ['get_stats']); 
+    rpc.get_stats.on_result = function(params, values){
+        const method = params[0];
+        removeLoader(method);
+        isInitializedDict[method] = true;
+        makeChartFunctions[method].forEach(f => f(values));
+    };
 }
