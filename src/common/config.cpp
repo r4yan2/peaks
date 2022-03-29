@@ -98,6 +98,10 @@ Context::Context(){
         ("dryrun", po::bool_switch()->default_value(false), "dryrun")
         ;
 
+    build_desc.add_options()
+        ("csv-only", po::bool_switch()->default_value(false), "csv generate only, no write to DB")
+         ;
+
 }
 
 Context& Context::context(){
@@ -228,7 +232,8 @@ std::string Context::init_options(int argc, char* argv[]){
         std::make_pair("unpack", unpack_desc),
         std::make_pair("recon", recon_desc),
         std::make_pair("dump", dump_desc),
-        std::make_pair("analyze", analyzer_desc)
+        std::make_pair("analyze", analyzer_desc),
+        std::make_pair("build", build_desc)
     };
 
     auto it = command_map.find(cmd);

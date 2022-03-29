@@ -33,6 +33,11 @@ void build(){
     }
 
     std::cout << std::endl;
+    dbm->write_memtree_csv();
+    if (CONTEXT.get<bool>("csv-only", false)){
+        std::cout << "Not Writing resulting ptree as requested" << std::endl;
+        exit(0);
+    }
     std::cout << "Writing resulting ptree to DB!" << std::endl;
     dbm->commit_memtree();
     Utils::remove_directory_content(CONTEXT.get<std::string>("tmp_folder"));

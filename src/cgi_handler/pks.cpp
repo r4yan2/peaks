@@ -268,7 +268,7 @@ cppcms::json::value ptree_stats(){
     int tree_heigth = 0;
     int arity = 4;
     std::vector<DBStruct::node> nodes = dbm->get_pnodes();
-    std::map<size_t, std::vector<std::string>> leaf_on_lv;
+    std::map<size_t, std::vector<std::string>> node_on_lv;
     std::vector<int> elements_number;
     std::map<std::string, std::vector<size_t>> prefix_map = {
         {"00", {}}, 
@@ -281,8 +281,8 @@ cppcms::json::value ptree_stats(){
     int i = 0;
     for (const auto& node: nodes){
         size_t keysize = node.key_size;
+        node_on_lv[keysize/2].push_back(node.key);
         if (node.leaf){
-            leaf_on_lv[keysize/2].push_back(node.key);
             elements_number.push_back(node.num_elements);
             if (node.num_elements <= 10)
                 num_elements_buckets[0] += 1;
@@ -353,15 +353,9 @@ cppcms::json::value ptree_stats(){
         variance_num_element /= elements_number.size();
     }
 
-    std::vector<size_t> nodes_per_lv;
-    size_t inner_nodes = 1; //root node
-    nodes_per_lv.push_back(1);
+    full_stats["ptree"]["node_level_ptree_stats"][0] = 1;
     for (int lv = 1; lv < tree_heigth; lv++){
-        size_t leaf_nodes = leaf_on_lv[lv].size();
-        size_t nodes_on_cur_lv = inner_nodes * arity;
-        inner_nodes = nodes_on_cur_lv - leaf_nodes;
-        nodes_per_lv.push_back(nodes_on_cur_lv);
-        full_stats["ptree"]["node_level_ptree_stats"][lv-1] = nodes_on_cur_lv;
+        full_stats["ptree"]["node_level_ptree_stats"][lv] = node_on_lv[lv].size();
     }
     full_stats["ptree"]["generic"]["Arity"] = to_string(arity);
     full_stats["ptree"]["generic"]["Total Nodes"] = to_string(nodes.size());

@@ -151,6 +151,7 @@ public:
 
     /** write the memtree to database */
     void commit_memtree();
+    void write_memtree_csv();
     
     //empty
     std::vector<std::string> fetch_removed_elements();

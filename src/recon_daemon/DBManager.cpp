@@ -171,7 +171,7 @@ void Recon_memory_DBManager::prepare_queries(){
 
     insert_ptree_stmt = make_pair<string, string>(
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE ptree FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
-            "LINES TERMINATED BY '\\n' (@node_key, key_size, node_svalues, num_elements, leaf, node_elements) SET node_key = UNHEX(@node_key)"
+            "LINES TERMINATED BY '\\n' (@node_key, key_size, @node_svalues, num_elements, leaf, @node_elements) SET node_key = UNHEX(@node_key), node_svalues = UNHEX(@node_svalues), node_elements = UNHEX(@node_elements)"
             );
 
 }
@@ -244,26 +244,29 @@ bool Recon_memory_DBManager::check_key(const std::string& k){
     return true;
 }
 
-void Recon_memory_DBManager::commit_memtree(){
+void Recon_memory_DBManager::write_memtree_csv(){
     // Open file
     csv_file = ofstream(CONTEXT.dbsettings.tmp_folder + "ptree.csv");
+    for (const auto& entry: memory_storage){
+        Buffer tmp;
+        tmp.write_zz_array(std::get<0>(entry.second));
+        std::string node_svalues = hexlify(tmp.to_str());
+        tmp.clear();
+        tmp.write_zz_array(std::get<3>(entry.second));
+        std::string node_elements = hexlify(tmp.to_str());
+        csv_file << '"' << hexlify(entry.first.first) << "\","; //node key
+        csv_file << '"' << entry.first.second << "\","; // node key size
+        csv_file << '"' << node_svalues << "\","; // svalues
+        csv_file << '"' << std::get<1>(entry.second) << "\","; //num elements
+        csv_file << '"' << std::get<2>(entry.second) << "\","; // leaf
+        csv_file << '"' << node_elements << "\","; //elements
+        csv_file << "\n";
+    }
+    csv_file.close();
+}
+
+void Recon_memory_DBManager::commit_memtree(){
     try{
-        for (const auto& entry: memory_storage){
-            Buffer tmp;
-            tmp.write_zz_array(std::get<0>(entry.second));
-            std::string node_svalues = tmp.to_str();
-            tmp.clear();
-            tmp.write_zz_array(std::get<3>(entry.second));
-            std::string node_elements = tmp.to_str(); 
-		        csv_file << '"' << hexlify(entry.first.first) << "\","; //node key
-		        csv_file << '"' << entry.first.second << "\","; // node key size
-            csv_file << '"' << node_svalues << "\","; // svalues
-            csv_file << '"' << std::get<1>(entry.second) << "\","; //num elements
-            csv_file << '"' << std::get<2>(entry.second) << "\","; // leaf
-            csv_file << '"' << node_elements << "\","; //elements
-            csv_file << "\n";
-        }
-        csv_file.close();
     	execute_query(insert_ptree_stmt.first + CONTEXT.dbsettings.tmp_folder + "ptree.csv" + insert_ptree_stmt.second);
     }catch (exception &e){
         syslog(LOG_CRIT, "commit of the ptree to database failed!\nthe ptree will not be saved into DB because %s", e.what());
