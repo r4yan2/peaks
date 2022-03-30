@@ -15,11 +15,11 @@ then
 fi
 if [ -z "$NCPU" ]
 then
-    NCPU=1
+    NCPU=${nproc}
 fi
 if [ -z "$BUILD" ]
 then
-    BUILD="Release"
+    BUILD="Docker"
 fi
 
 PEAKS_PATH=$PWD
@@ -78,13 +78,13 @@ function compile_gmp () {
         cd gmp-6.1.2
         if [ "$BUILD" == "Debug" ];
         then
-            CFLAGS="-g3 -march=native"
+            CFLAGS="-g3 -O0"
         elif [ "$BUILD" == "Release" ];
         then
-            CFLAGS="-Ofast -march=native"
+            CFLAGS="-Ofast"
         elif [ "$BUILD" == "Docker" ];
         then
-            CFLAGS="-Os -march=x86-64 -mtune=generic"
+            CFLAGS="-O3"
         else
             echo "ERROR! Option not recognized, use debug or release to specify the purpose."
             exit;
@@ -140,8 +140,8 @@ function compile_ntl () {
         cd ntl-10.5.0/src
         if [ "$BUILD" == "Debug" ]
         then
-            CXXFLAGS="-g3 -march=native"
-            NATIVE="on"
+            CXXFLAGS="-g3 -O0"
+            NATIVE="off"
             TUNE="auto"
         elif [ "$BUILD" == "Release" ]
         then
@@ -150,9 +150,9 @@ function compile_ntl () {
             TUNE="auto"
         elif [ "$BUILD" == "Docker" ]
         then
-            CXXFLAGS="-Os -march=x86-64 -fopenmp -D_GLIBCXX_PARALLEL"
+            CXXFLAGS="-O3 -fopenmp -D_GLIBCXX_PARALLEL"
             NATIVE="off"
-            TUNE="x86"
+            TUNE="auto"
         else
             echo "ERROR! Option not recognized, use debug or release to specify the purpose."
             exit;
@@ -261,7 +261,11 @@ function compile_openpgp () {
     cd OpenPGP
     mkdir build
     cd build
-    cmake -DCMAKE_BUILD_TYPE="$BUILD" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DGMP_INCLUDES="$INCL_PATH" -DGMP_LIBRARIES="${LIB_PATH}/libgmp.so" -DGPG_COMPATIBLE=ON ..
+    if [ ! "$BUILD" == "Debug" ]
+    then
+        BUILD="Release"
+    fi
+    cmake -DCMAKE_BUILD_TYPE="$BUILD" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DGMP_INCLUDES="$INCL_PATH" -DGMP_LIBRARIES="${LIB_PATH}/libgmp.so" -DGPG_COMPATIBLE=ON -DBUILD_TESTS=OFF -DBUILD_CLI=OFF ..
     make -j$NCPU install
     cd "$PEAKS_PATH"
     if [ ! "$BUILD" == "Debug" ]

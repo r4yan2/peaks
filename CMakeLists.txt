@@ -9,12 +9,12 @@ add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
 
 if (NOT DEFINED CMAKE_CXX_FLAGS OR "${CMAKE_CXX_FLAGS}" STREQUAL "")
     set(CMAKE_CXX_FLAGS "-Wall -pthread -lstdc++ -pipe")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -march=native -g3 -rdynamic -O0")
-    set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -march=native -Ofast")
-    set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -march=x86-64 -mtune=generic -O2 -g -rdynamic")
-    set(CMAKE_CXX_FLAGS_STATIC "${CMAKE_CXX_FLAGS_DOCKER}")
 endif ()
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g3 -rdynamic -O0")
+set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
+set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -O2")
+set(CMAKE_CXX_FLAGS_STATIC "${CMAKE_CXX_FLAGS_DOCKER}")
 
 set(suffix "so")
 
