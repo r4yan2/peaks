@@ -254,6 +254,10 @@ function compile_docker () {
 function compile_openpgp () {
     echo 'Compiling OpenPGP'
     
+    if [ ! -d OpenPGP ]
+    then
+        git clone -b peaks https://github.com/r4yan2/OpenPGP
+    fi
     cd OpenPGP
     mkdir build
     cd build

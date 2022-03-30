@@ -1,4 +1,4 @@
 [submodule "OpenPGP"]
 	path = OpenPGP
-	url = git://github.com/r4yan2/OpenPGP.git
+	url = https://github.com/r4yan2/OpenPGP
 	branch = peaks
