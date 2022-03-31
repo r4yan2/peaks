@@ -34,3 +34,4 @@ jobs:
           file: ./docker/Dockerfile
           push: true
           tags: r4yan2/peaks:latest
+          platforms: linux/amd64

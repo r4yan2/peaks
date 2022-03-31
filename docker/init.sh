@@ -5,13 +5,13 @@ check_mysql(){
     echo $?
 }
 
-while [ -z $(check_mysql) ]; do
+while ! check_mysql; do
     sleep 5s
     echo "Waiting for MySQL..."
 done
 if [ -f /etc/peaks/done_init ]; then
     return
 fi
-peaks import --init /etc/peaks/schema.sql
-peaks build
+peaks -s import --init /etc/peaks/schema.sql
+peaks -s build
 touch /etc/peaks/done_init
