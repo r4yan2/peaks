@@ -30,9 +30,7 @@ Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbm_):
     }
 }
 
-
 Ptree& Ptree::ptree(){
-    NTL::ZZ_p::init(CONTEXT.P_SKS);
     static Ptree instance;
     return instance;
 }
@@ -123,6 +121,7 @@ bool Ptree::has_key(const std::string &key){
 }
 
 void Ptree::insert(const std::string &hash){
+    std::lock_guard<std::mutex> lock(mtx);
     NTL::ZZ_p elem = Utils::hex_to_zz(hash);
     insert(elem);
 }
@@ -136,6 +135,7 @@ void Ptree::insert(const NTL::ZZ_p &z){
 
 void Ptree::update(const std::vector<std::string> &hash_to_insert){
 
+    std::lock_guard<std::mutex> lock(mtx);
     std::vector<std::string> hash_to_remove = dbm->fetch_removed_elements();
     for (auto hash: hash_to_remove){
         syslog(LOG_DEBUG, "removing %s from ptree", hash.c_str());
@@ -200,6 +200,7 @@ void Ptree::remove(const NTL::ZZ_p &z){
 }
 
 void Ptree::remove(const std::string &hash){
+    std::lock_guard<std::mutex> lock(mtx);
     NTL::ZZ_p elem = Utils::hex_to_zz(hash);
     remove(elem);
 }

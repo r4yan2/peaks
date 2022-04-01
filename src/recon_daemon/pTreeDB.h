@@ -198,6 +198,9 @@ private:
 
     /** Pointer to the database manager */
     std::shared_ptr<RECON_DBManager> dbm;
+
+    /** Mutex **/
+    std::mutex mtx;
   
 public:
     Ptree();
@@ -282,5 +285,5 @@ public:
 }
 }
 
-//#define PTREE peaks::recon::Ptree()
+#define PTREE peaks::recon::Ptree::ptree()
 #endif //RECON_PTREEDB_H

@@ -20,11 +20,11 @@ void build(){
     if (entries == 0){
         std::cout << "DB is empty! Continue anyway" << std::endl;
     }
-    Ptree ptree(dbm);
-    ptree.create();
+    PTREE.set_db(dbm);
+    PTREE.create();
     int progress = 0;
     for (auto hash : hashes){
-        ptree.insert(hash);
+        PTREE.insert(hash);
         progress += 1;
         if (progress%1000 == 0){
             printf ("\rProgress: %3d%%", (progress*100)/entries);

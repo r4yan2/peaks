@@ -68,7 +68,6 @@ struct bottom_entry{
  */
 class Peer{
     private:
-        Ptree ptree;
         /** hold the Connection Manager reference*/
         Connection_Manager cn;
         /** hold the list of peers specified in membership file */

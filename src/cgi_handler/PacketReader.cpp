@@ -118,7 +118,7 @@ void pr::readPublicKeyPacket(const string &arm, peaks::pks::CGI_DBManager *dbm){
 
     cout << "Submitting data" << endl;
     dbm->insert_gpg_keyserver(gk);
-    peaks::recon::Ptree().insert(gk.hash);
+    PTREE.insert(gk.hash);
     //if (exist) {
     //    dbm->update_gpg_keyserver(gk);
     //} else {
