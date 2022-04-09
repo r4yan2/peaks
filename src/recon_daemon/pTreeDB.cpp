@@ -350,7 +350,7 @@ std::vector<NTL::ZZ_p> Pnode::elements(){
     } else{
         std::vector<pnode_ptr> children_vec = children();
         for (auto child: children_vec){
-            std::vector<NTL::ZZ_p> elements = child->get_node_elements();
+            std::vector<NTL::ZZ_p> elements = child->elements();
             result.insert(result.end(), elements.begin(), elements.end());
         }
     }
