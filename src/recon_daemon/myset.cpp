@@ -60,13 +60,21 @@ template<typename T> int Myset<T>::size(){
     return elems.size();
 }
 
+template<typename T> typename std::vector<T>::iterator Myset<T>::begin(){
+    return elems.begin();
+}
+
+template<typename T> typename std::vector<T>::iterator Myset<T>::end(){
+    return elems.end();
+}
+
 template<typename T> std::vector<T> Myset<T>::elements() const{
     return elems;
 }
 
 template<typename T> std::pair<std::vector<T>, std::vector<T>> Myset<T>::symmetric_difference(Myset<T>& a){
-    std::vector<T> c, e;
-    Myset<T> d;
+    std::vector<T> c, e; //c (e) contains elem of a (this) not in this (a)
+    Myset<T> d; //common
     for (int i=0; i<a.size();i++){
         auto elem = a.get(i);
         if (contains(elem).first) d.add(elem);

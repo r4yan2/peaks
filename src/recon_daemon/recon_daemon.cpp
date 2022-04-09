@@ -48,13 +48,13 @@ void build(){
 
 void recon(){
     syslog(LOG_INFO, "Starting recon_daemon");
-    std::unique_ptr<Peer> peer = std::make_unique<Peer>();
+    std::unique_ptr<PeerManager> peermanager = std::make_unique<PeerManager>();
     if (CONTEXT.get<bool>("server-only"))
-        peer->start_server();
+        peermanager->start_server();
     else if (CONTEXT.get<bool>("client-only"))
-        peer->start_client();
+        peermanager->start_client();
     else
-        peer->start();
+        peermanager->start();
 }
 
 }

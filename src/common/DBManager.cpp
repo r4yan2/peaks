@@ -482,11 +482,13 @@ DBQuery::~DBQuery(){
 
 void DBQuery::setString(const int pos, const string & str){
     stmt->setString(pos, str);
+    params[pos] = str;
 }
 
 void DBQuery::setBlob(const int pos, const string & s){
     istream * s_ptr = new std::istringstream(s);
     setBlob(pos, s_ptr);
+    params[pos] = s;
 }
 
 void DBQuery::setBlob(const int pos, istream * s_ptr){
@@ -496,18 +498,24 @@ void DBQuery::setBlob(const int pos, istream * s_ptr){
 
 void DBQuery::setInt(const int pos, const int num){
     stmt->setInt(pos, num);
+    params[pos] = to_string(num);
 }
 
 void DBQuery::setBigInt(const int pos, const string & value){
     stmt->setBigInt(pos, value);
+    params[pos] = value;
 }
 
 void DBQuery::setBoolean(const int pos, const bool value){
     stmt->setBoolean(pos, value);
+    params[pos] = value ? "True" : "False";
 }
 
 unique_ptr<DBResult> DBQuery::execute(){
     syslog(LOG_INFO, "Execute prepared query %s", query.c_str());
+    for(const auto& elem : params){
+        syslog(LOG_INFO, "Params %s", elem.second.c_str());
+    }
     if (stmt->execute()){
         unique_ptr<DBResult> res = std::make_unique<DBResult>(stmt->getResultSet());
         return res;

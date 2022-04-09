@@ -4,12 +4,6 @@
 namespace peaks{
 namespace recon{
 
-Recon_manager::Recon_manager(Connection_Manager &conn_manager):
-    cn(conn_manager)
-{}
-
-Recon_manager::~Recon_manager(){}
-
 void Recon_manager::push_bottom(bottom_entry &bottom){
     bottom_queue.push(bottom);
 }
@@ -133,9 +127,12 @@ void Recon_manager::handle_reply(Message* msg, request_entry &request){
     }
 }
 
-void Recon_manager::flush_queue(){
+std::vector<recon::Message*> Recon_manager::get_flush_queue(){
     messages.push_back(new Flush{});
-    cn.send_bulk_messages(messages);
+    return messages;
+}
+
+void Recon_manager::clean_queue(){
     messages.clear();
     bottom_entry bot;
     bot.state = recon_state::FlushEnded;

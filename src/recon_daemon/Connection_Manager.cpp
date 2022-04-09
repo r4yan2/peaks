@@ -6,9 +6,37 @@ using namespace peaks::common;
 namespace peaks{
 namespace recon{
 
+Peer::Peer(const char* _hostname, int _port):
+    hostname(_hostname),
+    port(_port)
+{}
+
+Peer::Peer(const std::string & _hostname, int _port):
+    hostname(_hostname),
+    port(_port)
+{}
+
+Connection::Connection(std::mutex & _m, const char* _hostname, int _port, int _socket):
+    m(_m),
+    peer(_hostname, _port),
+    sockfd(_socket)
+{}
+Connection::Connection(std::mutex & _m, const char* _hostname, int _socket):
+    m(_m),
+    peer(_hostname, -1),
+    sockfd(_socket)
+{}
+Connection::Connection(std::mutex & _m, const std::string & _hostname, int _port, int _socket):
+   m(_m),
+   peer(_hostname, _port),
+   sockfd(_socket)
+{}
+Connection::Connection(std::mutex & _m, const std::string & _hostname, int _socket):
+   m(_m),
+   peer(_hostname, -1),
+   sockfd(_socket)
+{}
 Connection_Manager::Connection_Manager():
-    sockfd(-1),
-    tmpfd(-1),
     listenfd(-1)
 {}
 
@@ -30,14 +58,16 @@ void Connection_Manager::setup_listener(int portno){
     if (err < 0)
         syslog(LOG_CRIT, "error on bind!");
     syslog(LOG_DEBUG, "binding ok, proceed to listen for incoming connections");
-    listen(listenfd, 10);
+    err = listen(listenfd, 10);
+    if (err < 0)
+        syslog(LOG_CRIT, "error on bind!");
+    syslog(LOG_DEBUG, "listen ok");
 }
 
-peertype Connection_Manager::acceptor(std::vector<std::string> & addresses){
-    peertype remote_peer;
+Connection Connection_Manager::acceptor(std::vector<std::string> & addresses){
     struct sockaddr_in client_addr;
     socklen_t clilen = sizeof(client_addr);
-    tmpfd = accept(listenfd, (struct sockaddr*)&client_addr, &clilen);
+    int tmpfd = accept(listenfd, (struct sockaddr*)&client_addr, &clilen);
     if (tmpfd < 0)
     {
         syslog(LOG_WARNING, "error on accept");
@@ -47,22 +77,20 @@ peertype Connection_Manager::acceptor(std::vector<std::string> & addresses){
     struct in_addr ipAddr = pV4Addr->sin_addr;
     char ip_str[INET_ADDRSTRLEN];
     inet_ntop( AF_INET, &ipAddr, ip_str, INET_ADDRSTRLEN);
-    std::vector<std::string>::iterator it = find(addresses.begin(), addresses.end(), ip_str);
-    size_t pos = it - addresses.begin();
-    if (pos >= addresses.size()){
+    auto it = find(addresses.begin(), addresses.end(), ip_str);
+    if (it == addresses.end()){
         // ip does not belong to membership
         syslog(LOG_WARNING, "blocked %s because not in membership", ip_str);
         close(tmpfd);
         throw Bad_client();
         }
-    int remote_port = check_remote_config();
-    if (remote_port < 0)
+    Connection client_conn(mtx, ip_str, tmpfd);
+    if (!client_conn.check_remote_config())
         throw Bad_client();
-    remote_peer = std::make_pair(std::string(ip_str), remote_port);
-    return remote_peer;
+    return client_conn;
 }
 
-void Connection_Manager::set_timeout(){
+void Connection::set_timeout(){
   struct timeval tv;
   tv.tv_sec  = CONTEXT.connsettings.async_timeout_sec;
   tv.tv_usec = CONTEXT.connsettings.async_timeout_usec;
@@ -70,7 +98,7 @@ void Connection_Manager::set_timeout(){
   setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 }
 
-void Connection_Manager::early_fail(std::string reason){
+void Connection::early_fail(std::string reason){
 
     syslog(LOG_WARNING, "Config mismatch, reason: %s", reason.c_str());
     Buffer buf;
@@ -80,7 +108,7 @@ void Connection_Manager::early_fail(std::string reason){
     send_peer(buf);
 }
 
-bool Connection_Manager::toggle_keep_alive(int toggle, int idle, int interval, int count){
+bool Connection::toggle_keep_alive(int toggle, int idle, int interval, int count){
     if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &toggle, sizeof(toggle)) < 0)
         return false;
     
@@ -101,18 +129,15 @@ bool Connection_Manager::toggle_keep_alive(int toggle, int idle, int interval, i
     return true;
 }
 
-int Connection_Manager::init_peer(const peertype & peer){
-    int portno;
+Connection Connection_Manager::init_peer(const member & peer){
     struct sockaddr_in serv_addr;
     struct hostent *server;
     std::string hostname;
 
-    hostname = peer.first;
-    portno = peer.second;
-    tmpfd = socket(AF_INET, SOCK_STREAM, 0);
+    int tmpfd = socket(AF_INET, SOCK_STREAM, 0);
     if (tmpfd < 0)
         throw connection_exception("ERROR opening socket");
-    server = gethostbyname(hostname.c_str());
+    server = gethostbyname(peer.first.c_str());
     if (server == NULL) {
         throw connection_exception("ERROR connecting: no such host");
     }
@@ -121,22 +146,26 @@ int Connection_Manager::init_peer(const peertype & peer){
     bcopy((char *)server->h_addr, 
     (char *)&serv_addr.sin_addr.s_addr,
     server->h_length);
-    serv_addr.sin_port = htons(portno);
+    serv_addr.sin_port = htons(peer.second);
     int err = connect(tmpfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr));
     if (err < 0)
         throw connection_exception("ERROR connecting");
-    return check_remote_config();
+    return Connection(mtx, peer.first, peer.second, tmpfd);
 }
 
-void Connection_Manager::close_connection(){
+
+Connection::~Connection(){
+    syslog(LOG_DEBUG, "closing remote connection %d", sockfd);
     shutdown(sockfd, 2);
-    shutdown(tmpfd, 2);
     close(sockfd);
-    close(tmpfd);
-    sockfd = -1;
+    m.unlock();
 }
 
-int Connection_Manager::check_remote_config(){
+Peer Connection::get_peer(){
+    return peer;
+}
+
+bool Connection::check_remote_config(){
 
     Peer_config* local_config = new Peer_config;
     local_config->version = CONTEXT.connsettings.peaks_version;
@@ -145,24 +174,22 @@ int Connection_Manager::check_remote_config(){
     local_config->mbar = CONTEXT.treesettings.mbar;
     local_config->filters = CONTEXT.connsettings.peaks_filters;
 
+    send_message(local_config);
 
-    send_message(local_config, true);
+    Peer_config* remote_config = (Peer_config*) read_message();
 
-
-    Peer_config* remote_config = (Peer_config*) read_message(true);
-
-    
-    if (sockfd > 0){
+    if (!m.try_lock()){
         early_fail("sync already in progress");
-        return -1;
+        return false;
     }
+    
     if (remote_config->bq != local_config->bq){
         early_fail("mismatched bitquantum");
-        return -1;
+        return false;
     }
     else if (remote_config->mbar != local_config->mbar){
         early_fail("mismatched mbar");
-        return -1;
+        return false;
     }
 
     //send config ack
@@ -175,56 +202,40 @@ int Connection_Manager::check_remote_config(){
         std::string reason = read_string_direct();
 
         syslog(LOG_WARNING, "remote host rejected config, reason: %s", reason.c_str());
-        return -1;
+        return false;
     }
 
     int http_port = remote_config->http_port;
+    peer.port = http_port;
     delete local_config;
     delete remote_config;
 
-    // if all check are passed tmpfd is promoted to the active socket
-    sockfd = tmpfd;
-    tmpfd = -1;
-
+    if (http_port < 0)
+        throw Bad_client();
     // set keep alive for 1 minute
     if (!(toggle_keep_alive(1, 1, 1, 60)))
         syslog(LOG_WARNING, "could not enable keep alive");
     
     set_timeout();
-
-    
-    //int reuse = 1;
-    //if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) < 0)
-    //    std::cout << "setsockopt(SO_REUSEADDR) failed" << std::endl;
-
-    //if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&reuse, sizeof(reuse)) < 0) 
-    //    std::cout << "setsockopt(SO_REUSEPORT) failed" << std::endl;
-    //struct linger l_opt;
-    //l_opt.l_onoff = 1;
-    //l_opt.l_linger = 10;
-    //setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &l_opt, sizeof(l_opt));
-    return http_port;
+    return true;
 }
 
-bool Connection_Manager::check_socket_status(int sock){
+bool Connection::check_socket_status(){
     int err=0;
     socklen_t len = sizeof(err);
-    int ret = getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len);
+    int ret = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &len);
     if (err != 0 || ret != 0)
         return false;
     else
         return true;
 }
 
-bool Connection_Manager::read_n_bytes(void *buf, std::size_t n, bool tmp_socket, int signal){
+bool Connection::read_n_bytes(void *buf, std::size_t n, int signal){
     std::size_t offset = 0;
     char *cbuf = reinterpret_cast<char*>(buf);
     ssize_t ret;
     while (true) {
-        if (tmp_socket)
-            ret = recv(tmpfd, cbuf + offset, n - offset, signal);
-        else
-            ret = recv(sockfd, cbuf + offset, n - offset, signal);
+        ret = recv(sockfd, cbuf + offset, n - offset, signal);
         if (ret < 0){
             std::string errmsg = "";
             switch(errno){
@@ -280,34 +291,34 @@ bool Connection_Manager::read_n_bytes(void *buf, std::size_t n, bool tmp_socket,
     }
 }
 
-std::string Connection_Manager::read_string_direct(){
+std::string Connection::read_string_direct(){
    std::uint32_t size;
    std::string res = "failed";
-   if (read_n_bytes(&size, sizeof(size), true)) {
+   if (read_n_bytes(&size, sizeof(size))) {
        size = Utils::swap(size);
        if (size > CONTEXT.connsettings.max_read_len) 
            syslog(LOG_WARNING, "Oversized message!");
        Buffer buf(size);
-       read_n_bytes(buf.data(), size, true);
+       read_n_bytes(buf.data(), size);
        res = buf.to_str();
    } else
        syslog(LOG_WARNING, "Unexpected end of stream");
    return res;
 }
 
-Message* Connection_Manager::read_message_async(){
-    return read_message(false, 0);
+Message* Connection::read_message_async(){
+    return read_message(0);//MSG_DONTWAIT);
 }
 
 // Reads message from network
-Message* Connection_Manager::read_message(bool tmp_socket, int signal) {
+Message* Connection::read_message(int signal) {
    std::uint32_t size;
-   if (read_n_bytes(&size, sizeof(size), tmp_socket, signal)) {
+   if (read_n_bytes(&size, sizeof(size), signal)) {
        size = Utils::swap(size);
        if (size > CONTEXT.connsettings.max_read_len) 
            syslog(LOG_WARNING, "Oversized message!");
        Buffer ibuf(size);
-       if (read_n_bytes(ibuf.data(), size, tmp_socket, signal)) {
+       if (read_n_bytes(ibuf.data(), size, signal)) {
            ibuf.set_read_only();
            uint8_t type = ibuf.read_uint8();
            switch (type){
@@ -395,7 +406,7 @@ Message* Connection_Manager::read_message(bool tmp_socket, int signal) {
    return data;
 }
 
-void Connection_Manager::write_message(Buffer &buffer, Message* m, bool wrap){
+void Connection::write_message(Buffer &buffer, Message* m, bool wrap){
     Buffer partial_buffer;
     if (wrap)
         partial_buffer.push_back((unsigned char)m->type);
@@ -467,31 +478,27 @@ void Connection_Manager::write_message(Buffer &buffer, Message* m, bool wrap){
     buffer.append(partial_buffer);
 }
 
-void Connection_Manager::send_message_direct(Message* m){
+void Connection::send_message_direct(Message* m){
     Buffer buf;
     write_message(buf, m, false);
-    send_peer(buf, true);
+    send_peer(buf);
 }
 
-void Connection_Manager::send_message(Message* m, bool tmp_socket){
+void Connection::send_message(Message* m){
     Buffer buf;
     write_message(buf,m);
-    send_peer(buf, tmp_socket);
+    send_peer(buf);
 }
 
-void Connection_Manager::send_bulk_messages(std::vector<Message*> &messages){
+void Connection::send_bulk_messages(std::vector<Message*> messages){
     Buffer buf;
     for (Message* m: messages)
         write_message(buf, m);
     send_peer(buf);
 }
 
-void Connection_Manager::send_peer(Buffer &buf, bool tmp_socket){
-    int err;
-    if (tmp_socket)
-        err = send(tmpfd, buf.data(), buf.size(), MSG_NOSIGNAL);
-    else
-        err = send(sockfd, buf.data(), buf.size(), MSG_NOSIGNAL);
+void Connection::send_peer(Buffer &buf){
+    int err = send(sockfd, buf.data(), buf.size(), MSG_NOSIGNAL);
     if (err < 0)
         throw send_message_exception(); 
 }

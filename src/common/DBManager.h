@@ -40,6 +40,7 @@ class DBQuery {
         std::string query;
         std::shared_ptr<sql::PreparedStatement> stmt;
         std::vector<std::istream *> trash_bin;
+        std::map<int, std::string> params;
         int pos;
 
     public:

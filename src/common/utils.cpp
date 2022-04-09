@@ -469,9 +469,6 @@ std::vector<NTL::ZZ_p> Zpoints(int num_samples){
   return points;
 }
 
-
-
-
 }
 
 }

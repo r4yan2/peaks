@@ -1,10 +1,17 @@
 #include "peer.h"
 #include <common/utils.h>
 #include <common/config.h>
+#include <NTL/matrix.h>
+#include <NTL/mat_ZZ_p.h>
+#include <NTL/ZZ_pX.h>
+#include <NTL/ZZ_pXFactoring.h>
+#include <algorithm>
+#include <cmath>
+#include <curl/curl.h>
 
 namespace peaks{
 namespace recon{
-Peer::Peer():
+PeerManager::PeerManager():
     cn()
 {
     std::ifstream f(CONTEXT.peersettings.membership_config);
@@ -19,49 +26,54 @@ Peer::Peer():
     }
 }
 
-peertype Peer::choose_partner(){
+Connection PeerManager::choose_partner(){
     
     int choice = Utils::get_random(membership.size());
-    peertype peer = membership[choice];
-    syslog(LOG_DEBUG, "choose as partner: %s", peer.first.c_str());
-    int http_port = cn.init_peer(peer);
-    return std::make_pair(peer.first, http_port);
+    member m = membership[choice];
+    syslog(LOG_DEBUG, "choose as partner: %s", m.first.c_str());
+    Connection connection = cn.init_peer(m);
+    connection.check_remote_config(); 
+    return connection;
 }
 
-void Peer::start(){
+void PeerManager::start(){
     std::cout << "starting all" << std::endl;
-    std::thread srv {&Peer::serve, this};
-    std::thread gsp {&Peer::gossip, this};
+    std::thread srv {&PeerManager::serve, this};
+    std::thread gsp {&PeerManager::gossip, this};
     srv.join();
     gsp.join();
 }
 
-void Peer::start_server(){
+void PeerManager::start_server(){
     std::cout << "starting only as server" << std::endl;
-    std::thread srv {&Peer::serve, this};
+    std::thread srv {&PeerManager::serve, this};
     srv.join();
 }
 
-void Peer::start_client(){
+void PeerManager::start_client(){
     std::cout << "starting only as client" << std::endl;
-    std::thread gsp {&Peer::gossip, this};
+    std::thread gsp {&PeerManager::gossip, this};
     gsp.join();
 }
 
-void Peer::serve(){
+void PeerManager::serve(){
     
     syslog(LOG_DEBUG, "starting gossip server");
 
     cn.setup_listener(CONTEXT.peersettings.peaks_recon_port);
     std::vector<std::string> addresses;
-    std::transform(membership.begin(), membership.end(), std::back_inserter(addresses), (const std::string& (*)(const peertype&))std::get<0>);
+    std::transform(
+        membership.begin(),
+        membership.end(),
+        std::back_inserter(addresses),
+        (const std::string& (*)(const member&))std::get<0>
+    );
 
     for (;;){
-        peertype remote_peer;
         try{
-            remote_peer = cn.acceptor(addresses);
-            syslog(LOG_DEBUG, "Accepted remote peer %s, starting interaction...", remote_peer.first.c_str());
-            interact_with_client(remote_peer);
+            Connection connection = cn.acceptor(addresses);
+            auto to_recover = connection.interact_with_client();
+            fetch_elements(connection.get_peer(), to_recover);
         } catch (Bad_client & e){
             // error already logged by the connection manager
         } catch(std::exception & e){
@@ -70,7 +82,7 @@ void Peer::serve(){
     }
 }
 
-void Peer::fetch_elements(const peertype &peer, const std::vector<NTL::ZZ_p> &elems){
+void PeerManager::fetch_elements(const Peer &peer, const std::vector<NTL::ZZ_p> &elems){
 
     syslog(LOG_DEBUG, "Should recover %d elements, starting double check!", int(elems.size()));
     std::vector<NTL::ZZ_p> elements;
@@ -134,7 +146,7 @@ StreamWriteCallback(char * buffer, size_t size, size_t nitems, std::ostream * st
 }
 
 
-std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::vector<NTL::ZZ_p> &chunk){
+std::vector<std::string> PeerManager::request_chunk(const Peer &peer, const std::vector<NTL::ZZ_p> &chunk){
     Buffer buffer;
     buffer.write_int(chunk.size());
     for (auto zp: chunk){
@@ -143,7 +155,7 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
         buffer.write_int(hashquery_len);
         buffer.write_zz_p(zp, hashquery_len);
     }
-    const std::string url = std::string("http://") + peer.first + std::string(":") + std::to_string(peer.second) + std::string("/pks/hashquery");
+    const std::string url = Utils::stringFormat("http://%s:%d/pks/hashquery", peer.hostname.c_str(), peer.port);
     syslog(LOG_DEBUG, "Requesting url %s", url.c_str());
     std::ostringstream response;
 
@@ -185,8 +197,9 @@ std::vector<std::string> Peer::request_chunk(const peertype &peer, const std::ve
 
 }
 
-void Peer::interact_with_client(peertype &remote_peer){
-    Recon_manager recon(cn);
+std::vector<NTL::ZZ_p> Connection::interact_with_client(){
+    syslog(LOG_DEBUG, "Accepted remote peer %s, starting interaction...", peer.hostname.c_str());
+    Recon_manager recon;
     std::shared_ptr<Pnode> root = PTREE.get_root();
     bitset newset(0);
     request_entry req = request_entry{.node = root, .key = newset};
@@ -208,7 +221,7 @@ void Peer::interact_with_client(peertype &remote_peer){
                     {
                         Message* msg;
                         try{
-                            msg = cn.read_message_async();
+                            msg = read_message_async();
                             recon.pop_bottom();
                             recon.handle_reply(msg, bottom.request);
                         } catch(std::invalid_argument &e){
@@ -217,13 +230,15 @@ void Peer::interact_with_client(peertype &remote_peer){
                                 if (recon.is_flushing()){
                                     recon.pop_bottom();
                                     try{
-                                        msg = cn.read_message_async();
+                                        msg = read_message_async();
                                         recon.handle_reply(msg, bottom.request);
                                     }catch(...){
                                     }
                                 }
                                 else{
-                                    recon.flush_queue();
+                                    //flush
+                                    send_bulk_messages(recon.get_flush_queue());
+                                    recon.clean_queue();
                                 }
                             } else {
                                 request_entry req = recon.pop_request();
@@ -238,22 +253,22 @@ void Peer::interact_with_client(peertype &remote_peer){
         }
     }
     Done* done = new Done;
-    cn.send_message(done);
-    fetch_elements(remote_peer, recon.elements());
-    cn.close_connection();
+    send_message(done);
+    return recon.elements();
+    //connection will be closed upon destruction
 }
 
-void Peer::gossip(){
+void PeerManager::gossip(){
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(CONTEXT.msgsettings.P_SKS_STRING.c_str()));
     for (;;){
         try{
             syslog(LOG_DEBUG, "starting gossip client");
-            peertype peer = choose_partner();
-            syslog(LOG_DEBUG, "choosen partner %s", peer.first.c_str());
-            client_recon(peer);
+            Connection conn = choose_partner();
+            auto to_recover = conn.client_recon();
+            fetch_elements(conn.get_peer(), to_recover);
         } catch (std::exception &e){
             syslog(LOG_DEBUG, "%s", e.what());
-            cn.close_connection();
+            //connection automatically closed
         }
         syslog(LOG_DEBUG, "going to sleep...");
         std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.peersettings.gossip_interval});
@@ -261,9 +276,11 @@ void Peer::gossip(){
     }
 }
 
-void Peer::client_recon(const peertype &peer){
+std::vector<NTL::ZZ_p> Connection::client_recon(){
+    syslog(LOG_DEBUG, "choosen partner %s", peer.hostname.c_str());
     zpset response;
     std::vector<Message*> pending;
+    std::vector<NTL::ZZ_p> empty;
 
     int n=0; 
 
@@ -274,8 +291,8 @@ void Peer::client_recon(const peertype &peer){
         comm.status=Communication_status::NONE;
 
         // fetch request + craft response
-       
-        Message* msg = cn.read_message();
+        Message* msg = read_message();
+        syslog(LOG_DEBUG, "handling message %d", msg->type);
         switch (msg->type){
             case Msg_type::ReconRequestPoly:{
                 //ReconRequestPoly
@@ -318,24 +335,30 @@ void Peer::client_recon(const peertype &peer){
             Error* error_msg = new Error;
             error_msg->type = Msg_type::Error;
             error_msg->text = "step_error";
-            cn.send_message(error_msg);
-            return;
+            send_message(error_msg);
+            return empty;
         } 
         else if ((comm.status == Communication_status::DONE) || (n >= CONTEXT.peersettings.max_recover_size)){
-                fetch_elements(peer, response.elements());
-                cn.close_connection();
-                return;
+                //connection automatically closed
+                return response.elements();
         }
         pending.insert(pending.end(), comm.messages.begin(), comm.messages.end());
         if (comm.send){
             // send response
-            cn.send_bulk_messages(pending);
+            send_bulk_messages(pending);
             pending.clear();
         }
     }
+    return empty;
 }
 
-std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::vector<NTL::ZZ_p> &r_samples, const int r_size, const std::vector<NTL::ZZ_p> &l_samples, const int l_size, const std::vector<NTL::ZZ_p> &points){
+std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> 
+    Connection::solve(
+        const std::vector<NTL::ZZ_p> &r_samples,
+        const int r_size,
+        const std::vector<NTL::ZZ_p> &l_samples,
+        const int l_size,
+        const std::vector<NTL::ZZ_p> &points){
     std::vector<NTL::ZZ_p> values;
     for (size_t i=0; i < r_samples.size(); i++)
         values.push_back(r_samples[i]/l_samples[i]);
@@ -494,7 +517,8 @@ std::pair<std::vector<NTL::ZZ_p>,std::vector<NTL::ZZ_p>> Peer::solve(const std::
 }
 
 
-Communication Peer::request_poly_handler(ReconRequestPoly* req){
+
+Communication Connection::request_poly_handler(ReconRequestPoly* req){
     int r_size = req->size;
     std::vector<NTL::ZZ_p> r_samples = req->samples;
     bitset key = req->prefix;
@@ -532,6 +556,8 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     Communication newcomm;
     zpset remote_elements_set(remote_elements);
     zpset local_elements_set(local_elements);
+    syslog(LOG_DEBUG, "found local needs %lu", remote_elements.size());
+    syslog(LOG_DEBUG, "found remote needs %lu", local_elements.size());
     newcomm.elements = remote_elements_set;
     Elements* m_elements = new Elements;
     m_elements->elements = local_elements_set; 
@@ -539,17 +565,17 @@ Communication Peer::request_poly_handler(ReconRequestPoly* req){
     return newcomm;
 }
 
-Communication Peer::request_full_handler(ReconRequestFull* req){
+Communication Connection::request_full_handler(ReconRequestFull* req){
     zpset remote_set(req->elements);
-    zpset local_set;
     Communication newcomm;
+    std::shared_ptr<Pnode> node;
     try{
-        std::shared_ptr<Pnode> node = PTREE.node(req->prefix);
-        local_set.add(node->elements());
+        node = PTREE.node(req->prefix);
     } catch (std::exception& e){
         newcomm.status = Communication_status::ERROR;
         return newcomm;
     }
+    zpset local_set(node->elements());
     std::vector<NTL::ZZ_p> local_needs, remote_needs;
     std::tie(local_needs, remote_needs) = remote_set.symmetric_difference(local_set); 
 
