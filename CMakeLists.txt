@@ -13,7 +13,7 @@ endif ()
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g3 -rdynamic -O0")
 set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_DEBUG} -pg")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
-set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -O2")
+set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -O2 -mtune=generic")
 set(CMAKE_CXX_FLAGS_STATIC "${CMAKE_CXX_FLAGS_DOCKER}")
 
 set(suffix "so")
@@ -23,8 +23,9 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Static")
     set(Boost_USE_STATIC_LIBS   ON)
     SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     SET(BUILD_SHARED_LIBS OFF)
-    SET(CMAKE_EXE_LINKER_FLAGS "-static")
+    SET(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 endif ()
+message(STATUS "BUILD TYPE:     ${CMAKE_BUILD_TYPE}")
 
 if (NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
@@ -61,22 +62,26 @@ find_package(Boost REQUIRED
 find_library(cppcms_lib
     NAMES libcppcms.${suffix}
     HINTS ${LIBRARY_DIR}
+    PATHS ${LIBRARY_DIR} NO_DEFAULT_PATH
     )
 message(STATUS "CppCMS library:     ${cppcms_lib}")
 find_library(booster_lib
     NAMES libbooster.${suffix}
     HINTS ${LIBRARY_DIR}
+    PATHS ${LIBRARY_DIR} NO_DEFAULT_PATH
     )
-message(STATUS "Booster library:     ${boosters_lib}")
+message(STATUS "Booster library:     ${booster_lib}")
 
 find_library(libopenpgp
-    NAMES libOpenPGP.a
+    NAMES libOpenPGP.${suffix}
     HINTS ${LIBRARY_DIR}
+    PATHS ${LIBRARY_DIR} NO_DEFAULT_PATH
     )
 message(STATUS "PGP libraries:      ${libopenpgp}")
 
 find_library(libgmp
-    NAMES libgmp.a
+    NAMES libgmp.${suffix}
+    HINTS ${LIBRARY_DIR}
     PATHS ${LIBRARY_DIR} NO_DEFAULT_PATH
     )
 message(STATUS "GMP libraries:      ${libgmp}")
@@ -84,6 +89,7 @@ message(STATUS "GMP libraries:      ${libgmp}")
 find_library(libntl
     NAMES libntl.a
     HINTS ${LIBRARY_DIR}
+    PATHS ${LIBRARY_DIR} NO_DEFAULT_PATH
     )
 message(STATUS "NTL libraries:      ${libntl}")
 

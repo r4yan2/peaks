@@ -262,9 +262,11 @@ void PeerManager::gossip(){
     for (;;){
         try{
             syslog(LOG_DEBUG, "starting gossip client");
-            Connection conn = choose_partner();
-            auto to_recover = conn.client_recon();
-            fetch_elements(conn.get_peer(), to_recover);
+            if (membership.size()) {
+                Connection conn = choose_partner();
+                auto to_recover = conn.client_recon();
+                fetch_elements(conn.get_peer(), to_recover);
+            }
         } catch (std::exception &e){
             syslog(LOG_DEBUG, "%s", e.what());
             //connection automatically closed
