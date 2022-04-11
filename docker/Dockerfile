@@ -17,7 +17,9 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     && rm -rf peaks \
     && apt-get remove -y dialog apt-utils build-essential m4 curl python cmake git \
     && apt-get autoremove -y \
-    && apt-get autoclean
-COPY srv /srv/service
+    && apt-get autoclean \
+    && mkdir /var/peaks/
+
+COPY data /srv/peaks
 
 CMD ["svscan", "/srv/service"]

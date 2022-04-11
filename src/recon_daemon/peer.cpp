@@ -21,8 +21,7 @@ PeerManager::PeerManager():
         membership.push_back(std::make_pair(addr, port));
     }
     if (membership.size() == 0){
-        syslog(LOG_WARNING, "Membership file provided is empty!");
-        exit(0);
+        syslog(LOG_ERR, "Membership file provided is empty!");
     }
 }
 
