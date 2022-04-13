@@ -22,6 +22,7 @@ link_directories(${CGI_HANDLER_DIR})
 target_link_libraries(peaks curl)
 target_link_libraries(peaks z)
 target_link_libraries(peaks bz2)
+target_link_libraries(peaks gcrypt)
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Static")
     target_link_libraries(peaks icuio)

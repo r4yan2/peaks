@@ -218,7 +218,6 @@ Now will follow a list of the configuration options that could be modified from 
 |----|-----------------|-------------|------------------|
 |mbar|      5|Parameter for the linear interpolation|                NO|
 |bq  |       2|Regulate the fanout of the prefix-tree| NO               |
-|max_ptree_nodes|1000| --- |NO|
 |pthree_thresh_mult|10| multiplicative constant| NO|
 |P_SKS_STRING|5305128895516023225051275203|finite field used by SKS|NO|
 |reconciliation_timeout|45|timeout for the reconciliation protocol|NO|
@@ -238,7 +237,8 @@ Now will follow a list of the configuration options that could be modified from 
 |sks_bitstring | 0     |compatibility mode|NO|
 |async_timeout_sec | 1|network timeout - second|NO|
 |async_timeout_usec | 0 |network timeout - millisecond|NO|
-|max_unpacker_limit | 10000|Upper limit to the number of certificates unpakced ad a time|YES|
+|unpacker_limit | 10000|Upper limit to the number of certificates unpacked in a single run|YES|
+|analyzer_limit | 10000|Upper limit to the number of certificates analyzed in a single run|YES|
 
 ### Membership file
 

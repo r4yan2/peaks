@@ -51,7 +51,7 @@ Analyzer::Analyzer():
     
     syslog(LOG_NOTICE, "Using %d Threads", nThreads);
  
-    limit = CONTEXT.get<int>("limit", CONTEXT.get<int>("max_analyzer_limit"));
+    limit = CONTEXT.get<int>("limit", CONTEXT.get<int>("analyzer_limit"));
 
     syslog(LOG_NOTICE, "Limiting analysis to %u certificates", limit);
  

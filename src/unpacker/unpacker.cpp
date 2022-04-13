@@ -31,7 +31,7 @@ Unpacker::Unpacker(){
     nThreads = CONTEXT.get<int>("threads", 1);
     syslog(LOG_NOTICE, "Using %d Threads", nThreads);
 
-    limit = CONTEXT.get<int>("limit", CONTEXT.get<int>("max_unpacker_limit"));
+    limit = CONTEXT.get<int>("limit", CONTEXT.get<int>("unpacker_limit"));
 
     syslog(LOG_INFO, "limiting analysis at %d keys", limit);
 

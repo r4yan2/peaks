@@ -36,9 +36,6 @@ namespace peaks{
       /** the bitquantum influence how many child a node have in the prefix tree */
       int bq;
   
-      /** the maximum amount of nodes in a ptree */
-      int max_ptree_nodes;
-  
       /** a r-value to be multiplies with other to obtain a specific threshold */
       int ptree_thresh_mult;
   
@@ -53,9 +50,6 @@ namespace peaks{
   
       /** threshold at which a node is no longer necessary to exists and it's joine with the parent */
       int join_threshold;
-      
-      /** flag to indicate the bitstring notation in use */
-      int sks_bitstring;
   };
   
   struct Recon_config{

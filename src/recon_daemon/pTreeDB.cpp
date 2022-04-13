@@ -82,10 +82,6 @@ size_t Ptree::get_num_samples(){
     return CONTEXT.treesettings.num_samples;
 }
 
-int Ptree::get_max_ptree_nodes(){
-    return CONTEXT.treesettings.max_ptree_nodes;
-}
-
 int Ptree::get_ptree_thresh_mult(){
     return CONTEXT.treesettings.ptree_thresh_mult;
 }
@@ -102,9 +98,6 @@ unsigned int Ptree::get_join_threshold(){
     return CONTEXT.treesettings.join_threshold;
 }
 
-int Ptree::get_sks_bitstring(){
-    return CONTEXT.treesettings.sks_bitstring;
-}
 pnode_ptr Ptree::get_node(const Bitset& key){
     DBStruct::node n = dbm->get_node(key);
     pnode_ptr nd = std::make_shared<Pnode>(this);

@@ -21,17 +21,14 @@ Context::Context(){
     internal_config.add_options()
         ("mbar", po::value<int>()->default_value(5))
         ("bq", po::value<int>()->default_value(2))
-        ("max_ptree_nodes", po::value<int>()->default_value(1000))
         ("ptree_thresh_mult", po::value<int>()->default_value(10))
         ("P_SKS_STRING", po::value<std::string>()->default_value("530512889551602322505127520352579437339"))
         ("reconciliation_timeout", po::value<int>()->default_value(45))
-        ("default_timeout", po::value<int>()->default_value(300))
         ("max_read_len_shift", po::value<int>()->default_value(24))
         ("max_recover_size", po::value<int>()->default_value(1500))
         ("max_request_queue_len", po::value<int>()->default_value(60000))
         ("request_chunk_size", po::value<int>()->default_value(100))
         ("max_outstanding_recon_req", po::value<int>()->default_value(100))
-        ("sks_bitstring", po::value<int>()->default_value(0))
         ("async_timeout_sec", po::value<int>()->default_value(1))
         ("async_timeout_usec", po::value<int>()->default_value(0))
     ;
@@ -46,8 +43,8 @@ Context::Context(){
         ("gossip_interval", po::value<int>()->default_value(60))
         ("unpack_interval", po::value<int>()->default_value(60))
         ("analyze_interval", po::value<int>()->default_value(60))
-        ("max_unpacker_limit", po::value<int>()->default_value(10000))
-        ("max_analyzer_limit", po::value<int>()->default_value(10000))
+        ("unpacker_limit", po::value<int>()->default_value(10000))
+        ("analyzer_limit", po::value<int>()->default_value(10000))
     ; 
     db_config.add_options()
         ("db_host", po::value<std::string>()->default_value("127.0.0.1"))
@@ -131,13 +128,11 @@ void Context::setContext(const po::variables_map & _vm){
     treesettings = {
         vm["mbar"].as<int>(),
         vm["bq"].as<int>(),
-        vm["max_ptree_nodes"].as<int>(),
         vm["ptree_thresh_mult"].as<int>(),
         num_samples,
         points,
         vm["ptree_thresh_mult"].as<int>() * vm["mbar"].as<int>(), // split_threshold
         vm["ptree_thresh_mult"].as<int>() * vm["mbar"].as<int>() / 2, // join_threashold
-        vm["sks_bitstring"].as<int>(),
     };
     connsettings = {
         vm["version"].as<std::string>(),

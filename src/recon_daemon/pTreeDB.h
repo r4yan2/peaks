@@ -214,12 +214,10 @@ public:
     int get_bq();
     void set_db(std::shared_ptr<RECON_DBManager> dbm_);
     size_t get_num_samples();
-    int get_max_ptree_nodes();
     int get_ptree_thresh_mult();
     std::vector<NTL::ZZ_p> get_points();
     unsigned int get_split_threshold();
     unsigned int get_join_threshold();
-    int get_sks_bitstring();
 
     void db_insert(DBStruct::node &n);
     void db_update(DBStruct::node &n);
