@@ -93,75 +93,101 @@ void Unpacker::run(){
     }
     Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
     std::vector<DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
-    limit = gpg_data.size();
 
-    if (limit == 0){
+    if (gpg_data.empty()){
         std::cout << "No data to process, going to sleep" << std::endl;
         return;
     }
     
     std::shared_ptr<Thread_Pool> pool = std::make_shared<Thread_Pool>(nThreads);
 
-    std::vector<std::shared_ptr<Job>> unpacking_jobs;
     dbm->openCSVFiles();
 
-    for (unsigned int i = 0; i < gpg_data.size();){
-        std::vector<Key::Ptr> pks;
-        for (unsigned int j = 0; i < gpg_data.size() && j < key_per_thread; j++, i++){
-            Key::Ptr key;
-            try{
-                key = std::make_shared<Key>();
-                key->read_raw(gpg_data[i].certificate);
-                key->set_type(PGP::PUBLIC_KEY_BLOCK);
-                pks.push_back(key);
-            }catch (std::error_code &ec){
-                switch (ec.value()) {
-                    case static_cast<int>(KeyErrc::NotExistingVersion):
-                    case static_cast<int>(KeyErrc::BadKey):
-                    case static_cast<int>(KeyErrc::NotAPublicKey):
-                    case static_cast<int>(KeyErrc::NotASecretKey):
-                        break;
-                    case static_cast<int>(KeyErrc::NotEnoughPackets): {
-                        if (key->get_packets().empty()) {
-                            break;
-                        }
-                    }
-                    case static_cast<int>(KeyErrc::FirstPacketWrong):
-                    case static_cast<int>(KeyErrc::SignAfterPrimary):
-                    case static_cast<int>(KeyErrc::AtLeastOneUID):
-                    case static_cast<int>(KeyErrc::WrongSignature):
-                    case static_cast<int>(KeyErrc::NoSubkeyFound):
-                    case static_cast<int>(KeyErrc::Ver3Subkey):
-                    case static_cast<int>(KeyErrc::NoSubkeyBinding):
-                    case static_cast<int>(KeyErrc::NotAllPacketsAnalyzed):
-                        pks.push_back(key);
-                        continue;
-                    default:
-                        break;
-                }
-
-                syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s at index %d", ec.message().c_str(), i);
-                dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
-                continue;
-            }catch (std::exception &e){
-                syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s at index %d", e.what(), i);
-                dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
-                //std::terminate();
-                continue;
-            }catch (...){
-                syslog(LOG_CRIT, "Error during creation of the object PGP::Key at index %d", i);
-                continue;
-            }
-        }
-        unpacking_jobs.push_back(std::make_shared<Job>([=] {unpack_key_th(pks); }));
-        pool->Add_Job(unpacking_jobs.back());
+    for (size_t i = 0; i < gpg_data.size(); i+=key_per_thread){
+        pool->Add_Job(std::make_shared<Job>([=, &gpg_data] {unpack_key_th(gpg_data, i, key_per_thread); }));
     }
-    pool->Stop_Filling_UP();
     pool->terminate();
 
     store_keymaterial();
 
     syslog(LOG_NOTICE, "Unpacker daemon is stopping!");
+}
+
+void unpack_key_th(const std::vector<DBStruct::gpg_keyserver_data> &gpg_data, size_t start, size_t size) {
+    std::shared_ptr<UNPACKER_DBManager> dbm = make_shared<UNPACKER_DBManager>();
+    dbm->openCSVFiles(); // just recover handlers
+    size_t end = start + size;
+    for (size_t i = start; i < gpg_data.size() && i < end; i++){
+        Key::Ptr key;
+        bool analyzable = true;
+        try{
+            key = std::make_shared<Key>();
+            key->read_raw(gpg_data[i].certificate);
+            key->set_type(PGP::PUBLIC_KEY_BLOCK);
+        }catch (std::error_code &ec){
+            switch (ec.value()) {
+                case static_cast<int>(KeyErrc::NotExistingVersion):
+                case static_cast<int>(KeyErrc::BadKey):
+                case static_cast<int>(KeyErrc::NotAPublicKey):
+                case static_cast<int>(KeyErrc::NotASecretKey):
+                    analyzable = false;
+                    break;
+                case static_cast<int>(KeyErrc::NotEnoughPackets): {
+                    if (key->get_packets().empty()) {
+                        analyzable = false;
+                        break;
+                    }
+                }
+                case static_cast<int>(KeyErrc::FirstPacketWrong):
+                case static_cast<int>(KeyErrc::SignAfterPrimary):
+                case static_cast<int>(KeyErrc::AtLeastOneUID):
+                case static_cast<int>(KeyErrc::WrongSignature):
+                case static_cast<int>(KeyErrc::NoSubkeyFound):
+                case static_cast<int>(KeyErrc::Ver3Subkey):
+                case static_cast<int>(KeyErrc::NoSubkeyBinding):
+                case static_cast<int>(KeyErrc::NotAllPacketsAnalyzed):
+                    break;
+                default:
+                    analyzable = false;
+                    break;
+            }
+            
+            if (!analyzable){
+                syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s at index %lu", ec.message().c_str(), i);
+                dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
+                continue;
+            }
+        }catch (std::exception &e){
+            syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s at index %lu", e.what(), i);
+            dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
+            continue;
+        }catch (...){
+            syslog(LOG_CRIT, "Error during creation of the object PGP::Key at index %lu", i);
+            continue;
+        }
+
+        // only unpackable key after this point
+        assert(analyzable);
+
+        // actual unpack
+        try{
+            unpack_key(key, dbm);
+        }catch(exception &e) {
+            syslog(LOG_WARNING, "Key not analyzed due to not meaningfulness (%s). is_analyzed will be set equals to -1", e.what());
+            cout << "Key not analyzed due to not meaningfulness (" << e.what() << "). is_analyzed will be set equals to -1" << endl;
+            dbm->set_as_not_analyzable(key->version(), key->fingerprint(), e.what());
+            continue;
+        }catch (error_code &ec){
+            syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", ec.message().c_str());
+            cerr << "Key not unpacked due to not meaningfulness (" << ec.message() << ")." << endl;
+            dbm->set_as_not_analyzable(key->version(), key->fingerprint(), ec.message());
+            continue;
+        }catch (...){
+            syslog(LOG_CRIT, "Error during creation of the object PGP::Key");
+            continue;
+        }
+    } //end for
+    dbm->flushCSVFiles();
 }
 
 void Unpacker::store_keymaterial(){
@@ -173,36 +199,6 @@ void Unpacker::store_keymaterial(){
     dbm->UpdateIsExpired();
     dbm->UpdateIsRevoked();
     //dbm->UpdateIsValid();
-}
-
-void unpack_key_th(const vector<Key::Ptr> &pks){
-    std::shared_ptr<UNPACKER_DBManager> dbm = make_shared<UNPACKER_DBManager>();
-    dbm->openCSVFiles(); // just recover handlers
-    
-    int i = 0;
-    for (const auto &pk : pks) {
-        try{
-            //printf ("\rProgress: %d", ++i);
-            //fflush(stdout);
-            unpack_key(pk, dbm);
-        }catch(exception &e) {
-            syslog(LOG_WARNING, "Key not analyzed due to not meaningfulness (%s). is_analyzed will be set equals to -1", e.what());
-            cout << "Key not analyzed due to not meaningfulness (" << e.what() << "). is_analyzed will be set equals to -1" << endl;
-            dbm->set_as_not_analyzable(pk->version(), pk->fingerprint(), e.what());
-            continue;
-        }catch (error_code &ec){
-            syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", ec.message().c_str());
-            cerr << "Key not unpacked due to not meaningfulness (" << ec.message() << ")." << endl;
-            dbm->set_as_not_analyzable(pk->version(), pk->fingerprint(), ec.message());
-            continue;
-        }catch (...){
-            syslog(LOG_CRIT, "Error during creation of the object PGP::Key");
-            continue;
-        }
-    }
-
-    dbm->flushCSVFiles();
-
 }
 
 void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){

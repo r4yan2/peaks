@@ -82,8 +82,6 @@ void Analyzer::run(){
         pool->Add_Job([=] { analyze_pubkeys(pks); });
     }
 
-    pool->Stop_Filling_UP();
-
     syslog(LOG_INFO, "Starting RSA modulus analysis");
 
     if (!pk.empty() && exist_rsa){
@@ -94,8 +92,6 @@ void Analyzer::run(){
 
     vector<DBStruct::signatures> ss = dbm->get_signatures(limit);
 
-    pool->Start_Filling_UP();
-
     for (unsigned int i = 0; i < ss.size();){
         vector<DBStruct::signatures> sss;
         for (unsigned int j = 0; i < ss.size() && j < key_per_thread; i++, j++){
@@ -105,8 +101,6 @@ void Analyzer::run(){
     }
 
     pool->Add_Job([=] { return dbm->write_repeated_r_csv(); });
-
-    pool->Stop_Filling_UP();
 
     pool->terminate();
     dbm->closeCSVFiles();

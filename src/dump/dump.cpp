@@ -36,13 +36,8 @@ namespace dump{
             pool->Add_Job(j);
         }
         
-        pool->Stop_Filling_UP();
+        pool->terminate();
     
-        for (auto &th: pool_vect){
-            while (!th.joinable()){}
-            th.join();
-        }
-        
         syslog(LOG_NOTICE, "Dumping terminated!");
         return 0;
     }

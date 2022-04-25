@@ -137,6 +137,7 @@ Connection Connection_Manager::init_peer(const member & peer){
     int tmpfd = socket(AF_INET, SOCK_STREAM, 0);
     if (tmpfd < 0)
         throw connection_exception("ERROR opening socket");
+    syslog(LOG_DEBUG, "Socket open ok");
     server = gethostbyname(peer.first.c_str());
     if (server == NULL) {
         throw connection_exception("ERROR connecting: no such host");
@@ -150,6 +151,7 @@ Connection Connection_Manager::init_peer(const member & peer){
     int err = connect(tmpfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr));
     if (err < 0)
         throw connection_exception("ERROR connecting");
+    syslog(LOG_DEBUG, "Connect ok");
     return Connection(mtx, peer.first, peer.second, tmpfd);
 }
 
@@ -177,6 +179,7 @@ bool Connection::check_remote_config(){
     send_message(local_config);
 
     Peer_config* remote_config = (Peer_config*) read_message();
+    syslog(LOG_DEBUG, "received remote config");
 
     if (!m.try_lock()){
         early_fail("sync already in progress");
@@ -204,6 +207,7 @@ bool Connection::check_remote_config(){
         syslog(LOG_WARNING, "remote host rejected config, reason: %s", reason.c_str());
         return false;
     }
+    syslog(LOG_DEBUG, "Config check ok");
 
     int http_port = remote_config->http_port;
     peer.port = http_port;

@@ -182,14 +182,6 @@ public:
      */
     void Add_Jobs(const std::vector<std::shared_ptr<Job>> & new_jobs);
 
-    /** @brief Signal that workers may start processing jobs
-     */
-    void Stop_Filling_UP();
-
-    /** @brief Signal that jobs are being added
-     */
-    void Start_Filling_UP();
-
     /** @brief Signal that no more jobs will be added, workers need to be joined
      */
     void terminate();

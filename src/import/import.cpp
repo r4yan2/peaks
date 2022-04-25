@@ -98,7 +98,6 @@ void generate_csv(std::shared_ptr<IMPORT_DBManager> dbm, std::vector<std::string
         pool->Add_Job(f);
     }
 
-    pool->Stop_Filling_UP();
     pool->terminate();
 }
 
