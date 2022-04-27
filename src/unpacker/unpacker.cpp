@@ -5,6 +5,7 @@
 #include <common/errors.h>
 #include <cmath>
 #include <Misc/PKCS1.h>
+#include "DBStruct.h"
 #include "PKA/PKAs.h"
 #include "Packets/Tag2/Subpacket.h"
 #include "unpacker.h"
@@ -16,8 +17,15 @@ namespace unpacker{
 
 void unpack(){
     Unpacker u;
-    while(true){
+    int iterations = CONTEXT.get<int>("only");
+    while(true) {
     	u.run();
+        if (iterations > 0)
+            iterations--;
+        if (iterations == 0){
+            syslog(LOG_INFO, "Done %d iterations!", CONTEXT.get<int>("only"));
+            break;
+        }
     	std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.get<int>("unpack_interval")});
     }
 }
@@ -45,7 +53,7 @@ Unpacker::Unpacker(){
         exit(-1);
     }
     
-    dbm = std::make_shared<UNPACKER_DBManager>();
+    std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>();
     if (CONTEXT.get<bool>("reset")){
         //reset unpacking status
         dbm->execute_query("truncate Pubkey");
@@ -83,18 +91,19 @@ Unpacker::Unpacker(){
 
 void Unpacker::run(){
 
-    dbm = std::make_shared<UNPACKER_DBManager>();
+    std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>();
     // resume session if any
-    store_keymaterial(); 
+    store_keymaterial(dbm);
     
     if (CONTEXT.get<bool>("recover")){
         std::cout << "Finished recovery, exiting" << std::endl;
         exit(0);
     }
     Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
-    std::vector<DBStruct::gpg_keyserver_data> gpg_data = dbm->get_certificates(limit);
 
-    if (gpg_data.empty()){
+    std::shared_ptr<DBResult> results = dbm->get_certificates_iterator(limit);
+
+    if (!results->size()){
         std::cout << "No data to process, going to sleep" << std::endl;
         return;
     }
@@ -103,26 +112,27 @@ void Unpacker::run(){
 
     dbm->openCSVFiles();
 
-    for (size_t i = 0; i < gpg_data.size(); i+=key_per_thread){
-        pool->Add_Job(std::make_shared<Job>([=, &gpg_data] {unpack_key_th(gpg_data, i, key_per_thread); }));
+    for (size_t i = 0; i < results->size(); i+=key_per_thread){
+        pool->Add_Job(std::make_shared<Job>([=, &dbm, &results] {unpack_key_th(dbm, results, i, key_per_thread); }));
     }
     pool->terminate();
 
-    store_keymaterial();
+    store_keymaterial(dbm);
 
     syslog(LOG_NOTICE, "Unpacker daemon is stopping!");
 }
 
-void unpack_key_th(const std::vector<DBStruct::gpg_keyserver_data> &gpg_data, size_t start, size_t size) {
+void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm_, const std::shared_ptr<DBResult> & results, size_t start, size_t size) {
     std::shared_ptr<UNPACKER_DBManager> dbm = make_shared<UNPACKER_DBManager>();
     dbm->openCSVFiles(); // just recover handlers
     size_t end = start + size;
-    for (size_t i = start; i < gpg_data.size() && i < end; i++){
+    for (size_t i = start; i < results->size() && i < end; i++){
+        DBStruct::gpg_keyserver_data gpg_data = dbm_->get_certificate_from_results(results);
         Key::Ptr key;
         bool analyzable = true;
         try{
             key = std::make_shared<Key>();
-            key->read_raw(gpg_data[i].certificate);
+            key->read_raw(gpg_data.certificate);
             key->set_type(PGP::PUBLIC_KEY_BLOCK);
         }catch (std::error_code &ec){
             switch (ec.value()) {
@@ -154,12 +164,12 @@ void unpack_key_th(const std::vector<DBStruct::gpg_keyserver_data> &gpg_data, si
             
             if (!analyzable){
                 syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s at index %lu", ec.message().c_str(), i);
-                dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
+                dbm->set_as_not_analyzable(gpg_data.version, gpg_data.fingerprint, "Error during creation of the object PGP::Key");
                 continue;
             }
         }catch (std::exception &e){
             syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s at index %lu", e.what(), i);
-            dbm->set_as_not_analyzable(gpg_data[i].version, gpg_data[i].fingerprint, "Error during creation of the object PGP::Key");
+            dbm->set_as_not_analyzable(gpg_data.version, gpg_data.fingerprint, "Error during creation of the object PGP::Key");
             continue;
         }catch (...){
             syslog(LOG_CRIT, "Error during creation of the object PGP::Key at index %lu", i);
@@ -190,7 +200,7 @@ void unpack_key_th(const std::vector<DBStruct::gpg_keyserver_data> &gpg_data, si
     dbm->flushCSVFiles();
 }
 
-void Unpacker::store_keymaterial(){
+void Unpacker::store_keymaterial(const std::shared_ptr<UNPACKER_DBManager> &dbm){
     if (CONTEXT.get<bool>("csv-only", false))
         return; //nothing to do
     dbm->insertCSV();
@@ -380,7 +390,7 @@ void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
         dbm->write_userAttributes_csv(u);
     }
     for (auto it = unpackedSignatures.begin(); it != unpackedSignatures.end(); it++){
-        if(!dbm->existSignature(*it) || find(it + 1, unpackedSignatures.end(), *it) == unpackedSignatures.end()) {
+        if(find(it + 1, unpackedSignatures.end(), *it) == unpackedSignatures.end() || !dbm->existSignature(*it)) {
             dbm->write_signature_csv(*it);
             if (it->issuingKeyId == it->signedKeyId && !it->signedUsername.empty()){
                 dbm->write_self_signature_csv(*it);

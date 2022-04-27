@@ -43,6 +43,8 @@ public:
      * @return certificates data
      */
     std::vector<DBStruct::gpg_keyserver_data> get_certificates(const unsigned long &l);
+    std::shared_ptr<DBResult> get_certificates_iterator(const unsigned long &l);
+    DBStruct::gpg_keyserver_data get_certificate_from_results(const std::shared_ptr<DBResult> &);
     bool existSignature(const DBStruct::signatures &s);
 
     /** @brief fill up the Pubkey csv
@@ -121,6 +123,7 @@ private:
         commit,
         set_unpacking_status_stmt;
 
+    std::mutex mtx;
 };
 
 

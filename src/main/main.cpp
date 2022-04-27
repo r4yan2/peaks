@@ -88,6 +88,7 @@ void signalHandler(int signum) {
    
        std::cout << "  unpack               Unpack certificate not analyzer during fastimport" << std::endl;
        std::cout << "    --threads          Set number of threads to use" << std::endl;
+       std::cout << "    --only             Set number of run" << std::endl;
        std::cout << "    --csv-only         only create temporary csv file, do not import into DB" << std::endl;
        std::cout << "    --limit            Set the limit on key to unpack" << std::endl;
        std::cout << "    --recover          Recover previous broken session only" << std::endl;

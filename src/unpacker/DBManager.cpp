@@ -77,6 +77,27 @@ vector<DBStruct::gpg_keyserver_data> UNPACKER_DBManager::get_certificates(const 
     return certificates;
 }
 
+std::shared_ptr<DBResult> UNPACKER_DBManager::get_certificates_iterator(const unsigned long &l) {
+    vector<DBStruct::gpg_keyserver_data> certificates;
+    get_analyzable_cert_stmt->setString(1, to_string(l));
+    std::shared_ptr<DBResult> result = get_analyzable_cert_stmt->execute();
+    return result;
+}
+
+DBStruct::gpg_keyserver_data UNPACKER_DBManager::get_certificate_from_results(const std::shared_ptr<DBResult> & result){
+    std::lock_guard<std::mutex> lock(mtx);
+    DBStruct::gpg_keyserver_data tmp_field;
+    if(result->next()){
+        tmp_field.version = result->getInt("version");
+        tmp_field.fingerprint = result->getString("fingerprint");
+        tmp_field.filename = result->getString("filename");
+        tmp_field.origin = result->getInt("origin");
+        tmp_field.len = result->getInt("len");
+        tmp_field.certificate = get_certificate_from_filestore(tmp_field.filename, tmp_field.origin, tmp_field.len);
+    }
+    return tmp_field;
+}
+
 bool UNPACKER_DBManager::existSignature(const DBStruct::signatures &s){
     try {
         get_signature_by_index->setBlob(1, s.sString);

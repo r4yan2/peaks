@@ -482,13 +482,14 @@ DBQuery::~DBQuery(){
 
 void DBQuery::setString(const int pos, const string & str){
     stmt->setString(pos, str);
-    params[pos] = str;
 }
 
 void DBQuery::setBlob(const int pos, const string & s){
-    istream * s_ptr = new std::istringstream(s);
-    setBlob(pos, s_ptr);
-    params[pos] = s;
+    DataBuf * buffer = new DataBuf((char*)s.data(), s.length());
+    std::istream * s_ptr = new std::istream(buffer);
+    stmt->setBlob(pos, s_ptr);
+    trash_bin_2.push_back(buffer);
+    trash_bin.push_back(s_ptr);
 }
 
 void DBQuery::setBlob(const int pos, istream * s_ptr){
@@ -520,6 +521,12 @@ unique_ptr<DBResult> DBQuery::execute(){
         unique_ptr<DBResult> res = std::make_unique<DBResult>(stmt->getResultSet());
         return res;
     }
+    for(auto & p: trash_bin)
+        delete p;
+    for(auto & p: trash_bin_2)
+        delete p;
+    trash_bin.clear();
+    trash_bin_2.clear();
     return 0;
 }
 

@@ -11,8 +11,8 @@ namespace common{
 Thread_Pool::Thread_Pool(){}
 
 Thread_Pool::Thread_Pool(const unsigned int &size):
-    pool_vect(size),
-    state(Pool_Status::FILLING)
+    state(Pool_Status::FILLING),
+    pool_vect(size)
 {
     for (unsigned int i = 0; i < size; i++)
         pool_vect[i] = std::thread([=] { Infinite_loop_function(); });
