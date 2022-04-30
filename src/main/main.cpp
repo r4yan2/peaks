@@ -8,7 +8,9 @@
 #include <recon_daemon/recon_daemon.h>
 #include <unpacker/unpacker.h>
 #include <import/import.h>
+#ifdef BUILD_ANALYZER
 #include <analyzer/analyzer.h>
+#endif
 #include <dump/dump.h>
 #include <sys/syslog.h>
 #include <csignal>
@@ -96,11 +98,13 @@ void signalHandler(int signum) {
    
        std::cout << std::endl;
    
+#ifdef BUILD_ANALYZER
        std::cout << "  analyze              Perform security analysis on imported pubkeys" << std::endl;
        std::cout << "    --threads          Set number of threads to use" << std::endl;
        std::cout << "    --limit            Set the limit on key to analyze" << std::endl;
    
        std::cout << std::endl;
+#endif
    
        std::cout << "  recon                Start the recon process" << std::endl;
        std::cout << "    --client-only      Start only as client" << std::endl;
@@ -129,7 +133,9 @@ void signalHandler(int signum) {
             std::make_pair("build", recon::build),
             std::make_pair("serve", pks::serve),
             std::make_pair("dump", dump::dump),
-            std::make_pair("analyze", analyzer::analyze)
+#ifdef BUILD_ANALYZER
+            std::make_pair("analyze", analyzer::analyze),
+#endif
         };
         try{
             std::string err = "";
