@@ -22,6 +22,53 @@ namespace peaks{
 namespace common{
 namespace Utils{
 
+    Lazystring::Lazystring():
+        value(""),
+        empty_(true),
+        init(false)
+    {}
+    Lazystring::Lazystring(const std::string &init_):
+        value(init_),
+        empty_(init_.empty()),
+        init(false)
+    {}
+    Lazystring::Lazystring(const char* init_):
+        value(init_),
+        empty_(value.empty()),
+        init(false)
+    {}
+    Lazystring::Lazystring(std::function<std::string()> f_, const bool empty__):
+        get_f(f_),
+        value(""),
+        empty_(empty__),
+        init(true)
+    {}
+    void Lazystring::set_f(std::function<std::string()> get_f_){
+        init = true;
+        get_f = get_f_;
+    }
+    void Lazystring::set_empty(bool val){
+        empty_ = val;
+    }
+    bool Lazystring::empty() const{
+        return empty_;
+    }
+    bool Lazystring::ready() const{
+        return init;
+    }
+    std::string Lazystring::get(){
+        if (init){
+            init = false;
+            value = get_f();
+            empty_ = value.empty();
+        }
+        return value;
+    }
+
+    std::ostream& operator <<(std::ostream& os, const Lazystring& lazy) {
+        return os << const_cast<Lazystring &>(lazy).get();
+    }
+
     string get_file_name(const std::string &folder_name, const std::string &name){
 		return folder_name + name;
     }

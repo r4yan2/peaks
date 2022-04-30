@@ -34,20 +34,6 @@ void IMPORT_DBManager::prepare_queries() {
 IMPORT_DBManager::~IMPORT_DBManager()
 {}
 
-bool IMPORT_DBManager::existSignature(const DBStruct::signatures &s){
-    std::istream *r_sign = new istringstream(s.rString);
-    std::istream *s_sign = new istringstream(s.sString);
-    try {
-        get_signature_by_index->setBlob(1, r_sign);
-        get_signature_by_index->setBlob(2, s_sign);
-        std::unique_ptr<DBResult> result = get_signature_by_index->execute();
-        return result->next();
-    }catch (exception &e){
-        syslog(LOG_CRIT, "get_signature_by_index FAILED, there may be a double signature in the database! - %s", e.what());
-        return false;
-    }
-}
-
 void IMPORT_DBManager::drop_index_gpg_keyserver(){
 	execute_query("ALTER TABLE gpg_keyserver DROP INDEX id;");
 	execute_query("ALTER TABLE gpg_keyserver DROP INDEX fingerprint;");
@@ -96,116 +82,6 @@ void IMPORT_DBManager::write_gpg_keyserver_csv(const DBStruct::gpg_keyserver_dat
     }
 }
 
-void IMPORT_DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
-    try{
-        ostringstream f;
-        f << '"' << pubkey.keyId << "\",";
-        f << '"' << pubkey.version << "\",";
-        f << '"' << hexlify(pubkey.fingerprint) << "\",";
-        f << '"' << hexlify(pubkey.priFingerprint) << "\",";
-        f << '"' << pubkey.pubAlgorithm << "\",";
-        f << '"' << pubkey.creationTime << "\",";
-        f << '"' << pubkey.expirationTime << "\",";
-        for (const auto &v: pubkey.algValue){
-            f << '"' << hexlify(v) << "\",";
-        }
-        f << '"' << pubkey.curve<< "\",";
-        f << "\n";
-		FILEMANAGER.write(file_list.at(Utils::PUBKEY), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_pubkey_csv FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
-    }
-}
-
-void IMPORT_DBManager::write_userID_csv(const DBStruct::userID &uid) {
-    try{
-        ostringstream f;
-        f << '"' << uid.ownerkeyID << "\",";
-        f << '"' << hexlify(uid.fingerprint) << "\",";
-        f << '"' << uid.name << "\",";
-        f << "\n";
-		FILEMANAGER.write(file_list.at(Utils::USERID), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_userID_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
-    }
-}
-
-void IMPORT_DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
-    try{
-        ostringstream f;
-        f << '"' << to_string(ua.id) << "\",";
-        f << '"' << hexlify(ua.fingerprint) << "\",";
-        f << '"' << ua.name << "\",";
-        f << '"' << ua.encoding << "\",";
-        f << '"' << hexlify(ua.image) << "\",";
-        f << "\n";
-		FILEMANAGER.write(file_list.at(Utils::USER_ATTRIBUTES), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_userAttributes_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
-    }
-}
-
-void IMPORT_DBManager::write_signature_csv(const DBStruct::signatures &ss) {
-    try{
-        ostringstream f;
-        f << '.' << '"' << ss.type << "\",";
-        f << '"' << ss.pubAlgorithm << "\",";
-        f << '"' << ss.hashAlgorithm << "\",";
-        f << '"' << ss.version << "\",";
-        f << '"' << ss.issuingKeyId << "\",";
-        f << '"' << ss.signedKeyId << "\",";
-        f << '"' << hexlify(ss.issuingFingerprint) << "\",";
-        f << '"' << hexlify(ss.signedFingerprint) << "\",";
-        f << '"' << ss.signedUsername << "\",";
-        f << '"' << ss.issuingUsername << "\",";
-        f << '"' << ss.uatt_id << "\",";
-        f << '"' << ss.regex << "\",";
-        f << '"' << ss.creationTime << "\",";
-        f << '"' << ss.expirationTime << "\",";
-        f << '"' << hexlify(ss.rString) << "\",";
-        f << '"' << hexlify(ss.sString) << "\",";
-        f << '"' << hexlify(ss.flags) << "\",";
-        f << '"' << hexlify(ss.hashHeader) << "\",";
-        f << '"' << hexlify(ss.signedHash) << "\",";
-        f << '"' << ss.hashMismatch << "\",";
-        f << '"' << ss.keyExpirationTime << "\",";
-        f << '"' << ss.revocationCode << "\",";
-        f << '"' << ss.revocationReason << "\",";
-        f << '"' << ss.revocationSigId << "\",";
-        f << '"' << ss.isRevocable << "\",";
-        f << '"' << ss.isExportable << "\",";
-        f << '"' << ss.isExpired << "\",";
-        f << '"' << ss.isRevocation << "\",";
-        f << "\n";
-		FILEMANAGER.write(file_list.at(Utils::SIGNATURE), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s", e.what());
-    }
-}
-
-void IMPORT_DBManager::write_self_signature_csv(const DBStruct::signatures &ss) {
-    try{
-        ostringstream f;
-        f << '.' << '"' << ss.type << "\",";
-        f << '"' << ss.pubAlgorithm << "\",";
-        f << '"' << ss.hashAlgorithm << "\",";
-        f << '"' << ss.version << "\",";
-        f << '"' << ss.issuingKeyId << "\",";
-        f << '"' << hexlify(ss.issuingFingerprint) << "\",";
-        f << '"' << hexlify(ss.preferedHash) << "\",";
-        f << '"' << hexlify(ss.preferedCompression) << "\",";
-        f << '"' << hexlify(ss.preferedSymmetric) << "\",";
-        f << '"' << ss.trustLevel << "\",";
-        f << '"' << ss.keyExpirationTime << "\",";
-        f << '"' << ss.isPrimaryUserId << "\",";
-        f << '"' << ss.signedUsername << "\",";
-        f << "\n";
-		FILEMANAGER.write(file_list.at(Utils::SELF_SIGNATURE), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_self_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s", e.what());
-    }
-}
-
 void IMPORT_DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod){
     try{
 		for (const auto &c: mod.comments){
@@ -221,15 +97,6 @@ void IMPORT_DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors 
     }
 }
 
-void IMPORT_DBManager::UpdateSignatureIssuingUsername() {
-    try{
-        execute_query("COMMIT");
-        execute_query("UPDATE Signatures SET issuingUsername = name WHERE issuingUsername IS NULL AND issuingFingerprint = 1;");
-    }catch (exception &e){
-        syslog(LOG_CRIT, "update_signature_issuing_fingerprint_stmt FAILED, the issuingFingerprint of the signature will not be inserted! - %s",
-                          e.what());
-    }
-}
 
 }
 }

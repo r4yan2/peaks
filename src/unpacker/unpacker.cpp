@@ -10,6 +10,7 @@
 #include "Packets/Tag2/Subpacket.h"
 #include "unpacker.h"
 #include "Key_Tools.h"
+#include "utils.h"
 #include <common/config.h>
 
 namespace peaks{
@@ -292,10 +293,10 @@ void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
     }
 
     Packet::Key::Ptr primaryKey = static_pointer_cast<Packet::Key>(pk.key);
-    vector<DBStruct::pubkey> unpackedPubkeys;
-    vector<DBStruct::userID> unpackedUserID;
-    vector<DBStruct::userAtt> unpackedUserAttributes;
-    vector<DBStruct::signatures> unpackedSignatures; // contains also self-signatures
+    deque<DBStruct::pubkey> unpackedPubkeys;
+    deque<DBStruct::userID> unpackedUserID;
+    deque<DBStruct::userAtt> unpackedUserAttributes;
+    deque<DBStruct::signatures> unpackedSignatures; // contains also self-signatures
 
     try{
         unpackedPubkeys.push_back(get_publicKey_data(primaryKey, primaryKey));
@@ -340,7 +341,7 @@ void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
             DBStruct::userAtt ua_struct{
                     .id = std::distance(pk.uid_userAtt.begin(), it) + 1,
                     .fingerprint = primaryKey->get_fingerprint(),
-                    .name = ascii2radix64(dynamic_pointer_cast<Packet::Tag13>(it->first)->get_contents())
+                    .name = dynamic_pointer_cast<Packet::Tag13>(it->first)->get_contents()
             };
             get_userAttributes_data(it->second, ua_struct);
             unpackedUserAttributes.push_back(ua_struct);
@@ -383,19 +384,25 @@ void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
         }
         dbm->write_pubkey_csv(p);
     }
-    for (auto &u: unpackedUserID){
+    while(!unpackedUserID.empty()){
+        auto u = unpackedUserID.front();
         dbm->write_userID_csv(u);
+        unpackedUserID.pop_front();
     }
-    for (auto &u: unpackedUserAttributes){
+    while(!unpackedUserAttributes.empty()){
+        auto u = unpackedUserAttributes.front();
         dbm->write_userAttributes_csv(u);
+        unpackedUserAttributes.pop_front();
     }
-    for (auto it = unpackedSignatures.begin(); it != unpackedSignatures.end(); it++){
-        if(find(it + 1, unpackedSignatures.end(), *it) == unpackedSignatures.end() || !dbm->existSignature(*it)) {
-            dbm->write_signature_csv(*it);
-            if (it->issuingKeyId == it->signedKeyId && !it->signedUsername.empty()){
-                dbm->write_self_signature_csv(*it);
+    while(!unpackedSignatures.empty()){
+        auto it = unpackedSignatures.front();
+        if(find(unpackedSignatures.begin() + 1, unpackedSignatures.end(), it) == unpackedSignatures.end() || !dbm->existSignature(it)) {
+            dbm->write_signature_csv(it);
+            if (it.issuingKeyId == it.signedKeyId && !it.signedUsername.empty()){
+                dbm->write_self_signature_csv(it);
             }
         }
+        unpackedSignatures.pop_front(); //release memory
     }
 
     dbm->write_unpackerErrors_csv(modified);
@@ -418,9 +425,9 @@ DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const
         ss.signedFingerprint = priKey->get_fingerprint();
         if (user->get_tag() == Packet::USER_ID){
             Packet::Tag13::Ptr u = dynamic_pointer_cast<Packet::Tag13>(user);
-            ss.signedUsername = ascii2radix64(u -> get_contents());
+            ss.signedUsername.set_f([=]{return ascii2radix64(u -> get_contents());});
+            ss.signedUsername.set_empty(u -> get_contents().empty());
         }else{
-            //ss.signedUsername = ascii2radix64("User Attribute");
             if (uatt_id != "")
                 ss.uatt_id = uatt_id;
         }
@@ -674,11 +681,10 @@ DBStruct::pubkey get_publicKey_data(const Packet::Tag::Ptr &p, const Packet::Key
 
 DBStruct::userID get_userID_data(const Packet::Tag::Ptr &user_pkt, const Packet::Key::Ptr &key) {
     Packet::Tag13::Ptr t13 = dynamic_pointer_cast<Packet::Tag13>(user_pkt);
-    string user = t13->get_contents();
     return DBStruct::userID {
             .ownerkeyID = mpitodec(rawtompi(key->get_keyid())),
             .fingerprint = key->get_fingerprint(),
-            .name = ascii2radix64(user),
+            .name = t13->get_contents()
     };
 }
 
@@ -691,12 +697,12 @@ void get_userAttributes_data(const Packet::Tag::Ptr &p, DBStruct::userAtt &ua_st
             case Subpacket::Tag17::IMAGE_ATTRIBUTE: {
                 Subpacket::Tag17::Sub1::Ptr s1t17 = static_pointer_cast<Subpacket::Tag17::Sub1>(a);
                 ua_struct.encoding = s1t17 -> get_encoding();
-                ua_struct.image = s1t17 -> get_image();
+                ua_struct.image = Utils::Lazystring([=]{return hexlify(s1t17 -> get_image());}, s1t17->raw().empty());
                 break;
             }
             default:
                 Subpacket::Tag17::SubWrong::Ptr swt17 = static_pointer_cast<Subpacket::Tag17::SubWrong>(a);
-                ua_struct.image = swt17 -> raw();
+                ua_struct.image = Utils::Lazystring([=]{return hexlify(swt17 -> raw());}, swt17->raw().empty());
                 syslog(LOG_WARNING, "Not valid user attribute subpacket tag found: %d, saving anyway with encoding = 0", a->get_type());
                 break;
         }
@@ -721,7 +727,7 @@ void get_tag2_subpackets_data(const std::vector<Subpacket::Tag2::Sub::Ptr> &subp
             }
             case Subpacket::Tag2::REGULAR_EXPRESSION: {
                 Subpacket::Tag2::Sub6::Ptr s6 = dynamic_pointer_cast<Subpacket::Tag2::Sub6>(p);
-                ss->regex = ascii2radix64(s6->get_regex());
+                ss->regex = s6->get_regex();
                 break;
             }
             case Subpacket::Tag2::REVOCABLE: {
@@ -770,13 +776,13 @@ void get_tag2_subpackets_data(const std::vector<Subpacket::Tag2::Sub::Ptr> &subp
             }
             case Subpacket::Tag2::SIGNERS_USER_ID: {
                 Subpacket::Tag2::Sub28::Ptr s28 = dynamic_pointer_cast<Subpacket::Tag2::Sub28>(p);
-                ss->issuingUsername = ascii2radix64(s28->get_signer());
+                ss->issuingUsername = Utils::Lazystring([=]{return ascii2radix64(s28->get_signer());}, s28->get_signer().empty());
                 break;
             }
             case Subpacket::Tag2::REASON_FOR_REVOCATION: {
                 Subpacket::Tag2::Sub29::Ptr s29 = dynamic_pointer_cast<Subpacket::Tag2::Sub29>(p);
                 ss->revocationCode = s29->get_code();
-                ss->revocationReason = ascii2radix64(s29->get_reason());
+                ss->revocationReason = s29->get_reason();
                 break;
             }
             case Subpacket::Tag2::FEATURES:

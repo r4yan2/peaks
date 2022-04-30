@@ -179,7 +179,7 @@ void UNPACKER_DBManager::write_userID_csv(const DBStruct::userID &uid) {
         ostringstream f;
         f << '"' << uid.ownerkeyID << "\",";
         f << '"' << hexlify(uid.fingerprint) << "\",";
-        f << '"' << uid.name << "\",";
+        f << '"' << ascii2radix64(uid.name) << "\",";
         f << "\n";
         FILEMANAGER.write(file_list.at(Utils::TABLES::USERID), f.str());
     }catch (exception &e){
@@ -193,9 +193,9 @@ void UNPACKER_DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
         ostringstream f;
         f << '"' << to_string(ua.id) << "\",";
         f << '"' << hexlify(ua.fingerprint) << "\",";
-        f << '"' << ua.name << "\",";
+        f << '"' << ascii2radix64(ua.name) << "\",";
         f << '"' << ua.encoding << "\",";
-        f << '"' << hexlify(ua.image) << "\",";
+        f << '"' << ua.image << "\",";
         f << "\n";
         FILEMANAGER.write(file_list.at(Utils::TABLES::USER_ATTRIBUTES), f.str());
     }catch (exception &e){
@@ -218,7 +218,7 @@ void UNPACKER_DBManager::write_signature_csv(const DBStruct::signatures &ss) {
         f << '"' << ss.signedUsername << "\",";
         f << '"' << ss.issuingUsername << "\",";
         f << '"' << ss.uatt_id << "\",";
-        f << '"' << ss.regex << "\",";
+        f << '"' << ascii2radix64(ss.regex) << "\",";
         f << '"' << ss.creationTime << "\",";
         f << '"' << ss.expirationTime << "\",";
         f << '"' << hexlify(ss.rString) << "\",";
@@ -229,7 +229,7 @@ void UNPACKER_DBManager::write_signature_csv(const DBStruct::signatures &ss) {
         f << '"' << ss.hashMismatch << "\",";
         f << '"' << ss.keyExpirationTime << "\",";
         f << '"' << ss.revocationCode << "\",";
-        f << '"' << ss.revocationReason << "\",";
+        f << '"' << ascii2radix64(ss.revocationReason) << "\",";
         f << '"' << ss.revocationSigId << "\",";
         f << '"' << ss.isRevocable << "\",";
         f << '"' << ss.isExportable << "\",";

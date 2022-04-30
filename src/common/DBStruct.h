@@ -4,7 +4,7 @@
 #include <cstring>
 #include <NTL/ZZ.h>
 #include <vector>
-
+#include <common/utils.h>
 #include <recon_daemon/Bitset.h>
 
 namespace peaks{
@@ -52,8 +52,8 @@ namespace DBStruct{
         std::string signedKeyId = "";
         std::string issuingFingerprint = "";
         std::string signedFingerprint = "";
-        std::string signedUsername = "";
-        std::string issuingUsername = "";
+        Utils::Lazystring signedUsername = "";
+        Utils::Lazystring issuingUsername = "";
         std::string uatt_id = "";
         std::string regex = "";
         std::string creationTime = "";
@@ -109,7 +109,7 @@ namespace DBStruct{
         std::string fingerprint = "";
         std::string name = "";
         int encoding = 0;
-        std::string image = "";
+        Utils::Lazystring image = "";
     };
 
     struct KeyStatus{

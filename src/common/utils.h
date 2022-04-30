@@ -307,6 +307,25 @@ namespace Utils{
         return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
     }
 
+    class Lazystring {
+        private:
+            std::function<std::string()> get_f;
+            std::string value;
+            bool empty_;
+            bool init;
+        public:
+            Lazystring();
+            Lazystring(const std::string &);
+            Lazystring(const char* init_);
+            Lazystring(std::function<std::string()>, const bool);
+            void set_f(std::function<std::string()>);
+            void set_empty(bool val);
+            bool empty() const;
+            bool ready() const;
+            std::string get();
+            friend std::ostream& operator<< (std::ostream& os, const Lazystring& lazy);
+    };
+
     struct signature{
         unsigned int hex_type = 0x00;
         std::string type = "sig";
