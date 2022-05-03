@@ -34,6 +34,15 @@ std::vector<std::string> Recon_mysql_DBManager::get_all_hash(){
     throw std::runtime_error("Useless to fetch hashes from the database in mysql database manager");
 };
 
+
+std::shared_ptr<DBResult> Recon_mysql_DBManager::get_all_hash_iterator(int limit, int offset){
+    throw std::runtime_error("Useless to fetch hashes from the database in mysql database manager");
+};
+
+std::string Recon_mysql_DBManager::get_hash_from_results(const std::shared_ptr<DBResult> & results){
+    throw std::runtime_error("Useless to fetch hashes from the database in mysql database manager");
+};
+
 void Recon_mysql_DBManager::commit_memtree(){
     throw std::runtime_error("Cannot commit whole tree in mysql database manager");
 };
@@ -167,6 +176,10 @@ void Recon_memory_DBManager::prepare_queries(){
 
     get_all_hash_stmt = prepare_query("SELECT hash FROM gpg_keyserver");
 
+    get_all_hash_iterator_stmt = prepare_query("SELECT hash FROM gpg_keyserver LIMIT ? OFFSET ?");
+
+    get_hash_count_stmt = prepare_query("SELECT count(hash) as res FROM gpg_keyserver");
+
     check_key_stmt = prepare_query("SELECT * FROM gpg_keyserver where hash = (?)");
 
     insert_ptree_stmt = make_pair<string, string>(
@@ -183,9 +196,12 @@ void Recon_memory_DBManager::insert_node(const DBStruct::node &n){
             std::make_pair(
                 n.key, n.key_size
             ),
-            std::make_tuple(
-                n.svalues, n.num_elements, n.leaf, n.elements
-            )
+            DBvalue({
+                .svalues = n.svalues,
+                .num_elements = n.num_elements,
+                .leaf = n.leaf,
+                .elements = n.elements
+            })
         )
     );
     if (!res.second)
@@ -194,7 +210,11 @@ void Recon_memory_DBManager::insert_node(const DBStruct::node &n){
   
 void Recon_memory_DBManager::update_node(const DBStruct::node &n){
     try{
-        memory_storage.at(std::make_pair(n.key, n.key_size)) = std::make_tuple(n.svalues, n.num_elements, n.leaf, n.elements);
+        auto key = std::make_pair(n.key, n.key_size);
+        memory_storage.at(key).svalues = n.svalues;
+        memory_storage.at(key).num_elements = n.num_elements;
+        memory_storage.at(key).leaf = n.leaf;
+        memory_storage.at(key).elements = n.elements;
     }catch(std::exception &e){
         throw std::runtime_error("update pnode failed");
     }
@@ -205,7 +225,11 @@ DBStruct::node Recon_memory_DBManager::get_node(const Bitset& k){
     n.key = k.blob();
     n.key_size = k.size();
     try{
-        std::tie(n.svalues, n.num_elements, n.leaf, n.elements) = memory_storage.at(std::make_pair(n.key, n.key_size));
+        DBvalue val = memory_storage.at(std::make_pair(n.key, n.key_size));
+        n.svalues = val.svalues;
+        n.elements = val.elements;
+        n.leaf = val.leaf;
+        n.num_elements = val.num_elements;
     }catch(std::exception &e){
         syslog(LOG_WARNING, "DBManager memory error %s", e.what());
         throw std::runtime_error("get pnode failed");
@@ -222,6 +246,31 @@ std::vector<std::string> Recon_memory_DBManager::get_all_hash(){
     }
     return hashes;
 }
+
+
+int Recon_memory_DBManager::get_hash_count(){
+    std::unique_ptr<DBResult> result = get_hash_count_stmt->execute();
+    if (result->next()){
+        return result->getInt("res");
+    }
+    return 0;
+}
+
+std::shared_ptr<DBResult> Recon_memory_DBManager::get_all_hash_iterator(int limit, int offset){
+    get_all_hash_iterator_stmt->setInt(1, limit);
+    get_all_hash_iterator_stmt->setInt(2, offset);
+    std::unique_ptr<DBResult> result = get_all_hash_iterator_stmt->execute();
+    return result;
+}
+
+std::string Recon_memory_DBManager::get_hash_from_results(const std::shared_ptr<DBResult> & results){
+    std::string hash = "";
+    if(results->next()){
+        hash = results->getString("hash");
+    }
+    return hash;
+}
+
 
 void Recon_memory_DBManager::delete_node(const Bitset& k){
     syslog(LOG_DEBUG, "deleting node %s from memory DB", Bitset::to_string(k).c_str());
@@ -249,16 +298,16 @@ void Recon_memory_DBManager::write_memtree_csv(){
     csv_file = ofstream(CONTEXT.dbsettings.tmp_folder + "ptree.csv");
     for (const auto& entry: memory_storage){
         Buffer tmp;
-        tmp.write_zz_array(std::get<0>(entry.second));
+        tmp.write_zz_array(entry.second.svalues);
         std::string node_svalues = hexlify(tmp.to_str());
         tmp.clear();
-        tmp.write_zz_array(std::get<3>(entry.second));
+        tmp.write_zz_array(entry.second.elements);
         std::string node_elements = hexlify(tmp.to_str());
         csv_file << '"' << hexlify(entry.first.first) << "\","; //node key
         csv_file << '"' << entry.first.second << "\","; // node key size
         csv_file << '"' << node_svalues << "\","; // svalues
-        csv_file << '"' << std::get<1>(entry.second) << "\","; //num elements
-        csv_file << '"' << std::get<2>(entry.second) << "\","; // leaf
+        csv_file << '"' << entry.second.num_elements << "\","; //num elements
+        csv_file << '"' << entry.second.leaf << "\","; // leaf
         csv_file << '"' << node_elements << "\","; //elements
         csv_file << "\n";
     }

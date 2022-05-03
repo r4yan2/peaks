@@ -44,6 +44,8 @@ public:
     virtual bool check_key(const std::string& key) = 0;
     virtual std::vector<std::string> fetch_removed_elements() = 0;
     virtual std::vector<std::string> get_all_hash() = 0;
+    virtual std::shared_ptr<DBResult> get_all_hash_iterator(int limit, int offset) = 0;
+    virtual std::string get_hash_from_results(const std::shared_ptr<DBResult> & results) = 0;
     virtual void commit_memtree() = 0;
     virtual void prepare_queries() = 0;
 protected:
@@ -57,6 +59,7 @@ protected:
 /**
  * Actual class for the MySQL database connector
  */
+
 class Recon_mysql_DBManager: public RECON_DBManager{
     public:
 
@@ -100,6 +103,8 @@ class Recon_mysql_DBManager: public RECON_DBManager{
     
     //empty
     std::vector<std::string> get_all_hash();
+    std::shared_ptr<DBResult> get_all_hash_iterator(int limit, int offset);
+    std::string get_hash_from_results(const std::shared_ptr<DBResult> & results);
     void commit_memtree();
 private:
 
@@ -112,6 +117,7 @@ private:
         update_pnode_stmt,
         delete_pnode_stmt,
         get_all_hash_stmt,
+        get_all_hash_iterator_stmt,
         check_key_stmt,
         truncate_removed_hash_stmt,
         get_removed_hash_stmt;
@@ -121,6 +127,14 @@ private:
      * the ptree table
      */
 	std::pair<std::string,std::string> insert_ptree_stmt;
+};
+
+struct DBvalue
+{
+    std::vector<NTL::ZZ_p> svalues;
+    int num_elements;
+    bool leaf;
+    std::vector<NTL::ZZ_p> elements;
 };
 
 class Recon_memory_DBManager: public RECON_DBManager {
@@ -135,6 +149,9 @@ public:
      * @return vector of strings representing hashes
      */
     std::vector<std::string> get_all_hash();
+    std::shared_ptr<DBResult> get_all_hash_iterator(int limit=10000, int offset=0);
+    std::string get_hash_from_results(const std::shared_ptr<DBResult> & results);
+    int get_hash_count();
 
     /** check if hash is present in db
      * @param key hash to check
@@ -166,6 +183,8 @@ private:
 
     std::shared_ptr<DBQuery> 
         get_all_hash_stmt,
+        get_all_hash_iterator_stmt,
+        get_hash_count_stmt,
         check_key_stmt;
 	std::pair<std::string,std::string> insert_ptree_stmt;
 
@@ -173,7 +192,7 @@ private:
      * Map for fast memory tree access
      * key, <node_svalues, num_elemnts, leaf, node_elements>
      */
-    std::map<std::pair<std::string, int>, std::tuple<std::vector<NTL::ZZ_p>, int, bool, std::vector<NTL::ZZ_p>> > memory_storage;
+    std::map<std::pair<std::string, int>, DBvalue > memory_storage;
 };
 
 

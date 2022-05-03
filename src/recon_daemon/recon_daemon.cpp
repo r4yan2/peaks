@@ -1,5 +1,6 @@
 #include "recon_daemon.h"
 #include <common/config.h>
+#include <memory>
 
 namespace peaks{
 namespace recon{
@@ -13,24 +14,33 @@ void build(){
         exit(1);
     }
     std::shared_ptr<Recon_memory_DBManager> dbm = std::make_shared<Recon_memory_DBManager>();
-    int entries;
-    std::vector<std::string> hashes;
-    hashes = dbm->get_all_hash();
-    entries = hashes.size();
-    if (entries == 0){
-        std::cout << "DB is empty! Continue anyway" << std::endl;
-    }
+
     PTREE.set_db(dbm);
     PTREE.create();
+
+    int entries = 0;
     int progress = 0;
-    for (auto hash : hashes){
-        PTREE.insert(hash);
-        progress += 1;
-        if (progress%1000 == 0){
-            printf ("\rProgress: %3d%%", (progress*100)/entries);
-            fflush(stdout);
+    int limit = 50000;
+    int offset = 0;
+    int total = dbm->get_hash_count();
+    std::vector<std::string> hashes;
+    do {
+        std::shared_ptr<DBResult> res = dbm->get_all_hash_iterator(limit, offset);
+        offset += limit;
+        entries = res->size();
+        if (progress == 0 && entries == 0){
+            std::cout << "DB is empty! Storing an empty prefix tree" << std::endl;
         }
-    }
+        std::string hash = "";
+        while((hash = dbm->get_hash_from_results(res)) != ""){
+            PTREE.insert(hash);
+            progress += 1;
+            if (progress%1000 == 0){
+                printf ("\rProgress: %3d%%", (progress*100)/total);
+                fflush(stdout);
+            }
+        }
+    } while (progress < total);
 
     std::cout << std::endl;
     dbm->write_memtree_csv();
