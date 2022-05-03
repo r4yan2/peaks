@@ -1,2 +1,2 @@
 #!/bin/sh
-peaks --stdout unpack --thread 1
+peaks --stdout unpack --threads 1
