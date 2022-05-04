@@ -41,9 +41,9 @@ Context::Context(){
         ("filters", po::value<std::string>()->default_value("yminsky.dedup,yminsky.merge"))
         ("name", po::value<std::string>()->default_value("peaks_recon"))
         ("gossip_interval", po::value<int>()->default_value(60))
-        ("unpack_interval", po::value<int>()->default_value(60))
-        ("unpack_threads", po::value<int>()->default_value(1))
-        ("analyze_interval", po::value<int>()->default_value(60))
+        ("unpacker_interval", po::value<int>()->default_value(60))
+        ("unpacker_threads", po::value<int>()->default_value(1))
+        ("analyzer_interval", po::value<int>()->default_value(60))
         ("unpacker_limit", po::value<int>()->default_value(10000))
         ("analyzer_limit", po::value<int>()->default_value(10000))
     ;

@@ -27,7 +27,7 @@ void unpack(){
             syslog(LOG_INFO, "Done %d iterations!", CONTEXT.get<int>("only"));
             break;
         }
-    	std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.get<int>("unpack_interval")});
+    	std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.get<int>("unpacker_interval")});
     }
 }
 

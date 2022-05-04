@@ -28,7 +28,7 @@ void analyze(){
     
     while(true){
     	alz.run();
-    	std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.get<int>("analyze_interval")});
+    	std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.get<int>("analyzer_interval")});
     }
 }
 
