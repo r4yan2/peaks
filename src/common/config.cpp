@@ -42,10 +42,12 @@ Context::Context(){
         ("name", po::value<std::string>()->default_value("peaks_recon"))
         ("gossip_interval", po::value<int>()->default_value(60))
         ("unpack_interval", po::value<int>()->default_value(60))
+        ("unpack_threads", po::value<int>()->default_value(1))
         ("analyze_interval", po::value<int>()->default_value(60))
         ("unpacker_limit", po::value<int>()->default_value(10000))
         ("analyzer_limit", po::value<int>()->default_value(10000))
-    ; 
+    ;
+
     db_config.add_options()
         ("db_host", po::value<std::string>()->default_value("127.0.0.1"))
         ("db_port", po::value<int>()->default_value(3306))
@@ -54,7 +56,9 @@ Context::Context(){
         ("db_password", po::value<std::string>()->default_value(""))
         ("filestorage_format", po::value<std::string>()->default_value("/tmp/peaks_filestorage"))
         ("filestorage_maxsize", po::value<int>()->default_value(100))
-        ("expire_interval", po::value<int>()->default_value(15));
+        ("expire_interval", po::value<int>()->default_value(15))
+        ;
+
     folder_config.add_options()
         ("membership_config", po::value<std::string>()->default_value("/etc/peaks/memebership"))
         ("default_dump_path", po::value<std::string>()->default_value("/tmp/pgp_dump"))

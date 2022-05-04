@@ -216,6 +216,8 @@ std::size_t SynchronizedFile::write(const std::string& data, bool flush)
     std::size_t orig = pos;
     pos += data.size();
 	f.write(data.c_str(), data.size());
+    if (!f)
+        throw std::runtime_error("Failed writing");
     if (flush) f.flush();
     return orig;
 }

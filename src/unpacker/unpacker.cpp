@@ -37,11 +37,10 @@ using namespace OpenPGP;
 Unpacker::Unpacker(){
     syslog(LOG_NOTICE, "Unpacker daemon is starting up!");
 
-    nThreads = CONTEXT.get<int>("threads", 1);
+    nThreads = CONTEXT.get<int>("threads", CONTEXT.get<int>("unpacker_threads"));
     syslog(LOG_NOTICE, "Using %d Threads", nThreads);
 
     limit = CONTEXT.get<int>("limit", CONTEXT.get<int>("unpacker_limit"));
-
     syslog(LOG_INFO, "limiting analysis at %d keys", limit);
 
     if(Utils::create_folders(CONTEXT.get<std::string>("tmp_folder")) == -1){
