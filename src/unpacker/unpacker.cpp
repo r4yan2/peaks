@@ -125,6 +125,7 @@ void Unpacker::run(){
 void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm_, const std::shared_ptr<DBResult> & results, size_t start, size_t size) {
     std::shared_ptr<UNPACKER_DBManager> dbm = make_shared<UNPACKER_DBManager>();
     dbm->openCSVFiles(); // just recover handlers
+    int max_bin_size = CONTEXT.get<int>("max_unpacker_keysize");
     size_t end = start + size;
     for (size_t i = start; i < results->size() && i < end; i++){
         DBStruct::gpg_keyserver_data gpg_data = dbm_->get_certificate_from_results(results);
@@ -163,16 +164,21 @@ void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm_, const std::s
             }
             
             if (!analyzable){
-                syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s at index %lu", ec.message().c_str(), i);
+                syslog(LOG_WARNING, "Error during creation of the object PGP::Key - %s at index %lu", ec.message().c_str(), i);
                 dbm->set_as_not_analyzable(gpg_data.version, gpg_data.fingerprint, "Error during creation of the object PGP::Key");
                 continue;
             }
         }catch (std::exception &e){
-            syslog(LOG_CRIT, "Error during creation of the object PGP::Key - %s at index %lu", e.what(), i);
+            syslog(LOG_WARNING, "Error during creation of the object PGP::Key - %s at index %lu", e.what(), i);
             dbm->set_as_not_analyzable(gpg_data.version, gpg_data.fingerprint, "Error during creation of the object PGP::Key");
             continue;
         }catch (...){
-            syslog(LOG_CRIT, "Error during creation of the object PGP::Key at index %lu", i);
+            syslog(LOG_WARNING, "Error during creation of the object PGP::Key at index %lu", i);
+            continue;
+        }
+
+        if (max_bin_size > 0 && max_bin_size < gpg_data.certificate.size()){
+            dbm->set_as_not_analyzable(gpg_data.version, gpg_data.fingerprint, "Key skipped: too large");
             continue;
         }
 

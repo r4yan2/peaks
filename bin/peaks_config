@@ -13,6 +13,7 @@ gossip_interval = 60
 unpack_interval = 300
 analyze_interval = 300
 max_unpacker_limit = 10000
+max_unpacker_keysize = 5242880 #5MB
 
 # network timeout 
 async_timeout_sec = 1

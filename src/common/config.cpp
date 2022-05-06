@@ -41,6 +41,7 @@ Context::Context(){
         ("filters", po::value<std::string>()->default_value("yminsky.dedup,yminsky.merge"))
         ("name", po::value<std::string>()->default_value("peaks_recon"))
         ("gossip_interval", po::value<int>()->default_value(60))
+        ("max_unpacker_keysize", po::value<int>()->default_value(-1))
         ("unpacker_interval", po::value<int>()->default_value(60))
         ("unpacker_threads", po::value<int>()->default_value(1))
         ("analyzer_interval", po::value<int>()->default_value(60))
