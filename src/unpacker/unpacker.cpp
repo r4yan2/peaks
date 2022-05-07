@@ -93,7 +93,10 @@ void Unpacker::run(){
 
     std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>();
     // resume session if any
-    store_keymaterial(dbm);
+    std::string res = "";
+    dbm->get_from_cache("unpacker", res);
+    if (res != "")
+        store_keymaterial(dbm);
     
     if (CONTEXT.get<bool>("recover")){
         std::cout << "Finished recovery, exiting" << std::endl;
@@ -209,7 +212,9 @@ void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm_, const std::s
 void Unpacker::store_keymaterial(const std::shared_ptr<UNPACKER_DBManager> &dbm){
     if (CONTEXT.get<bool>("csv-only", false))
         return; //nothing to do
+    dbm->store_in_cache("unpacker", "saving");
     dbm->insertCSV();
+    dbm->store_in_cache("unpacker", "");
     dbm->UpdateSignatureIssuingFingerprint();
     dbm->UpdateSignatureIssuingUsername();
     dbm->UpdateIsExpired();

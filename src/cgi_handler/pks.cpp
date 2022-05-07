@@ -368,8 +368,7 @@ cppcms::json::value ptree_stats(){
     full_stats["ptree"]["generic"]["Shortest tree branch"] = to_string(min_heigth_subtree);
     full_stats["ptree"]["generic"]["Longest tree branch"] = to_string(max_heigth_subtree);
     full_stats["ptree"]["generic"]["Is tree balanced?"] = min_heigth_subtree==max_heigth_subtree?"True":"False";
-    std::string value = full_stats["ptree"].save();
-    dbm->store_in_cache("ptree", value);
+
     return full_stats;
 }
 
@@ -452,8 +451,6 @@ cppcms::json::value certificate_stats(){
         full_stats["certificates"]["year"]["value"][i] = years_counter[y];
     }
 
-    std::string value = full_stats["certificates"].save();
-    dbm->store_in_cache("certificates", value);
     return full_stats;
 }
 
@@ -515,8 +512,7 @@ cppcms::json::value userattribute_stats(){
     full_stats["userattributes"]["maxsize_other"] = std::to_string(maxsize_noimage/KB);
     full_stats["userattributes"]["images"] = image_user_attributes;
     full_stats["userattributes"]["others"] = other_user_attributes;
-    std::string value = full_stats["userattributes"].save();
-    dbm->store_in_cache("userattributes", value);
+
     return full_stats;
 }
 
@@ -763,8 +759,6 @@ cppcms::json::value pubkey_stats(){
         full_stats["pubkey"]["vulnerability"]["unhealthy_ec"][i] = unhealthy_ec_year[y];
     }
 
-    std::string value = full_stats["pubkey"].save();
-    dbm->store_in_cache("pubkey", value);
     return full_stats;
 }
 
@@ -856,8 +850,6 @@ cppcms::json::value signature_stats(){
     full_stats["signature"]["generic"]["self signatures expired"] = f(self_sig_expired);
     full_stats["signature"]["generic"]["self signatures revocations"] = f(self_sig_revocation);
 
-    std::string value = full_stats["signature"].save();
-    dbm->store_in_cache("signature", value);
     return full_stats;
 }
 
@@ -989,35 +981,52 @@ cppcms::json::value userid_stats(){
         full_stats["userid"]["size"]["label"][i] = size_limits[i];
     if (max_length > size_limits.back())
         full_stats["userid"]["size"]["label"][i] = max_length;
-    std::string value = full_stats["userid"].save();
-    dbm->store_in_cache("userid", value);
+
     return full_stats;
 }
 void json_service::get_stats(std::string what){
+    std::map<std::string, std::function<cppcms::json::value()>> function_map = {
+        {"ptree", ptree_stats},
+        {"certificates", certificate_stats},
+        {"userattributes", userattribute_stats},
+        {"pubkey", pubkey_stats},
+        {"signature", signature_stats},
+        {"userid", userid_stats}
+    };
     std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
     std::string res = "";
     bool expired = dbm->get_from_cache(what, res);
     if (res == ""){
         cppcms::json::value all_stats;
-        if (what == "ptree")
-            all_stats = ptree_stats();
-        else if (what == "certificates")
-            all_stats = certificate_stats();
-        else if (what == "userattributes")
-            all_stats = userattribute_stats();
-        else if (what == "pubkey")
-            all_stats = pubkey_stats();
-        else if (what == "signature")
-            all_stats = signature_stats();
-        else if (what == "userid")
-            all_stats = userid_stats();
+        auto f = function_map.find(what);
+        if (f == function_map.end()){
+            return_result(all_stats); // ???
+            return;
+        }
+        all_stats = f->second();
         return_result(all_stats[what]);
     } else {
+        // serve last results even if expired
         cppcms::json::value stats = parse_stats(res);
         return_result(stats);
     }
-    if (expired)
-        ptree_stats();
+    if (expired){
+        // recalculate expired data
+        auto f = function_map.find(what);
+        if (f != function_map.end()){
+            std::string res = "";
+            dbm->get_from_cache("recompute"+what, res);
+            if (res != ""){
+                //recompute already in progress
+                return;
+            }
+            dbm->store_in_cache("recompute"+what, "true");
+            auto new_stats = f->second();
+            std::string value = new_stats[what].save();
+            dbm->store_in_cache("recompute"+what, "");
+            dbm->store_in_cache(what, value);
+        }
+    }
 }
 
 
