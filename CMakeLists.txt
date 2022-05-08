@@ -16,6 +16,12 @@ if (PROFILE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 endif ()
 
+set (BUILD_ANALYZER ON CACHE BOOL "Building with analyzer")
+if (BUILD_ANALYZER)
+    set(ANALYZER_DIR ${CMAKE_SOURCE_DIR}/src/analyzer)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_ANALYZER")
+endif()
+
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g3 -rdynamic -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
 set(CMAKE_CXX_FLAGS_DOCKER "${CMAKE_CXX_FLAGS} -O2 -g -mtune=generic")
@@ -54,11 +60,6 @@ set(UNPACKER_DIR ${CMAKE_SOURCE_DIR}/src/unpacker)
 set(COMMON_DIR ${CMAKE_SOURCE_DIR}/src/common)
 set(RECON_DIR ${CMAKE_SOURCE_DIR}/src/recon_daemon)
 set(MAIN_DIR ${CMAKE_SOURCE_DIR}/src/main)
-
-set (BUILD_ANALYZER ON CACHE BOOL "Building with analyzer")
-if (BUILD_ANALYZER)
-    set(ANALYZER_DIR ${CMAKE_SOURCE_DIR}/src/analyzer)
-endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
