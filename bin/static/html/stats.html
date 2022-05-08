@@ -2,6 +2,7 @@
 <head>
     <link rel="stylesheet" href="/css/style.css"/>
     <script type="text/javascript" src="/js/chart.min.js"></script>
+    <script type="text/javascript" src="/js/chartjs-plugin-datalabels.min.js"></script>
     <script type="text/javascript" src="/js/json2.js"></script>
     <script type="text/javascript" src="/js/jsonrpc.js"></script>
     <script type="text/javascript" src="/js/main.js"></script>
@@ -19,24 +20,29 @@
 <div class="stats">
     <div class="main">
     <p>
-    In this page there will be a collection of statistics, metrics, and gath-
-    ered data from the analysis of the current snapshot of the keyserver infras-
-    tructure.
-    Will be analyzed the current status of: Ptree sanity, Certificates sanity,
-    Security state, Liveness state.
+    In this page there will be a collection of statistics, metrics, and gathered data from the analysis of the current snapshot of the keyserver infrastructure.<br>
+    Will be analyzed the current status of: 
+    <ul>
+        <li>Ptree sanity</li>
+        <li>Certificates sanity</li>
+        <li>Security state</li>
+        <li>Liveness state</li>
+    </ul>
+    Please note the statistics are taken from the live database, as more certificates are added to this keyserver the data will be periodically refreshed.<br>
+    As result some data may still be missing, as the indexing of the key material did not occur.<br>
+    Data might not even be 100% accurate as some certificates are pure crap. 
     </p>
     </div>
     <div class="ptree" style="display: none">
-        <h1>Stats</h1>
-          <h2>Ptree</h2>
           <!-- pippozzo -->
           <p>
-            The ptree is basically a tree in which the arity is decided by the bitquantum parameter.
-             It's important that the parameters are the same among all keyserver because the reconciliation algorithm will work only if the tree structure is the same for two servers.
+          The prefix-tree <a href="#footnote-4">[1]</a> is basically a tree in which the arity is decided by the bitquantum parameter.
+          It's fundamental that this parameter is the same among all keyservers in the same pool, because two keyservers are able to use the reconciliation algorithm <a href="#footnote-5">[2]</a> only if the tree structure is the same.
+          <br>
            A tree is a widely used structure in computing because it allow faster insert, search and retrieval compared to linked lists as long as the tree is balanced.
           If the tree is unbalanced (up to the point that become totally flat) part of its effectiveness is lost.
           This analysis try to point out the current state of the ptree, by looking at its height, balance, leaf distribution and elements per leaf node so that we know if it is effective as it is designed to be.
-
+          <br>
           A tree is balanced only if for every intermediate node of the tree the following properties hold:
           <ul>
             <li> The left and right subtree heights differ by at most one. </li>
@@ -47,8 +53,28 @@
           The prefix tree originally used in SKS has been designed with the idea that hashsum (md5) of certificates would be equally distributed, since the output string of an hash function can be considered random.
            So with a clever implementation that would divide hashsums between nodes based on the corresponding numerical value, the tree should be always balanced.
           </p>
+          <p>
+          When a prefix tree starts empty the root node is created as leaf node.
+          <br>
+          As an element is added to the set, the ptree
+must be updated accordingly. It is necessary to descend the tree, adding
+an element to the checksums of all internal nodes on the path towards the
+leaf node, where the element is added. If the number of elements stored in
+a leaf node overcomes the maximum threshold (50 by default), it must be converted into
+an internal node, and <i> Arity </i> childs are created for it, to inherit the elements of the
+node. 
+          <br>
+          Similarly, if the number of elements in a leaf node is brought below
+the minimum threshold, it must be converted to an internal node, and its
+children joined.
+          </p>
+          <p id="#footnote-4">[1] https://en.wikipedia.org/wiki/Trie</p>
+          <p id="#footnote-5">[2] Yaron Minsky, Ari Trachtenberg, and Richard Zippel. Set reconcilia-
+tion with nearly optimal communication complexity. http://ipsit.bu.
+edu/documents/ieee-it3-web.pdf, 2004. Online; checked 8 November
+2018.</p>
           <div class="table-container">
-						<h3> prefix tree attributes </h3>
+						<h4> prefix tree attributes </h4>
              <table id="ptree-table">
              <tr>
                  <th>Field</th>
@@ -73,37 +99,38 @@
     We analyzed the length of the certificates and in particular of the user attributes, to understand what users are including in their certificate, and to scan for uncommon user attributes dimensions which may cause issue to the keyservers network. 
     Several system administrator have pointed out issues during the recon process, which may be caused also by large keys being exchanged <a href="#footnote-1">[1]</a>
     </p>
+          <div class="table-container">
+						<h4> certificate stats </h4>
+             <table id="certificate-table">
+             <tr>
+                 <th>Field</th>
+                 <th>Value</th>
+             </tr>
+            </table>
+        </div>
     <p>
     The following chart represent the length of the certificates in our database,
-    divided in bins. Up to 10 Kb bins are small (1Kb), then gets progressively
+    divided in bins. 
+    Up to 10 Kb bins are small (1Kb), then gets progressively
     larger.
+    <br>
     Numbers are placed on the smaller part to highlight that, even if in a
     lower percentage, there are certificate of every possible size. It is easy to
     see that the concentration of certificates is higher in the lower bins, most
     certificates weight less than 3KB and this is a good news.
+    <br>
     There few big certificates, mostly because of the inclusion of images as
     user attribute. Some of this certificates could reach the dimension of some
     Megabytes, luckily they are rare.
-    In particular about image user attributes, we need to wonder if it is really
-    necessary for a keyserver to include such information of a public key. After
-    all, images attached to a key cannot be validated, so even if it could be
-    possible to know for sure that the subject of the picture is a real person, it
-    would be impossible to prove the binding between the picture and the person
-    in the picture and the identity.
-    </p>
+   </p>
         <div class="chart cert-year">
-        <!-- certificates size with/without ua -->
+        <!-- certificates creation across years -->
             <canvas name="cert-year">Canvas not working :(</canvas>
             <div class="loader"></div>
         </div>
-        <div class="chart cert-chart-ua">
-        <!-- certificates size with/without ua -->
-            <canvas name="cert-chart-ua">Canvas not working :(</canvas>
-            <div class="loader"></div>
-        </div>
-        <div class="chart cert-chart-noua">
-        <!-- certificates size with/without ua -->
-            <canvas name="cert-chart-noua">Canvas not working :(</canvas>
+        <div class="chart cert-chart">
+        <!-- certificates size bins -->
+            <canvas name="cert-chart">Canvas not working :(</canvas>
             <div class="loader"></div>
         </div>
         <p id="footnote-1">[1] Yegor
@@ -121,6 +148,16 @@
     the tag 0, which will be represented as "Other user attributes". Furthermore
     we will not inspect the actual content of an image subpacket the validity of
     the data as image
+    <br>
+    In particular about image user attributes, we need to wonder if it is really
+    necessary for a keyserver to include such information of a public key. After
+    all, images attached to a key cannot be validated, so even if it could be
+    possible to know for sure that the subject of the picture is a real person, it
+    would be impossible to prove the binding between the picture and the person
+    in the picture and the identity.
+    <br>
+    The majority of user attributes lengths are grouped into smaller bins.
+    Only a few user attributes have image which surpass in size the Megabyte.
     </p>
         <div class="chart userattributes-chart-image">
         <!-- certificates size with/without ua -->
@@ -143,8 +180,18 @@
       In the last years, there is a growing interest in public key cryptosystem,
       confirmed by the number of keys introduced into the keyserver network,
       which increases as the year passes.
+      <br>
       In this section we analyze the public keys loaded in peaks database.
-        </p>
+      </p>
+          <div class="table-container">
+						<h4> pubkey stats </h4>
+             <table id="pubkey-table">
+             <tr>
+                 <th>Field</th>
+                 <th>Value</th>
+             </tr>
+            </table>
+        </div>
         <h2>Pubkey</h2>
         <div class="chart pubkey-counter">
         <!-- pubkeys distribution pie -->
@@ -168,7 +215,9 @@
         <p>
         DSA and Elgamal were more prevalent before 2003-04 when RSA keys
         started taking place quickly, maybe due to RSA being adopted as the default
-        choice by GPG, due to being, at the time, the way to overcome old DSA 1024 bit limit, and 160-bit signature limit, and by SSH key generator utility <a href="#footnote-2">[3]</a>.
+        choice by GPG, due to being, at the time, the way to overcome old DSA 1024 bit limit,
+        and 160-bit signature limit, and by SSH key generator utility <a href="#footnote-3">[3]</a>.
+        <br>
         While Elliptic Curve being considered the future of public key algorithms is
         still considerable in its infancy because its usages are rare: less than 1% of
         keys are generated by EC.
@@ -177,6 +226,7 @@
         <p>
         RSA public keys are the majority of the set. They account for almost
         50% of public keys.
+        <br>
         As of today standards keys created with a bits size of less than 2048 are
         not considered secure <a href="#footnote-2">[2]</a>. Until 1980s, key of 512 bits were recommended as
         sufficient security standard. Since many embedded devices did not provide
@@ -184,9 +234,10 @@
         330 bits keys were used in the early 1980s. Academic successes in breaking
         those keys, led to a change in recommended key size, which would increase
         to 1024 during the 1990s.
-        The chart represent the numbers of keys with the corresponding n parameter found. It is easy to see that since 2013 there was a shift to adopt
-        more robust key sizes, and it is a positive news. However during the very
-        last year is possible to see also a spike in the creation of weak keys.
+        <br>
+        The chart represent the numbers of keys with the corresponding n parameter found.
+        It is easy to see that since 2013 there was a shift to adopt
+        more robust key sizes, and it is a positive news.
         </p>
         <div class="chart pubkey-rsa">
         <!-- In depth RSA distribution per year -->
@@ -237,9 +288,10 @@
         <h2>certificate vulnerability</h2>
         <p>
         Peaks is capable of scanning in a background job the whole set of public
-        keys loaded to detect the common known vulnerabilities. This is an im-
-        provement over the state of the art, which do not provide any feedback over
+        keys loaded to detect the common known vulnerabilities. This is an improvement 
+        over the state of the art, which do not provide any feedback over
         inserted key material.
+        <br>
         The searched vulnerabilities are:
         <ul>
           <li>RSA Vulnerabilities</li>
@@ -266,8 +318,8 @@
           </ul>
           <li>Elliptic Curve Vulnerabilities</li>
           <ul>
-            <li>algorithm doesn’t work on this curve</li>
-            <li>pubkey doesn’t belong to the curve</li>
+            <li>algorithm does not work on this curve</li>
+            <li>pubkey does not belong to the curve</li>
             <li>Missing parameters</li>
           </ul>
         Now will be presented the results from the analysis.
@@ -344,6 +396,10 @@
             <canvas name="signature-alg-stacked">Canvas not working :(</canvas>
             <div class="loader"></div>
         </div>
+        <div class="table-container">
+          <table id="signature-table-data">
+          </table>
+        </div>
     </div>
     <div class="userid" style="display: none">
     <p>
@@ -352,22 +408,16 @@
     address where is the standard form (Name Surname (Optional comment)
     &lt;email address&gt;), so we need to filter the data to find what kind of data
     was stored.
+    <br>
     Even if a lot of public keys are actually left without an email address,
     we were able to collect a lot of domains used, with the purpose of test the
     availability, and actually we found a large number of unreachable hosts.
     As demonstration of the keyserver network usage and in general of OpenPGP
     software appliances we collected also evidences of public keys used to sign
-    PPAs.
-    A Personal Package Archive (PPA) is a special software repository for
-    uploading source packages to be built and published as an APT repository
-    by Launchpad, a web platform, developed and maintained by Canonical Ltd,
-    that allows users to develop and maintain software, particularly open-source
-    software. A developer which want to build open source software is required
-    to create a key pair, used to sign created packages, so users could import
-    the public key from a public keyserver and verify the authenticity of the
-    software.
+    PPAs <a href="#footnote-60">[1]</a>.
+    <br>
     Unfortunately we noted also an alarming trend in user inputs: there were
-    a bunch of url, which we do not scan, but for sure some were magnet link
+    a bunch of url, which we do not scan, but for sure some were magnet link <a href="#footnote-61">[2]</a>
     to torrent files. This is the practical demonstration that keyserver needs
     to be proactively secured against malicious user inputs, which even if not
     damaging the keyserver infrastructure directly, could damage the image of
@@ -393,7 +443,21 @@
             <canvas name="userid-size-chart">Canvas not working :(</canvas>
             <div class="loader"></div>
         </div>
+    <p id="#footnote-60"> [1]
+    A Personal Package Archive (PPA) is a special software repository for
+    uploading source packages to be built and published as an APT repository
+    by Launchpad, a web platform, developed and maintained by Canonical Ltd,
+    that allows users to develop and maintain software, particularly open-source
+    software. A developer which want to build open source software is required
+    to create a key pair, used to sign created packages, so users could import
+    the public key from a public keyserver and verify the authenticity of the
+    software.
+    </p>
+    <p id="#footnote-61"> [2]
+    https://en.wikipedia.org/wiki/Magnet_URI_scheme
+    </p>
     </div>
+
 </div>
 </body>
 </html>

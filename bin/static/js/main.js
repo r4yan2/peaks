@@ -46,7 +46,7 @@ function makePtreeChart1(values){
   const data = {
     datasets: [{
         data: values["num_elements_ptree_stats"],
-        label: 'Elements',
+        label: 'nodes having x elements',
         backgroundColor: NAMED_COLORS[0],
     }],
     labels: range(0, 51, 10),
@@ -56,7 +56,11 @@ function makePtreeChart1(values){
     plugins: {
       title: {
         display: true,
-        text: 'Elements per leaf node'
+        text: 'Number of elements per leaf node'
+      },
+      subtitle: {
+        display: true,
+        text: 'divided in bins'
       },
     },
     legend: {
@@ -81,7 +85,7 @@ function makePtreeChart1(values){
         var xAxis = chart.scales['x'];
         var tickDistance = xAxis.width / (xAxis.ticks.length);
         xAxis.ticks.forEach((value, index) => {
-            var x = tickDistance * 0.20 + tickDistance * index;
+            var x = tickDistance * 0.5 + tickDistance * index;
             var y = chart.height - 10;
             chart.ctx.save();        
             chart.ctx.fillText(value.label, x, y);
@@ -110,6 +114,10 @@ function makePtreeChart2(values){
            display: true,
            text: 'Node number distribution per level'
          },
+         subtitle: {
+           display: true,
+           text: 'In an optimal tree this graph should be exponential (except the last)'
+         },
        },
         xAxes: {
             ticks: {
@@ -126,6 +134,7 @@ function makePtreeChart2(values){
 }
 
 function makeCertificateChart(values){
+  addRows("certificate-table", values["generic"]);
 
   const plugins = [{
       afterDraw: chart => {      
@@ -141,62 +150,42 @@ function makeCertificateChart(values){
             chart.ctx.restore();
         });      
       }
-    }];
+    }, ChartDataLabels];
  
-  makeChart('cert-chart-noua', {
+  makeChart('cert-chart', {
     type: 'bar',
     plugins: plugins,
     data: {
       datasets: [{
-        data: values["size"]["certificates_without_ua"],
-        label: "Certificates size",
-        backgroundColor: NAMED_COLORS[0],
-      }],
-      labels: values["size"]["ticks"].concat(String([values["size"]["maxsize_noua"]])),
-    },
-    options: {
-    responsive: true,
-    legend: {
-      display: false
-    },   
-    title: {
-      display: true,
-      text: 'Certificate (without user attributes) size divided in bins'
-    },
-    scales: {
-      x: {
-        title: {
-          text: "KB",
-          display: true,
-        },
-        ticks: {
-          autoSkip: false,
-          color: 'rgba(255,255,255,0)',
-        }
-      }
-    }
-  }
-
-  });
-  makeChart('cert-chart-ua', {
-    type: 'bar',
-    plugins: plugins,
-    data: {
-      datasets: [{
-        data: values["size"]["certificates_with_ua"],
+        data: values["size"]["data"],
         label: "Certificates size",
         backgroundColor: NAMED_COLORS[1],
+        datalabels: {
+            align: 'top',
+            anchor: 'end',
+        },
       }],
-      labels: values["size"]["ticks"].concat(String([values["size"]["maxsize_ua"]])),
+      labels: values["size"]["ticks"].concat(String([values["size"]["maxsize"]])),
     },
     options: {
       responsive: true,
       legend: {
         display: false
       },   
-      title: {
-        display: true,
-        text: 'Certificate (with user attributes) size divided in bins'
+      plugins: {
+        title: {
+          display: true,
+          text: 'Certificates size divided in bins'
+        },
+        datalabels: {
+          //backgroundColor: function(context) {
+          //  return context.dataset.backgroundColor;
+          //},
+          rotation: 270,
+          display: function(context) {
+            return context.dataIndex > 5; // display labels with an odd index
+          }
+        },
       },
       scales: {
         x: {
@@ -229,6 +218,16 @@ function makeCertificateChart(values){
       legend: {
         display: false
       },   
+      plugins: {
+        title: {
+          display: true,
+          text: "Number of certificates created per year"
+        },
+        subtitle: {
+            display: true,
+            text: "(data is extracted from the primary key)"
+        },
+      },
     }
   });
 }
@@ -413,6 +412,13 @@ function makePubkeyChart1(values){
     }
   });
 
+  addRows("pubkey-table", values["generic"], {
+      'dsa_count': 'DSA public keys',
+      'rsa_count': 'RSA public keys',
+      'elgamal_count': 'Elgamal public keys',
+      'elliptic_count': 'Elliptic Curve public keys',
+      'total': 'Total',
+  });
   makeChart('pubkey-pie', {
     type: 'pie',
     options: {
@@ -955,13 +961,21 @@ function range(start, stop, step) {
     return result;
 };
 
-function addRows(table, content) {
+function addRows(table, content, dictionary) {
   let tableRef = document.getElementById(table);
   for (var key in content) {
+      var name;
+      if (dictionary !== undefined){
+          name = dictionary[key];
+          if (name === undefined)
+              continue;
+      } else {
+          name = key;
+      }
       let newRow = tableRef.insertRow(-1);
       let keyCell = newRow.insertCell(0);
       let valueCell = newRow.insertCell(1);
-      let keyText = document.createTextNode(key);
+      let keyText = document.createTextNode(name);
       let valueText = document.createTextNode(content[key]);
       keyCell.appendChild(keyText);
       valueCell.appendChild(valueText);

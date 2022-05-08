@@ -92,7 +92,8 @@ void CGI_DBManager::prepare_queries(){
 
     get_certificates_with_attributes_stmt = prepare_query("SELECT DISTINCT(gpg_keyserver.id) as unique_id FROM gpg_keyserver join UserAttribute on gpg_keyserver.fingerprint=UserAttribute.fingerprint");
 
-    get_certificates_analysis_stmt = prepare_query("SELECT len as length, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id WHERE YEAR(pu.creationtime) >= (?) and YEAR(pu.creationtime) <= (?)");
+    get_certificates_analysis_stmt = prepare_query("SELECT len as length, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id");
+    get_certificates_generic_stats_stmt = prepare_query("SELECT max(len) as maxlen, min(len) as minlen, count(len) as countlen from gpg_keyserver");
     get_user_attributes_data_stmt = prepare_query("SELECT LENGTH(image) as length, (encoding IS NOT NULL) as isImage FROM UserAttribute");
     get_pubkey_data_stmt = prepare_query("SELECT pubAlgorithm, YEAR(creationtime) as year, BIT_LENGTH(n) as n_length, BIT_LENGTH(p) as p_length, BIT_LENGTH(q) as q_length, vulnerabilityDescription, vulnerabilityCode FROM Pubkey LEFT JOIN KeyStatus on Pubkey.fingerprint = KeyStatus.fingerprint WHERE YEAR(creationtime) >= (?) and YEAR(creationtime) <= (?)");
     get_signature_data_stmt = prepare_query("SELECT isRevocation, isExpired, pubAlgorithm, YEAR(creationTime) as year, issuingKeyId, signedKeyId from Signatures");
@@ -530,12 +531,26 @@ vector<DBStruct::node> CGI_DBManager::get_pnodes(){
     return res;
 }
 
+std::tuple<int, int, int> CGI_DBManager::get_certificates_generic_stats(){
+    std::tuple<int, int, int> res = {0,0,0};
+    try{
+        std::unique_ptr<DBResult> result = get_certificates_generic_stats_stmt->execute();
+        if(result->next()){
+            res = {
+                result->getInt("maxlen"),
+                result->getInt("minlen"),
+                result->getInt("countlen")
+            };
+        }
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return res;
+}
 
-std::vector<certificate_data_t> CGI_DBManager::get_certificates_analysis(const int &min_year, const int &max_year){
+std::vector<certificate_data_t> CGI_DBManager::get_certificates_analysis(){
     std::vector<certificate_data_t> res;
     try{
-        get_certificates_analysis_stmt->setInt(1, min_year);
-        get_certificates_analysis_stmt->setInt(2, max_year);
         std::unique_ptr<DBResult> result = get_certificates_analysis_stmt->execute();
         while(result->next()){
             res.push_back(certificate_data_t(

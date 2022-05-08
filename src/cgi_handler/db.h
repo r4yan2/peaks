@@ -119,7 +119,8 @@ public:
      * @return vector containing nodes information
      */
     std::vector<node> get_pnodes();
-    std::vector<certificate_data_t> get_certificates_analysis(const int &min_year, const int &max_year);
+    std::vector<certificate_data_t> get_certificates_analysis();
+    std::tuple<int, int, int> get_certificates_generic_stats();
     std::vector<userattribute_data_t> get_user_attributes_data();
     std::vector<pubkey_data_t> get_pubkey_data(const int &min_year, const int &max_year);
     std::vector<signature_data_t> get_signature_data();
@@ -150,6 +151,7 @@ private:
             get_from_cache_stmt,
             store_in_cache_stmt,
             get_certificates_analysis_stmt,
+            get_certificates_generic_stats_stmt,
             get_user_attributes_data_stmt,
             get_pubkey_data_stmt,
             get_signature_data_stmt,

@@ -395,8 +395,6 @@ cppcms::json::value certificate_stats(){
         size_limits.push_back(100*i*KB);
     }
     size_limits.push_back(MB);
-    int maxsize_ua = 0;
-    int maxsize_noua = 0;
 
     time_t t = time(NULL);
     tm* timePtr = localtime(&t);
@@ -408,49 +406,46 @@ cppcms::json::value certificate_stats(){
     }
     std::map<int, int> years_counter;
 
-    std::vector<certificate_data_t> certificates_data = dbm->get_certificates_analysis(allowed_min_year, allowed_max_year);
-    for (const auto &flag: {true, false}){
-        std::string uastatus = flag ? "certificates_with_ua" : "certificates_without_ua";
-        std::vector<int> bins(size_limits.size()+1, 0);
-        for (const auto& data: certificates_data){
-            int length, year;
-            bool has_ua;
-            std::tie(length, has_ua, year) = data;
-            bool found = false;
-            int i = 0;
-            if (has_ua == flag){
-                for (i=0; i<size_limits.size(); i++){
-                    (flag?maxsize_ua:maxsize_noua) = std::max(flag?maxsize_ua:maxsize_noua, length);
-                    if (length < size_limits[i]){
-                        bins[i] += 1;
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                    bins[i] += 1;
-            }
-
-            found = false;
-            if (has_ua == flag)
-                years_counter[year] = get(years_counter, year, 0) + 1;
-        }
+    int maxsize = 0;
+    int minsize = 10000000;
+    std::vector<certificate_data_t> certificates_data = dbm->get_certificates_analysis();
+    std::vector<int> bins(size_limits.size()+1, 0);
+    for (const auto& data: certificates_data){
+        int length, year;
+        bool has_ua;
+        std::tie(length, has_ua, year) = data;
+        bool found = false;
         int i = 0;
-        for (i=0; i<bins.size(); i++)
-            full_stats["certificates"]["size"][uastatus][i] = bins[i];
-        full_stats["certificates"]["size"][uastatus][i] = 0;
+        maxsize = std::max(maxsize, length);
+        minsize = std::min(minsize, length);
+        for (i=0; i<size_limits.size(); i++){
+            if (length < size_limits[i]){
+                bins[i] += 1;
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            bins[i] += 1;
+        if (year > allowed_min_year && year < allowed_max_year)
+            years_counter[year] = get(years_counter, year, 0) + 1;
     }
+    int i = 0;
+    for (i=0; i<bins.size() + 1; i++)
+        full_stats["certificates"]["size"]["data"][i] = bins[i];
     full_stats["certificates"]["size"]["ticks"][0] = 0;
     for (int i = 0; i<size_limits.size(); i++){
         full_stats["certificates"]["size"]["ticks"][i+1] = std::to_string(size_limits[i]/KB);
     }
-    full_stats["certificates"]["size"]["maxsize_ua"] = maxsize_ua;
-    full_stats["certificates"]["size"]["maxsize_noua"] = maxsize_noua;
+    full_stats["certificates"]["size"]["maxsize"] = std::to_string(maxsize/MB) + "MB";
     for (int y=allowed_min_year, i=0; y<=allowed_max_year; y++, i++){
         full_stats["certificates"]["year"]["tick"][i] = y;
         full_stats["certificates"]["year"]["value"][i] = years_counter[y];
     }
 
+    full_stats["certificates"]["generic"]["Number of stored certificates"] = certificates_data.size();
+    full_stats["certificates"]["generic"]["Largest certificate"] = std::to_string(maxsize/MB) + " MB";
+    full_stats["certificates"]["generic"]["Smallest certificate"] = std::to_string(minsize) + " B";
     return full_stats;
 }
 
@@ -1004,6 +999,8 @@ void json_service::get_stats(std::string what){
             return;
         }
         all_stats = f->second();
+        std::string value = all_stats[what].save();
+        dbm->store_in_cache(what, value);
         return_result(all_stats[what]);
     } else {
         // serve last results even if expired
