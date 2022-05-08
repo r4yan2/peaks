@@ -315,11 +315,13 @@ void Recon_memory_DBManager::write_memtree_csv(){
 }
 
 void Recon_memory_DBManager::commit_memtree(){
+    auto f = CONTEXT.dbsettings.tmp_folder + "ptree.csv";
     try{
-    	execute_query(insert_ptree_stmt.first + CONTEXT.dbsettings.tmp_folder + "ptree.csv" + insert_ptree_stmt.second);
+    	execute_query(insert_ptree_stmt.first + f + insert_ptree_stmt.second);
     }catch (exception &e){
         syslog(LOG_CRIT, "commit of the ptree to database failed!\nthe ptree will not be saved into DB because %s", e.what());
     }
+    remove(f.c_str());
 }
 
 }

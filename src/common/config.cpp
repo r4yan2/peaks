@@ -93,6 +93,8 @@ Context::Context(){
     analyzer_desc.add_options()
         ("threads,t", po::value<int>(), "set number of threads")
         ("limit,l", po::value<int>(), "set limit to how many keys to unpack per run")
+        ("only", po::value<int>()->default_value(-1), "set number of threads")
+        ("csv-only", po::bool_switch()->default_value(false), "stop certificate import after creating csv")
         ;
 
     recon_desc.add_options()

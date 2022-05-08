@@ -50,7 +50,6 @@ void build(){
     }
     std::cout << "Writing resulting ptree to DB!" << std::endl;
     dbm->commit_memtree();
-    Utils::remove_directory_content(CONTEXT.get<std::string>("tmp_folder"));
     std::cout << "Inserted " << entries << " entry!" << std::endl; 
     closelog();
     exit(0);

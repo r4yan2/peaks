@@ -56,7 +56,6 @@ void UNPACKER_DBManager::prepare_queries(){
 
 }
 
-
 UNPACKER_DBManager::~UNPACKER_DBManager(){
 };
 

@@ -41,8 +41,6 @@ void import() {
         dbm->store_in_cache("import_status", "done");
     }
         
-    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
-
     int nThreads = CONTEXT.get<int>("threads", std::thread::hardware_concurrency() / 2 + 1);
     size_t key_per_thread;
 

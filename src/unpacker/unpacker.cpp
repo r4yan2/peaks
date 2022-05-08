@@ -102,7 +102,6 @@ void Unpacker::run(){
         std::cout << "Finished recovery, exiting" << std::endl;
         exit(0);
     }
-    Utils::remove_directory_content(CONTEXT.dbsettings.tmp_folder);
 
     std::shared_ptr<DBResult> results = dbm->get_certificates_iterator(limit);
 

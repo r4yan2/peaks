@@ -25,15 +25,20 @@ namespace analyzer{
 
 void analyze(){
     Analyzer alz;
-    
+    int iterations = CONTEXT.get<int>("only");
     while(true){
     	alz.run();
+        if (iterations > 0)
+            iterations--;
+        if (iterations == 0){
+            syslog(LOG_INFO, "Done %d iterations!", CONTEXT.get<int>("only"));
+            break;
+        }
     	std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.get<int>("analyzer_interval")});
     }
 }
 
-Analyzer::Analyzer():
-    dbm(std::make_shared<ANALYZER_DBManager>())
+Analyzer::Analyzer()
 {
     syslog(LOG_NOTICE, "Analyzer daemon is starting up!");
 
@@ -61,14 +66,15 @@ Analyzer::Analyzer():
 
 void Analyzer::run(){
  
+    std::shared_ptr<ANALYZER_DBManager> dbm = std::make_shared<ANALYZER_DBManager>();
     std::string status = "";
     dbm->get_from_cache("analyzer_status", status);
     if (status == "ready"){
         syslog(LOG_NOTICE, "Found old session to resume");
-        import_csv();
+        import_csv(dbm);
     }
     bool exist_rsa = false;
-    dbm->open_files();
+    dbm->openCSVFiles();
 
     shared_ptr<Thread_Pool> pool = make_shared<Thread_Pool>(nThreads);
 
@@ -100,15 +106,17 @@ void Analyzer::run(){
         pool->Add_Job([=] { return analyze_signatures(sss, dbm); });
     }
 
-    pool->Add_Job([=] { return dbm->write_repeated_r_csv(); });
+    pool->Add_Job([&] { return dbm->write_repeated_r_csv(); });
 
     pool->terminate();
     dbm->closeCSVFiles();
-    import_csv();
+    import_csv(dbm);
     syslog(LOG_NOTICE, "Analyzer daemon is stopping!");
 }
 
-void Analyzer::import_csv(){
+void Analyzer::import_csv(const std::shared_ptr<ANALYZER_DBManager> &dbm){
+    if (CONTEXT.get<bool>("csv-only", false))
+        return; //nothing to do
     syslog(LOG_NOTICE, "Writing data to DB");
     dbm->store_in_cache("analyzer_status", "ready");
     dbm->insertCSV(Utils::ANALYZER_FILES::BROKEN_PUBKEY);
@@ -121,9 +129,9 @@ void Analyzer::import_csv(){
     syslog(LOG_NOTICE, "Writing completed");
 }
 
-void Analyzer::analyze_pubkeys(const vector<DBStruct::pubkey> &pks) const {
+void analyze_pubkeys(const vector<DBStruct::pubkey> &pks) {
     std::shared_ptr<ANALYZER_DBManager> dbm = make_shared<ANALYZER_DBManager>();
-    dbm->open_files();
+    dbm->openCSVFiles();
     
     for (const auto &pk: pks){
         try{
@@ -134,7 +142,7 @@ void Analyzer::analyze_pubkeys(const vector<DBStruct::pubkey> &pks) const {
     }
 }
 
-void Analyzer::analyze_signatures(const std::vector<DBStruct::signatures> &ss, const std::shared_ptr<ANALYZER_DBManager> &dbm) const{
+void analyze_signatures(const std::vector<DBStruct::signatures> &ss, const std::shared_ptr<ANALYZER_DBManager> &dbm){
 
     for (const auto &s: ss){
         try{
@@ -145,7 +153,7 @@ void Analyzer::analyze_signatures(const std::vector<DBStruct::signatures> &ss, c
     }
 }
 
-void Analyzer::analyze_pubkey(DBStruct::pubkey pk, const shared_ptr<ANALYZER_DBManager> &dbm) const{
+void analyze_pubkey(DBStruct::pubkey pk, const shared_ptr<ANALYZER_DBManager> &dbm){
     switch (pk.pubAlgorithm){
         case PKA::ID::RSA_ENCRYPT_ONLY:
         case PKA::ID::RSA_SIGN_ONLY:
@@ -169,7 +177,7 @@ void Analyzer::analyze_pubkey(DBStruct::pubkey pk, const shared_ptr<ANALYZER_DBM
     dbm->write_analyzed_pk_csv(pk);
 }
 
-void Analyzer::analyze_signature(const DBStruct::signatures &sign, const shared_ptr<ANALYZER_DBManager> &dbm) const{
+void analyze_signature(const DBStruct::signatures &sign, const shared_ptr<ANALYZER_DBManager> &dbm){
     SignatureStatus ss = {
          signature_id : sign.id
     };
@@ -236,7 +244,7 @@ void Analyzer::analyze_signature(const DBStruct::signatures &sign, const shared_
     dbm->write_analyzed_sign_csv(sign);
 }
 
-void Analyzer::check_RSA(const DBStruct::pubkey &pk, const shared_ptr<ANALYZER_DBManager> &dbm) const{
+void check_RSA(const DBStruct::pubkey &pk, const shared_ptr<ANALYZER_DBManager> &dbm){
     KeyStatus ks = {
             .version = pk.version,
             .fingerprint = pk.fingerprint
@@ -332,7 +340,7 @@ void Analyzer::check_RSA(const DBStruct::pubkey &pk, const shared_ptr<ANALYZER_D
         dbm->write_broken_key_csv(ks);
     }
 }
-void Analyzer::check_Curve(const DBStruct::pubkey &pk, const shared_ptr<ANALYZER_DBManager> &dbm) const{
+void check_Curve(const DBStruct::pubkey &pk, const shared_ptr<ANALYZER_DBManager> &dbm){
     KeyStatus ks = {
             .version = pk.version,
             .fingerprint = pk.fingerprint
@@ -421,7 +429,7 @@ void Analyzer::check_Curve(const DBStruct::pubkey &pk, const shared_ptr<ANALYZER
     }
 }
 
-void Analyzer::check_Elgamal_DSA(const DBStruct::pubkey &pk, const shared_ptr<ANALYZER_DBManager> &dbm) const{
+void check_Elgamal_DSA(const DBStruct::pubkey &pk, const shared_ptr<ANALYZER_DBManager> &dbm){
     KeyStatus ks = {
             .version = pk.version,
             .fingerprint = pk.fingerprint
@@ -537,7 +545,7 @@ void Analyzer::check_Elgamal_DSA(const DBStruct::pubkey &pk, const shared_ptr<AN
     }
 }
 
-void Analyzer::ELGAMAL_DSA_group_size_check(const unsigned int &p, DBStruct::KeyStatus &ks, const std::shared_ptr<ANALYZER_DBManager> &dbm) const{
+void ELGAMAL_DSA_group_size_check(const unsigned int &p, DBStruct::KeyStatus &ks, const std::shared_ptr<ANALYZER_DBManager> &dbm){
     try{
         if (p <= ELGAMAL_DSA_GROUP_BREAKABLE_SIZE){
               ks.vulnerabilityCode = VULN_CODE::OUTDATED_KEY_SIZE;
@@ -559,7 +567,7 @@ void Analyzer::ELGAMAL_DSA_group_size_check(const unsigned int &p, DBStruct::Key
     }
 }
 
-void Analyzer::ELGAMAL_DSA_subgroup_size_check(const unsigned int &q, DBStruct::KeyStatus &ks, const std::shared_ptr<ANALYZER_DBManager> &dbm) const{
+void ELGAMAL_DSA_subgroup_size_check(const unsigned int &q, DBStruct::KeyStatus &ks, const std::shared_ptr<ANALYZER_DBManager> &dbm){
         // Subgroup Size Check
     try{
         if (q <= ELGAMAL_DSA_SUBGROUP_BREAKABLE_SIZE) {
@@ -583,7 +591,7 @@ void Analyzer::ELGAMAL_DSA_subgroup_size_check(const unsigned int &q, DBStruct::
 }
 
 
-bool Analyzer::check_signature(const signatures &sign, const shared_ptr<ANALYZER_DBManager> &dbm) const{
+bool check_signature(const signatures &sign, const shared_ptr<ANALYZER_DBManager> &dbm){
     ZZ signedHash = conv<ZZ>(mpitodec(rawtompi(sign.signedHash)).c_str());
     switch (sign.pubAlgorithm){
         case PKA::ID::RSA_ENCRYPT_ONLY:
@@ -720,7 +728,7 @@ bool Analyzer::check_signature(const signatures &sign, const shared_ptr<ANALYZER
     return false;
 }
 
-void Analyzer::analyze_RSA_modulus_common_factor(const shared_ptr<ANALYZER_DBManager> &dbm, const unsigned int &nThreads) {
+void analyze_RSA_modulus_common_factor(const shared_ptr<ANALYZER_DBManager> &dbm, const unsigned int &nThreads) {
     fastGCD fgcd = fastGCD(dbm->get_RSA_modulus(), nThreads, CONTEXT.dbsettings.tmp_folder);
     vector<std::string> broken_modulus = fgcd.compute();
     dbm->write_broken_modulus_csv(broken_modulus);

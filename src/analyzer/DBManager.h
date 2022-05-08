@@ -20,7 +20,6 @@ class ANALYZER_DBManager: public DBManager {
 public:
     ANALYZER_DBManager();
     ~ANALYZER_DBManager();
-    void open_files();
 
     std::vector<DBStruct::pubkey> get_pubkey(const unsigned long &l);
     std::vector<DBStruct::signatures> get_signatures(const unsigned long &l);

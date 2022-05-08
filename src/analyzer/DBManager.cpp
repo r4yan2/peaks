@@ -18,6 +18,14 @@ namespace analyzer{
 
 // Database connector initialization
 ANALYZER_DBManager::ANALYZER_DBManager():DBManager() {
+    tables = {
+      Utils::ANALYZER_FILES::BROKEN_PUBKEY,
+      Utils::ANALYZER_FILES::ANALYZED_PUBKEY,
+      Utils::ANALYZER_FILES::BROKEN_MODULUS,
+      Utils::ANALYZER_FILES::BROKEN_SIGNATURE,
+      Utils::ANALYZER_FILES::REPEATED_R,
+      Utils::ANALYZER_FILES::ANALYZED_SIGNATURE,
+    };
     check_sql_mode();
     connect_schema();
     prepare_queries();
@@ -79,7 +87,6 @@ void ANALYZER_DBManager::prepare_queries(){
 
 vector<pubkey> ANALYZER_DBManager::get_pubkey(const unsigned long &l) {
     vector<pubkey> pk;
-    commit_stmt->execute();
     get_analyzable_pubkey_stmt->setString(1, to_string(l));
     std::unique_ptr<DBResult> result = get_analyzable_pubkey_stmt->execute();
     while (result->next()) {
@@ -171,7 +178,6 @@ vector<pubkey> ANALYZER_DBManager::get_pubkey(const unsigned long &l) {
 }
 
 std::vector<DBStruct::signatures> ANALYZER_DBManager::get_signatures(const unsigned long &l) {
-    commit_stmt->execute();
     vector<signatures> ss;
     get_analyzable_signature_stmt->setString(1, to_string(l));
     std::unique_ptr<DBResult> result = get_analyzable_signature_stmt->execute();
@@ -300,7 +306,7 @@ void ANALYZER_DBManager::write_analyzed_pk_csv(const DBStruct::pubkey &pk){
         f << '"' << to_string(pk.version) << "\",";
         f << '"' << hexlify(pk.fingerprint) << "\",";
         f << "\n";
-        FILEMANAGER.write(Utils::ANALYZER_FILES::ANALYZED_PUBKEY, f.str());
+        FILEMANAGER.write(file_list.at(Utils::ANALYZER_FILES::ANALYZED_PUBKEY), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_analyzed_pk_csv FAILED, the key will result ANALYZABLE in the database! - %s",
                          e.what());
@@ -312,7 +318,7 @@ void ANALYZER_DBManager::write_analyzed_sign_csv(const DBStruct::signatures &s){
         ostringstream f;
         f << '"' << to_string(s.id) << "\"";
         f << "\n";
-        FILEMANAGER.write(Utils::ANALYZER_FILES::ANALYZED_SIGNATURE, f.str());
+        FILEMANAGER.write(file_list.at(Utils::ANALYZER_FILES::ANALYZED_SIGNATURE), f.str());
     }catch (exception &e){
         syslog(LOG_CRIT, "write_analyzed_sign_csv FAILED, the signature will result ANALYZABLE in the database! - %s",
                           e.what());
@@ -325,7 +331,7 @@ void ANALYZER_DBManager::write_broken_modulus_csv(const std::vector<std::string>
         for (const auto &n: broken_modulus){
             f << '"' << n << '"' << "\n";
         }
-        FILEMANAGER.write(Utils::ANALYZER_FILES::BROKEN_MODULUS, f.str());
+        FILEMANAGER.write(file_list.at(Utils::ANALYZER_FILES::BROKEN_MODULUS), f.str());
     } catch (exception &e){
         syslog(LOG_CRIT, "write_broken_modulus_csv FAILED, the modulo will result not broken in the database! - %s",
                           e.what());
@@ -340,7 +346,7 @@ void ANALYZER_DBManager::write_broken_key_csv(const DBStruct::KeyStatus &ks) {
         f << '"' << ks.vulnerabilityCode << "\",";
         f << '"' << ks.vulnerabilityDescription << "\"";
         f << "\n";
-        FILEMANAGER.write(Utils::ANALYZER_FILES::BROKEN_PUBKEY, f.str());
+        FILEMANAGER.write(file_list.at(Utils::ANALYZER_FILES::BROKEN_PUBKEY), f.str());
     } catch (exception &e){
         syslog(LOG_CRIT, "write_broken_key_csv FAILED, the key will result not broken in the database! - %s",
                           e.what());
@@ -354,7 +360,7 @@ void ANALYZER_DBManager::write_broken_signature_csv(const DBStruct::SignatureSta
         f << '"' << ss.vulnerabilityCode << "\",";
         f << '"' << ss.vulnerabilityDescription << "\"";
         f << "\n";
-        FILEMANAGER.write(Utils::ANALYZER_FILES::BROKEN_SIGNATURE, f.str());
+        FILEMANAGER.write(file_list.at(Utils::ANALYZER_FILES::BROKEN_SIGNATURE), f.str());
     } catch (exception &e){
 	    string tmp = e.what();
         syslog(LOG_CRIT, "write_broken_signature_csv FAILED, the signature will result not broken in the database! - %s",
@@ -369,7 +375,7 @@ void ANALYZER_DBManager::write_repeated_r_csv() {
         while (result->next()) {
             f << '"' << result->getInt("id") << '"' << "\n";
         }
-        FILEMANAGER.write(Utils::ANALYZER_FILES::REPEATED_R, f.str());
+        FILEMANAGER.write(file_list.at(Utils::ANALYZER_FILES::REPEATED_R), f.str());
     } catch (exception &e){
         syslog(LOG_CRIT, "write_repeated_r_csv FAILED, the signature will result not broken in the database! - %s",
                           e.what());
@@ -377,8 +383,7 @@ void ANALYZER_DBManager::write_repeated_r_csv() {
 }
 
 void ANALYZER_DBManager::insertCSV(const unsigned int &table){
-    std::string f = FILEMANAGER.queryName(file_list.at(table));
-    FILEMANAGER.closeFile(file_list.at(table));
+    string f = Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, table);
     switch (table){
         case Utils::ANALYZER_FILES::ANALYZED_PUBKEY:
             try{
@@ -472,11 +477,6 @@ void ANALYZER_DBManager::insertCSV(const unsigned int &table){
         syslog(LOG_CRIT, "Error during deletion of files. The file will remaining in the temp folder. - %s",
                           e.what());
     }
-}
-
-void ANALYZER_DBManager::open_files() {
-    for (const auto &it: Utils::ANALYZER_FILES::FILENAME)
-		ANALYZER_DBManager::file_list[it.first] = FILEMANAGER.openFile(Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, it.second));
 }
 
 ANALYZER_DBManager::~ANALYZER_DBManager(){

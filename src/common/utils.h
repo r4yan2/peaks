@@ -79,24 +79,15 @@ namespace Utils{
             std::make_pair(VULN_CODE::SIGNATURE_NOT_EXPORTABLE, "Not exportable signature")
     };
 
-    namespace ANALYZER_FILES {
-        const unsigned int fileNumber           = 6;
-        const unsigned int ANALYZED_PUBKEY      = 1;
-        const unsigned int ANALYZED_SIGNATURE   = 2;
-        const unsigned int BROKEN_PUBKEY        = 3;
-        const unsigned int BROKEN_MODULUS       = 4;
-        const unsigned int BROKEN_SIGNATURE     = 5;
-        const unsigned int REPEATED_R           = 6;
-
-        const std::map<const unsigned int, std::string> FILENAME{
-            std::make_pair(ANALYZED_PUBKEY, "AnalyzedPubkey.csv"),
-            std::make_pair(ANALYZED_SIGNATURE, "AnalyzedSignatures.csv"),
-            std::make_pair(BROKEN_PUBKEY, "BrokenPubKey.csv"),
-            std::make_pair(BROKEN_MODULUS, "BrokenModulus.csv"),
-            std::make_pair(BROKEN_SIGNATURE, "BrokenSignatures.csv"),
-            std::make_pair(REPEATED_R, "RepeatedR.csv")
-        };
+    enum ANALYZER_FILES {
+        ANALYZED_PUBKEY      = 11,
+        ANALYZED_SIGNATURE   = 12,
+        BROKEN_PUBKEY        = 13,
+        BROKEN_MODULUS       = 14,
+        BROKEN_SIGNATURE     = 15,
+        REPEATED_R           = 16,
     };
+
     enum TABLES {
         CERTIFICATE      = 1,
         PUBKEY           = 2,
@@ -131,6 +122,12 @@ namespace Utils{
         std::make_pair(TABLES::USERID, "UserID.csv"),
         std::make_pair(TABLES::UNPACKED, "Unpacked.csv"),
         std::make_pair(TABLES::PTREE, "Ptree.csv"),
+        std::make_pair(ANALYZER_FILES::ANALYZED_PUBKEY, "AnalyzedPubkey.csv"),
+        std::make_pair(ANALYZER_FILES::ANALYZED_SIGNATURE, "AnalyzedSignatures.csv"),
+        std::make_pair(ANALYZER_FILES::BROKEN_PUBKEY, "BrokenPubKey.csv"),
+        std::make_pair(ANALYZER_FILES::BROKEN_MODULUS, "BrokenModulus.csv"),
+        std::make_pair(ANALYZER_FILES::BROKEN_SIGNATURE, "BrokenSignatures.csv"),
+        std::make_pair(ANALYZER_FILES::REPEATED_R, "RepeatedR.csv")
     };
 
     const std::map<int, std::string> algorithms_map{
