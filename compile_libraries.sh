@@ -21,6 +21,10 @@ if [ -z "$BUILD" ]
 then
     BUILD="Docker"
 fi
+if [ -z "$GMP" ]
+then
+    GMP="ON"
+fi
 
 PEAKS_PATH=$PWD
 LIB_PATH="$PREFIX"/lib
@@ -275,7 +279,9 @@ function compile_openpgp () {
     fi
 }
 
-compile_gmp
+if [ "$GMP" == "ON" ]; then
+    compile_gmp
+fi
 compile_ntl
 compile_cppcms
 compile_openpgp
