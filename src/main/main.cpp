@@ -37,7 +37,6 @@ void signalHandler(int signum) {
         case SIGINT:
         case SIGTERM:
             std::cerr << "Shutting Down..." << std::endl;
-            while(CONTEXT.critical_section) {}
             exit(0);
         case SIGSEGV:
             void *array[10];

@@ -384,6 +384,8 @@ void ANALYZER_DBManager::write_repeated_r_csv() {
 
 void ANALYZER_DBManager::insertCSV(const unsigned int &table){
     string f = Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, table);
+    if (!Utils::check_file_exists(f))
+        return;
     switch (table){
         case Utils::ANALYZER_FILES::ANALYZED_PUBKEY:
             try{

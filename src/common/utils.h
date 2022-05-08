@@ -12,6 +12,8 @@
 #include <NTL/ZZ.h>
 #include <iterator>
 #include <algorithm>
+#include <sys/stat.h>
+
 using namespace OpenPGP;
 
 namespace peaks{
@@ -302,6 +304,11 @@ namespace Utils{
         std::unique_ptr<char[]> buf( new char[ size ] );
         snprintf( buf.get(), size, format.c_str(), args ... );
         return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+    }
+
+    inline bool check_file_exists (const std::string& name) {
+        struct stat buffer;
+        return (stat (name.c_str(), &buffer) == 0);
     }
 
     class Lazystring {

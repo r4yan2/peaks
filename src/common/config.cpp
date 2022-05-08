@@ -172,6 +172,7 @@ void Context::setContext(const po::variables_map & _vm){
 }
 
 std::string Context::init_options(int argc, char* argv[]){
+    critical_section = false;
     po::positional_options_description pos;
     pos.add("command", 1).add("subargs", -1);
 

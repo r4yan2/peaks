@@ -294,6 +294,8 @@ void DBManager::insertCSV(bool lock){
     if (lock) lockTables();
     for (const auto &table: tables){
         string f = Utils::get_file_name(CONTEXT.dbsettings.tmp_folder, table);
+        if (!Utils::check_file_exists(f))
+            continue;
         begin_transaction();
         insertCSV(f, table);
         end_transaction();

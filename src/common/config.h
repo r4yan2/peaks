@@ -131,7 +131,7 @@ namespace peaks{
             settings::Connection_config connsettings;
             settings::Message_config msgsettings;
             settings::Recon_config peersettings;
-            std::atomic<bool> critical_section;
+            bool critical_section;
             static Context& context();
             Context(Context const &) = delete;
             void operator=(Context const &) = delete;
