@@ -1,5 +1,5 @@
 name: peaks
-base: core18
+base: core20
 version: '0.1'
 summary: Peaks - An OpenPGP Keyserver
 description: |
@@ -20,8 +20,8 @@ apps:
 parts:
   peaks:
     plugin: cmake
-    configflags:
-      - -DCMAKE_BUILD_TYPE=Static
+    cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Docker
       - -DCMAKE_LIB_PREFIX="$SNAPCRAFT_STAGE/usr"
       - -DCMAKE_INSTALL_PREFIX="/bin"
       - -DCMAKE_CXX_FLAGS="-Wall -pthread -lstdc++ -pipe"
@@ -102,7 +102,7 @@ parts:
       - NTL_STD_CXX11=on 
       - CXXFLAGS="-O3 -fopenmp -D_GLIBCXX_PARALLEL" 
       - NATIVE="off" 
-      - TUNE="generic"
+      - TUNE="auto"
       - PREFIX=/usr 
       - GMP_PREFIX="$SNAPCRAFT_STAGE/usr/"
 

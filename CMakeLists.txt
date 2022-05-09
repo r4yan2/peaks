@@ -89,11 +89,18 @@ find_library(libopenpgp
     )
 message(STATUS "PGP libraries:      ${libopenpgp}")
 
+if (BUILD_ANALYZER)
 find_library(libgmp
     NAMES libgmp.${suffix}
     HINTS ${LIBRARY_DIR}
     PATHS ${LIBRARY_DIR} NO_DEFAULT_PATH
     )
+else ()
+find_library(libgmp
+    NAMES libgmp.${suffix}
+    )
+endif ()
+
 message(STATUS "GMP libraries:      ${libgmp}")
 
 find_library(libntl

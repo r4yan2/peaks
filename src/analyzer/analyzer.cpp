@@ -52,7 +52,7 @@ Analyzer::Analyzer()
     }
 
     syslog(LOG_INFO, "Starting pubkey analysis");
-    nThreads = CONTEXT.get<int>("threads", 1);
+    nThreads = CONTEXT.get<int>("threads", CONTEXT.get<int>("analyzer_threads"));
     
     syslog(LOG_NOTICE, "Using %d Threads", nThreads);
  

@@ -45,6 +45,7 @@ Context::Context(){
         ("unpacker_interval", po::value<int>()->default_value(60))
         ("unpacker_threads", po::value<int>()->default_value(1))
         ("analyzer_interval", po::value<int>()->default_value(60))
+        ("analyzer_threads", po::value<int>()->default_value(1))
         ("unpacker_limit", po::value<int>()->default_value(10000))
         ("analyzer_limit", po::value<int>()->default_value(10000))
     ;
