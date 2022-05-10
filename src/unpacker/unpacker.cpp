@@ -119,6 +119,7 @@ void Unpacker::run(){
     }
     pool->terminate();
 
+    dbm->closeCSVFiles();
     store_keymaterial(dbm);
 
     syslog(LOG_NOTICE, "Unpacker daemon is stopping!");
