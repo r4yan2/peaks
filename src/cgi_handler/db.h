@@ -9,7 +9,7 @@
 #include <set>
 #include <common/utils.h>
 
-typedef std::tuple<int, bool, int> certificate_data_t;
+typedef std::tuple<int, bool, int, int> certificate_data_t;
 typedef std::tuple<int, bool> userattribute_data_t;
 typedef std::tuple<int, int, int, int, int, std::string, int> pubkey_data_t;
 typedef std::tuple<int, int, int, int, int, int> signature_data_t;
@@ -121,6 +121,7 @@ public:
     std::vector<node> get_pnodes();
     std::vector<certificate_data_t> get_certificates_analysis();
     std::tuple<int, int, int> get_certificates_generic_stats();
+    std::vector<std::tuple<int, int>> get_certificates_unpacking_status();
     std::vector<userattribute_data_t> get_user_attributes_data();
     std::vector<pubkey_data_t> get_pubkey_data(const int &min_year, const int &max_year);
     std::vector<signature_data_t> get_signature_data();
@@ -146,16 +147,17 @@ private:
 			vindex_key_vuln_stmt, 
 			vindex_sign_vuln_stmt, 
 			get_by_hash_stmt,
-            get_pnodes_stmt,
-            get_certificates_with_attributes_stmt,
-            get_from_cache_stmt,
-            store_in_cache_stmt,
-            get_certificates_analysis_stmt,
-            get_certificates_generic_stats_stmt,
-            get_user_attributes_data_stmt,
-            get_pubkey_data_stmt,
-            get_signature_data_stmt,
-            get_userid_data_stmt;
+      get_pnodes_stmt,
+      get_certificates_with_attributes_stmt,
+      get_from_cache_stmt,
+      store_in_cache_stmt,
+      get_certificates_analysis_stmt,
+      get_certificates_unpacking_status_stmt,
+      get_certificates_generic_stats_stmt,
+      get_user_attributes_data_stmt,
+      get_pubkey_data_stmt,
+      get_signature_data_stmt,
+      get_userid_data_stmt;
     
 	std::string hexToUll(const std::string &hex) {
         unsigned long long ullKey = std::stoull(hex, nullptr, 16);

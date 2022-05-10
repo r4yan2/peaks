@@ -408,16 +408,20 @@ cppcms::json::value certificate_stats(){
 
     int maxsize = 0;
     int minsize = 10000000;
+    int unpacked = 0;
     std::vector<certificate_data_t> certificates_data = dbm->get_certificates_analysis();
     std::vector<int> bins(size_limits.size()+1, 0);
     for (const auto& data: certificates_data){
         int length, year;
         bool has_ua;
-        std::tie(length, has_ua, year) = data;
+        int is_unpacked;
+        std::tie(length, has_ua, year, is_unpacked) = data;
         bool found = false;
         int i = 0;
         maxsize = std::max(maxsize, length);
         minsize = std::min(minsize, length);
+        if (is_unpacked != 0)
+            unpacked += 1;
         for (i=0; i<size_limits.size(); i++){
             if (length < size_limits[i]){
                 bins[i] += 1;
@@ -443,6 +447,7 @@ cppcms::json::value certificate_stats(){
         full_stats["certificates"]["year"]["value"][i] = years_counter[y];
     }
 
+    full_stats["certificates"]["generic"]["Indexed %"] = float(unpacked) * 100.0 / float(certificates_data.size());
     full_stats["certificates"]["generic"]["Number of stored certificates"] = certificates_data.size();
     full_stats["certificates"]["generic"]["Largest certificate"] = std::to_string(maxsize/MB) + " MB";
     full_stats["certificates"]["generic"]["Smallest certificate"] = std::to_string(minsize) + " B";
@@ -1222,7 +1227,7 @@ void serve(){
     cfg["service"]["ip"] = CONTEXT.get<std::string>("pks_bind_ip");
     cfg["http"]["script_names"][0] = "/pks";
     cfg["file_server"]["enable"] = true;
-    cfg["file_server"]["document_root"] = "static";
+    cfg["file_server"]["document_root"] = CONTEXT.get<std::string>("web_assets_folder");
     cfg["file_server"]["listing"] = false;
     //cfg["file_server"]["alias"][0]["url"] = "/css";
     //cfg["file_server"]["alias"][0]["path"] = "static/css";

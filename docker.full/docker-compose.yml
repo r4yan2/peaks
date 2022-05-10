@@ -11,10 +11,10 @@ services:
     peaks:
       depends_on:
          - db
-      image: r4yan2/peaks:latest
+      image: r4yan2/peaks:full
       volumes:
         - ./config:/etc/peaks
-        - ./filestore:/var/peaks
+        - ./filestore:/var/peaks/filestorage
         - ./pgp_dump:/tmp/pgp_dump
       environment:
         MYSQL_HOST: "db"

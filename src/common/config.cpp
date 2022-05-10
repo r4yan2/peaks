@@ -56,7 +56,7 @@ Context::Context(){
         ("db_user", po::value<std::string>()->default_value("root"))
         ("db_database", po::value<std::string>()->default_value("gpg_keyserver"))
         ("db_password", po::value<std::string>()->default_value(""))
-        ("filestorage_format", po::value<std::string>()->default_value("/tmp/peaks_filestorage"))
+        ("filestorage_format", po::value<std::string>()->default_value("/var/peaks/filestorage/peaks_filestorage_%d.pgp"))
         ("filestorage_maxsize", po::value<int>()->default_value(100))
         ("expire_interval", po::value<int>()->default_value(15))
         ;
@@ -66,6 +66,7 @@ Context::Context(){
         ("default_dump_path", po::value<std::string>()->default_value("/tmp/pgp_dump"))
         ("tmp_folder", po::value<std::string>()->default_value("/tmp/peaks_tmp"))
         ("error_folder", po::value<std::string>()->default_value("/tmp/peaks_errors"))
+        ("web_assets_folder", po::value<std::string>()->default_value("/var/peaks/static"))
         ;
 
     dump_desc.add_options()

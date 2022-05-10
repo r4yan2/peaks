@@ -1,32 +1,28 @@
 # PEAKS config file
 
 # ptree/recon settings
-mbar = 5
-bq = 2 #bitquantum
-max_ptree_nodes = 1000
-ptree_thresh_mult = 10
-P_SKS_STRING = 530512889551602322505127520352579437339
-#sks_zp_bytes = 17 #Bytes of P_SKS
-#hashquery_len = 16
 version = 1.1.6
-recon_port = 11372
-http_port = 11373
-pks_bind_ip = 0.0.0.0
+recon_port = 11370
+http_port = 11371
+pks_bind_ip = 127.0.0.1
 filters = yminsky.dedup,yminsky.merge
 name = peaks_recon
+
+# sleep intervals
 gossip_interval = 60
-unpack_interval = 300
-analyze_interval = 300
-max_read_len_shift = 24 #max_read_len will be 1 << max_read_len_shift
-max_recover_size = 15000
-default_timeout = 300
-max_request_queue_len = 60000
-request_chunk_size = 100
-max_outstanding_recon_req = 100
-sks_bitstring = 0
+unpacker_interval = 300
+unpacker_threads = 1
+unpacker_limit = 10000
+analyzer_interval = 300
+analyzer_threads = 1
+analyzer_limit = 10000
+max_unpacker_keysize = 5242880 #5MB
+
+# network timeout
 async_timeout_sec = 2
 async_timeout_usec = 0
-max_unpacker_limit = 10000
+
+# filestorage
 filestorage_format = /var/peaks/peaks_filestorage_%d.pgp
 filestorage_maxsize = 100
 
@@ -35,6 +31,7 @@ membership_config = /etc/peaks/membership
 default_dump_path = /tmp/pgp_dump/
 tmp_folder = /tmp/peaks_unique/
 error_folder = /tmp/peaks_error/
+web_assets_folder = /var/peaks/static
 
 # DB settings
 db_database = gpg_keyserver

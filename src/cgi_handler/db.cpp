@@ -89,10 +89,12 @@ void CGI_DBManager::prepare_queries(){
                                        "SignatureStatus WHERE signature_id = (?) and vulnerabilityCode < 100;");
 
     get_pnodes_stmt = prepare_query("SELECT node_key, key_size, num_elements, leaf FROM ptree");
+    
+    get_certificates_unpacking_status_stmt = prepare_query("select is_unpacked, count(is_unpacked) as aggr from gpg_keyserver group by is_unpacked;");
 
     get_certificates_with_attributes_stmt = prepare_query("SELECT DISTINCT(gpg_keyserver.id) as unique_id FROM gpg_keyserver join UserAttribute on gpg_keyserver.fingerprint=UserAttribute.fingerprint");
 
-    get_certificates_analysis_stmt = prepare_query("SELECT len as length, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id");
+    get_certificates_analysis_stmt = prepare_query("SELECT len as length, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year, is_unpacked FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id");
     get_certificates_generic_stats_stmt = prepare_query("SELECT max(len) as maxlen, min(len) as minlen, count(len) as countlen from gpg_keyserver");
     get_user_attributes_data_stmt = prepare_query("SELECT LENGTH(image) as length, (encoding IS NOT NULL) as isImage FROM UserAttribute");
     get_pubkey_data_stmt = prepare_query("SELECT pubAlgorithm, YEAR(creationtime) as year, BIT_LENGTH(n) as n_length, BIT_LENGTH(p) as p_length, BIT_LENGTH(q) as q_length, vulnerabilityDescription, vulnerabilityCode FROM Pubkey LEFT JOIN KeyStatus on Pubkey.fingerprint = KeyStatus.fingerprint WHERE YEAR(creationtime) >= (?) and YEAR(creationtime) <= (?)");
@@ -548,6 +550,24 @@ std::tuple<int, int, int> CGI_DBManager::get_certificates_generic_stats(){
     return res;
 }
 
+std::vector<std::tuple<int, int>> CGI_DBManager::get_certificates_unpacking_status(){
+    std::vector<std::tuple<int, int>> res;
+    try{
+        std::unique_ptr<DBResult> result = get_certificates_unpacking_status_stmt->execute();
+        if(result->next()){
+            res.push_back({
+                result->getInt("is_unpacked"),
+                result->getInt("aggr"),
+            });
+        }
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return res;
+}
+
+
+
 std::vector<certificate_data_t> CGI_DBManager::get_certificates_analysis(){
     std::vector<certificate_data_t> res;
     try{
@@ -556,7 +576,8 @@ std::vector<certificate_data_t> CGI_DBManager::get_certificates_analysis(){
             res.push_back(certificate_data_t(
                 result->getInt("length"),
                 result->getBoolean("hasUserAttribute"),
-                result->getInt("year")
+                result->getInt("year"),
+                result->getInt("is_unpacked")
             ));
         }
     }catch(exception &e){
