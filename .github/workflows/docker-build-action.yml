@@ -44,3 +44,12 @@ jobs:
           push: true
           tags: r4yan2/peaks:full
           platforms: linux/amd64
+      - 
+        name: Build and push Docker image devel
+        uses: docker/build-push-action@v2
+        with:
+          context: ./docker.devel
+          file: ./docker.devel/Dockerfile
+          push: true
+          tags: r4yan2/peaks:devel
+          platforms: linux/amd64

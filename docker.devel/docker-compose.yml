@@ -1,0 +1,30 @@
+version: '3.3'
+
+services:
+    db:
+      image: mysql:5.7
+      volumes:
+         - ./peaks_db:/var/lib/mysql:rw
+      environment:
+         MYSQL_ROOT_PASSWORD: "mysupersuperpassword"
+      command: --innodb_buffer_pool_size=2000M --innodb_log_file_size=500M --innodb_log_buffer_size=500M --innodb_support_xa=0 --innodb_flush_log_at_trx_commit=0 --innodb_doublewrite=0 --max-allowed-packet=500M
+    peaks:
+      depends_on:
+         - db
+      image: r4yan2/peaks:full
+      volumes:
+        - ./config:/etc/peaks
+        - ./filestore:/var/peaks/filestorage
+        - ./pgp_dump:/tmp/pgp_dump
+      environment:
+        MYSQL_HOST: "db"
+        MYSQL_PORT: 3306
+        MYSQL_USER: "root"
+        MYSQL_PASSWORD: "mysupersuperpassword"
+      ports:
+         - 11370:11370
+         - 11371:11371
+      command:
+        - sh
+        - -c
+        - /srv/peaks/init.sh && svscan /srv/peaks/service

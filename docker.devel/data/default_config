@@ -1,0 +1,37 @@
+# PEAKS config file
+
+# ptree/recon settings
+version = 1.1.6
+recon_port = 11370
+http_port = 11371
+pks_bind_ip = 127.0.0.1
+filters = yminsky.dedup,yminsky.merge
+name = peaks_recon
+
+# sleep intervals
+gossip_interval = 60
+unpacker_interval = 300
+unpacker_threads = 1
+unpacker_limit = 10000
+analyzer_interval = 300
+analyzer_threads = 1
+analyzer_limit = 10000
+max_unpacker_keysize = 5242880 #5MB
+
+# network timeout
+async_timeout_sec = 2
+async_timeout_usec = 0
+
+# filestorage
+filestorage_format = /var/peaks/peaks_filestorage_%d.pgp
+filestorage_maxsize = 100
+
+# File and folders settings
+membership_config = /etc/peaks/membership
+default_dump_path = /tmp/pgp_dump/
+tmp_folder = /tmp/peaks_unique/
+error_folder = /tmp/peaks_error/
+web_assets_folder = /var/peaks/static
+
+# DB settings
+db_database = gpg_keyserver
