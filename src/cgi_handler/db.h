@@ -119,13 +119,18 @@ public:
      * @return vector containing nodes information
      */
     std::vector<node> get_pnodes();
-    std::vector<certificate_data_t> get_certificates_analysis();
+    std::shared_ptr<DBResult> get_certificates_analysis_iterator();
+    certificate_data_t get_certificate_data_from_iterator(std::shared_ptr<DBResult> &);
     std::tuple<int, int, int> get_certificates_generic_stats();
     std::vector<std::tuple<int, int>> get_certificates_unpacking_status();
-    std::vector<userattribute_data_t> get_user_attributes_data();
-    std::vector<pubkey_data_t> get_pubkey_data(const int &min_year, const int &max_year);
-    std::vector<signature_data_t> get_signature_data();
-    std::vector<userid_data_t> get_userid_data();
+    std::shared_ptr<DBResult> get_user_attributes_data_iterator();
+    userattribute_data_t get_user_attribute_data_from_iterator(std::shared_ptr<DBResult> &);
+    std::shared_ptr<DBResult> get_pubkey_data_iterator(const int &min_year, const int &max_year);
+    pubkey_data_t get_pubkey_data_from_iterator(std::shared_ptr<DBResult> &);
+    std::shared_ptr<DBResult> get_signature_data_iterator();
+    signature_data_t get_signature_data_from_iterator(std::shared_ptr<DBResult> &result);
+    std::shared_ptr<DBResult> get_userid_data_iterator();
+    userid_data_t get_userid_data_from_iterator(std::shared_ptr<DBResult> &result);
 
 private:
 	std::shared_ptr<DBQuery>

@@ -33,10 +33,7 @@ CREATE TABLE IF NOT EXISTS `Pubkey` (
   `is_analyzed` tinyint(4) NOT NULL DEFAULT '0',
   PRIMARY KEY (`fingerprint`, `version`),
   KEY `n` (`n`(200)),
-  KEY `p` (`p`(200)),
-  KEY `q` (`q`(200)),
-  KEY `y` (`y`(200)),
-  KEY `keyId` (`keyId`,`fingerprint`) USING BTREE,
+  KEY `keyId` (`keyId`,`fingerprint`),
   KEY `Pubkey_cert` (`PriFingerprint`, `version`),
   KEY `is_analyzed` (`is_analyzed`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -90,25 +87,14 @@ CREATE TABLE IF NOT EXISTS `Signatures` (
   `isRevocation` tinyint(4) NOT NULL DEFAULT '0',
   `is_analyzed` tinyint(3) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `r_2` (`r`(200),`s`(200)) USING BTREE,
-  KEY `type` (`type`),
-  KEY `hashAlgorithm` (`hashAlgorithm`),
+  UNIQUE KEY `r_2` (`r`(200),`s`(200)),
   KEY `issuingFingerprint` (`issuingFingerprint`),
   KEY `signedFingerprint` (`signedFingerprint`),
-  KEY `s` (`s`(200)),
-  KEY `Unique_index` (`issuingKeyId`,`signedKeyId`,`signedUsername`(255),`creationTime`) USING BTREE,
-  KEY `version` (`version`),
-  KEY `signed_key` (`signedKeyId`,`signedFingerprint`),
-  KEY `issuing_key` (`issuingKeyId`,`issuingFingerprint`),
+  KEY `Unique_index` (`issuingKeyId`,`signedKeyId`,`signedUsername`(255),`creationTime`),
   KEY `issuing_uid` (`issuingUsername`(255)),
-  KEY `signed_uid` (`signedUsername`(255)),
-  KEY `sign_Uatt_id` (`sign_Uatt_id`,`signedFingerprint`) USING BTREE,
   KEY `is_analyzed` (`is_analyzed`),
   KEY `isRevocation` (`isRevocation`),
-  KEY `hashMismatch` (`hashMismatch`),
-  KEY `find_revok` (`issuingKeyId`,`signedKeyId`,`issuingFingerprint`,`signedFingerprint`,`signedUsername`(255)),
-  KEY `creationTime` (`creationTime`)
-) ENGINE=InnoDB AUTO_INCREMENT=18141142 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Table structure for table `Unpacker_errors`
@@ -118,7 +104,7 @@ CREATE TABLE IF NOT EXISTS `Unpacker_errors` (
   `version` tinyint(3) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
   `error` text COLLATE utf8mb4_unicode_ci NOT NULL
-) ENGINE=InnoDB AUTO_INCREMENT=327309 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Table structure for table `UserAttribute`
@@ -145,7 +131,6 @@ CREATE TABLE IF NOT EXISTS `UserID` (
   `is_analyze` tinyint(4) DEFAULT NULL,
   `bindingAuthentic` tinyint(4) NOT NULL,
   PRIMARY KEY (`fingerprint`,`name`(191)),
-  KEY `ownerkeyID` (`ownerkeyID`,`fingerprint`),
   FULLTEXT (`name`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -206,13 +191,7 @@ CREATE TABLE IF NOT EXISTS `selfSignaturesMetadata` (
   `isPrimaryUserId` tinyint(1) NOT NULL,
   `signedUserId` varchar(750) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `type` (`type`),
-  KEY `hashAlgorithm` (`hashAlgorithm`),
-  KEY `issuingKey` (`issuingKeyId`,`issuingFingerprint`) USING BTREE,
-  KEY `issuingFingerprint` (`issuingFingerprint`,`signedUserId`(191)),
-  KEY `signedUserId` (`signedUserId`(191)),
-  KEY `version` (`version`,`issuingFingerprint`,`trustLevel`,`isPrimaryUserId`)
-) ENGINE=InnoDB AUTO_INCREMENT=10701766 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ptree` (
   `node_key` BLOB NOT NULL,

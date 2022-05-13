@@ -567,59 +567,72 @@ std::vector<std::tuple<int, int>> CGI_DBManager::get_certificates_unpacking_stat
 }
 
 
+certificate_data_t CGI_DBManager::get_certificate_data_from_iterator(std::shared_ptr<DBResult> &result){
+    certificate_data_t out;
+    if(result->next()){
+        return certificate_data_t(
+            result->getInt("length"),
+            result->getBoolean("hasUserAttribute"),
+            result->getInt("year"),
+            result->getInt("is_unpacked")
+        );
+    }
+    return out;
+}
 
-std::vector<certificate_data_t> CGI_DBManager::get_certificates_analysis(){
-    std::vector<certificate_data_t> res;
+std::shared_ptr<DBResult> CGI_DBManager::get_certificates_analysis_iterator(){
+    std::shared_ptr<DBResult> res;
     try{
-        std::unique_ptr<DBResult> result = get_certificates_analysis_stmt->execute();
-        while(result->next()){
-            res.push_back(certificate_data_t(
-                result->getInt("length"),
-                result->getBoolean("hasUserAttribute"),
-                result->getInt("year"),
-                result->getInt("is_unpacked")
-            ));
-        }
+        res = get_certificates_analysis_stmt->execute();
     }catch(exception &e){
         syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
     }
     return res;
 }
 
-std::vector<userattribute_data_t> CGI_DBManager::get_user_attributes_data(){
-    std::vector<userattribute_data_t> res;
+userattribute_data_t CGI_DBManager::get_user_attribute_data_from_iterator(std::shared_ptr<DBResult> &result){
+   if(result->next()){
+       return userattribute_data_t(
+           result->getInt("length"),
+           result->getBoolean("isImage")
+       );
+   }
+   return userattribute_data_t();
+}
+
+std::shared_ptr<DBResult> CGI_DBManager::get_user_attributes_data_iterator(){
+    std::shared_ptr<DBResult> result;
     try{
-        std::unique_ptr<DBResult> result = get_user_attributes_data_stmt->execute();
-        while(result->next()){
-            res.push_back(userattribute_data_t(
-                result->getInt("length"),
-                result->getBoolean("isImage")
-            ));
-        }
+        result = get_user_attributes_data_stmt->execute();
     }catch(exception &e){
         syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
     }
-    return res;
+    return result;
 
 }
 
-std::vector<pubkey_data_t> CGI_DBManager::get_pubkey_data(const int &min_year, const int &max_year){
-    std::vector<pubkey_data_t> res;
+
+pubkey_data_t CGI_DBManager::get_pubkey_data_from_iterator(std::shared_ptr<DBResult> &result){
+     if(result->next()){
+        return pubkey_data_t(
+            result->getInt("pubAlgorithm"),
+            result->getInt("year"),
+            result->getInt("n_length"),
+            result->getInt("p_length"),
+            result->getInt("q_length"),
+            result->getString("vulnerabilityDescription"),
+            result->getInt("vulnerabilityCode")
+        );
+     }
+    return pubkey_data_t();
+}
+
+std::shared_ptr<DBResult> CGI_DBManager::get_pubkey_data_iterator(const int &min_year, const int &max_year){
+    std::shared_ptr<DBResult> res;
     try{
         get_pubkey_data_stmt->setInt(1, min_year);
         get_pubkey_data_stmt->setInt(2, max_year);
-        std::unique_ptr<DBResult> result = get_pubkey_data_stmt->execute();
-        while(result->next()){
-            res.push_back(pubkey_data_t(
-                result->getInt("pubAlgorithm"),
-                result->getInt("year"),
-                result->getInt("n_length"),
-                result->getInt("p_length"),
-                result->getInt("q_length"),
-                result->getString("vulnerabilityDescription"),
-                result->getInt("vulnerabilityCode")
-            ));
-        }
+        res = get_pubkey_data_stmt->execute();
     }catch(exception &e){
         syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
     }
@@ -627,41 +640,50 @@ std::vector<pubkey_data_t> CGI_DBManager::get_pubkey_data(const int &min_year, c
 
 }
 
-std::vector<signature_data_t> CGI_DBManager::get_signature_data(){
-    std::vector<signature_data_t> res;
+signature_data_t CGI_DBManager::get_signature_data_from_iterator(std::shared_ptr<DBResult> &result){
+    if(result->next()){
+        return signature_data_t(
+            result->getInt("isRevocation"),
+            result->getInt("isExpired"),
+            result->getInt("pubAlgorithm"),
+            result->getInt("year"),
+            result->getInt("issuingKeyId"),
+            result->getInt("signedKeyId")
+        );
+    }
+    return signature_data_t();
+}
+
+std::shared_ptr<DBResult> CGI_DBManager::get_signature_data_iterator(){
+    std::shared_ptr<DBResult> result;
     try{
-        std::unique_ptr<DBResult> result = get_signature_data_stmt->execute();
-        while(result->next()){
-            res.push_back(signature_data_t(
-                result->getInt("isRevocation"),
-                result->getInt("isExpired"),
-                result->getInt("pubAlgorithm"),
-                result->getInt("year"),
-                result->getInt("issuingKeyId"),
-                result->getInt("signedKeyId")
-            ));
-        }
+        result = get_signature_data_stmt->execute();
     }catch(exception &e){
         syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
     }
-    return res;
+    return result;
 
 }
 
-std::vector<userid_data_t> CGI_DBManager::get_userid_data(){
-    std::vector<userid_data_t> res;
+
+userid_data_t CGI_DBManager::get_userid_data_from_iterator(std::shared_ptr<DBResult> &result){
+    if(result->next()){
+        return userid_data_t(
+            result->getInt("ownerkeyid"),
+            result->getString("name")
+        );
+    }
+    return userid_data_t();
+}
+
+std::shared_ptr<DBResult> CGI_DBManager::get_userid_data_iterator(){
+    std::shared_ptr<DBResult> result;
     try{
-        std::unique_ptr<DBResult> result = get_userid_data_stmt->execute();
-        while(result->next()){
-            res.push_back(userid_data_t(
-                result->getInt("ownerkeyid"),
-                result->getString("name")
-            ));
-        }
+        result = get_userid_data_stmt->execute();
     }catch(exception &e){
         syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
     }
-    return res;
+    return result;
 
 }
 }

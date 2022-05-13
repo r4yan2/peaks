@@ -367,7 +367,7 @@ cppcms::json::value ptree_stats(){
     full_stats["ptree"]["generic"]["Variance in Leaf Node size"] = to_string(variance_num_element);
     full_stats["ptree"]["generic"]["Shortest tree branch"] = to_string(min_heigth_subtree);
     full_stats["ptree"]["generic"]["Longest tree branch"] = to_string(max_heigth_subtree);
-    full_stats["ptree"]["generic"]["Is tree balanced?"] = min_heigth_subtree==max_heigth_subtree?"True":"False";
+    full_stats["ptree"]["generic"]["Is tree balanced?"] = (max_heigth_subtree-min_heigth_subtree <= 1)?"True":"False";
 
     return full_stats;
 }
@@ -409,13 +409,14 @@ cppcms::json::value certificate_stats(){
     int maxsize = 0;
     int minsize = 10000000;
     int unpacked = 0;
-    std::vector<certificate_data_t> certificates_data = dbm->get_certificates_analysis();
+    std::shared_ptr<DBResult> certificates_data_ptr = dbm->get_certificates_analysis_iterator();
     std::vector<int> bins(size_limits.size()+1, 0);
-    for (const auto& data: certificates_data){
+    int certificates = 0;
+    for (; certificates < certificates_data_ptr->size(); certificates++){
         int length, year;
         bool has_ua;
         int is_unpacked;
-        std::tie(length, has_ua, year, is_unpacked) = data;
+        std::tie(length, has_ua, year, is_unpacked) = dbm->get_certificate_data_from_iterator(certificates_data_ptr);
         bool found = false;
         int i = 0;
         maxsize = std::max(maxsize, length);
@@ -447,8 +448,8 @@ cppcms::json::value certificate_stats(){
         full_stats["certificates"]["year"]["value"][i] = years_counter[y];
     }
 
-    full_stats["certificates"]["generic"]["Indexed %"] = float(unpacked) * 100.0 / float(certificates_data.size());
-    full_stats["certificates"]["generic"]["Number of stored certificates"] = certificates_data.size();
+    full_stats["certificates"]["generic"]["Indexed %"] = float(unpacked) * 100.0 / float(certificates);
+    full_stats["certificates"]["generic"]["Number of stored certificates"] = certificates;
     full_stats["certificates"]["generic"]["Largest certificate"] = std::to_string(maxsize/MB) + " MB";
     full_stats["certificates"]["generic"]["Smallest certificate"] = std::to_string(minsize) + " B";
     return full_stats;
@@ -458,7 +459,7 @@ cppcms::json::value certificate_stats(){
 cppcms::json::value userattribute_stats(){
     cppcms::json::value full_stats;
     std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
-    std::vector<std::tuple<int, bool>> ua_data = dbm->get_user_attributes_data();
+    std::shared_ptr<DBResult> ua_data_iterator = dbm->get_user_attributes_data_iterator();
     int image_user_attributes = 0;
     int other_user_attributes = 0;
     // 4 bins
@@ -486,13 +487,15 @@ cppcms::json::value userattribute_stats(){
     for (const auto &flag: {true, false}){
         std::vector<int> bins(limits.size()+1, 0);
         std::string is_image = flag ? "image" : "other";
-        for (const auto& el: ua_data){
-            bool is_data_image = std::get<1>(el)?1:0;
+        int userattributes = 0;
+        for (; userattributes < ua_data_iterator->size(); userattributes++){
+            int length;
+            bool is_data_image;
+            std::tie(length, is_data_image) = dbm->get_user_attribute_data_from_iterator(ua_data_iterator);
             if (is_data_image != flag)
                 continue;
             image_user_attributes += flag?1:0;
             other_user_attributes += flag?0:1;
-            int length = std::get<0>(el);
             for (int i=0; i<limits.size(); i++){
                 (flag?maxsize_image:maxsize_noimage) = std::max(flag?maxsize_image:maxsize_noimage, length);
                 if (length < limits[i]){
@@ -571,12 +574,13 @@ cppcms::json::value pubkey_stats(){
         year_pubkey_counter[y] = 0;
 
     std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
-    std::vector<pubkey_data_t> data = dbm->get_pubkey_data(allowed_min_year, allowed_max_year);
+    std::shared_ptr<DBResult> data_iterator = dbm->get_pubkey_data_iterator(allowed_min_year, allowed_max_year);
 
-    for (const auto &d:data){
+    int pubkey_count = 0;
+    for (; pubkey_count < data_iterator -> size(); pubkey_count++){
         int algorithm, year, n, q, p, vulnerabilityCode;
         std::string vulnerabilityDescription;
-        std::tie(algorithm, year, n, p, q, vulnerabilityDescription, vulnerabilityCode) = d;
+        std::tie(algorithm, year, n, p, q, vulnerabilityDescription, vulnerabilityCode) = dbm->get_pubkey_data_from_iterator(data_iterator);
         auto it = algorithms_map.find(algorithm);
         if (it == algorithms_map.end())
             continue;
@@ -739,7 +743,7 @@ cppcms::json::value pubkey_stats(){
     full_stats["pubkey"]["generic"]["elgamal_count"] = elg;
     full_stats["pubkey"]["generic"]["elliptic_count"] = ec;
     full_stats["pubkey"]["generic"]["total_valid"] = rsa+dsa+elg+ec;
-    full_stats["pubkey"]["generic"]["total"] = data.size();
+    full_stats["pubkey"]["generic"]["total"] = pubkey_count;
 
     for (int y=allowed_min_year,i=0; y<=allowed_max_year; y++,i++){
         full_stats["pubkey"]["generic"]["years"][i] = y;
@@ -792,11 +796,12 @@ cppcms::json::value signature_stats(){
 
     std::map<int, std::map<int,int>> signature_year_alg_dict;
 
-    std::vector<signature_data_t> data = dbm->get_signature_data();
+    std::shared_ptr<DBResult> data_iterator = dbm->get_signature_data_iterator();
+    int signature_count = 0;
 
-    for (const auto &d:data){
+    for (; signature_count < data_iterator->size(); signature_count++){
         int isRevocation, isExpired, pubAlgorithm, year, issuingKeyId, signedKeyId;
-        std::tie(isRevocation, isExpired, pubAlgorithm, year, issuingKeyId, signedKeyId) = d;
+        std::tie(isRevocation, isExpired, pubAlgorithm, year, issuingKeyId, signedKeyId) = dbm->get_signature_data_from_iterator(data_iterator);
         if (issuingKeyId == signedKeyId){
             self_sig[year] = get(self_sig, year, 0) + 1;
             if (isExpired)
@@ -840,7 +845,7 @@ cppcms::json::value signature_stats(){
         full_stats["signature"]["year"]["signatures revocation"][i] = sig_revocation[y];
     }
 
-    full_stats["signature"]["generic"]["total"] = data.size();
+    full_stats["signature"]["generic"]["total"] = signature_count;
     full_stats["signature"]["generic"]["signatures"] = f(sig);
     full_stats["signature"]["generic"]["signatures valid"] = f(sig_valid);
     full_stats["signature"]["generic"]["signatures expired"] = f(sig_expired);
@@ -883,13 +888,14 @@ cppcms::json::value userid_stats(){
     regex link_pattern("(https?|ftp)://([^/\r\n]+/[^\r\n]*?)");
     regex mail_pattern("([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)");
     
-    std::vector<userid_data_t> data = dbm->get_userid_data();
+    std::shared_ptr<DBResult> data_iterator = dbm->get_userid_data_iterator();
     std::vector<int> bins(size_limits.size()+1, 0);
+    int userid_count = 0;
 
-    for (const auto &d:data){
+    for (; userid_count < data_iterator->size(); userid_count++){
         int ownerkeyid;
         std::string name;
-        std::tie(ownerkeyid, name) = d;
+        std::tie(ownerkeyid, name) = dbm->get_userid_data_from_iterator(data_iterator);
 
         size_t size = name.size();
         max_length = std::max(size, max_length);
@@ -946,7 +952,7 @@ cppcms::json::value userid_stats(){
     }
 
     auto f = [=](std::map<std::string, std::set<std::string>> m){int sum = 0; for (const auto& it: m) sum+=it.second.size();return sum;};
-    full_stats["userid"]["generic"]["UserIDs in database"] = data.size();
+    full_stats["userid"]["generic"]["UserIDs in database"] = userid_count;
     full_stats["userid"]["generic"]["PPA found"] = PPA_mail + PPA_nomail;
     full_stats["userid"]["generic"]["PPA with mail"] = PPA_mail;
     full_stats["userid"]["generic"]["PPA without mail"] = PPA_nomail;
@@ -984,6 +990,8 @@ cppcms::json::value userid_stats(){
 
     return full_stats;
 }
+
+
 void json_service::get_stats(std::string what){
     std::map<std::string, std::function<cppcms::json::value()>> function_map = {
         {"ptree", ptree_stats},
@@ -1003,9 +1011,11 @@ void json_service::get_stats(std::string what){
             return_result(all_stats); // ???
             return;
         }
+        dbm->store_in_cache("recompute"+what, "true");
         all_stats = f->second();
         std::string value = all_stats[what].save();
         dbm->store_in_cache(what, value);
+        dbm->store_in_cache("recompute"+what, "");
         return_result(all_stats[what]);
     } else {
         // serve last results even if expired
@@ -1025,8 +1035,8 @@ void json_service::get_stats(std::string what){
             dbm->store_in_cache("recompute"+what, "true");
             auto new_stats = f->second();
             std::string value = new_stats[what].save();
-            dbm->store_in_cache("recompute"+what, "");
             dbm->store_in_cache(what, value);
+            dbm->store_in_cache("recompute"+what, "");
         }
     }
 }
