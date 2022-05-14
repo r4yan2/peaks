@@ -1006,6 +1006,10 @@ var rpc;
 function main() {
     rpc = new JsonRPC('/pks/numbers/rpc', ['get_stats']); 
     rpc.get_stats.on_result = function(params, values){
+        if (values === ""){
+            loadTabData(params[0]);
+            return;
+        }
         const method = params[0];
         removeLoader(method);
         isInitializedDict[method] = true;

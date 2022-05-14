@@ -6,6 +6,7 @@
 #include <cppcms/url_mapper.h>
 #include <cppcms/applications_pool.h>
 #include <cppcms/rpc_json.h>
+#include <booster/aio/deadline_timer.h>
 #include "db.h"
 #include "db_key.h"
 
@@ -23,6 +24,17 @@ class json_service: public cppcms::rpc::json_rpc_server{
 public:
     json_service(cppcms::service &srv);
     void get_stats(std::string what);
+private:
+    // long poll requests
+    typedef std::set<booster::shared_ptr<cppcms::rpc::json_call> > waiters_type;
+    waiters_type waiters_;
+
+    // timer for resetting idle requests
+    booster::aio::deadline_timer timer_;
+    time_t last_wake_;
+    void on_timer(booster::system::error_code const &e);
+    void broadcast(std::string what);
+    void remove_context(booster::shared_ptr<cppcms::rpc::json_call> call);
 };
 
 
@@ -58,7 +70,6 @@ private:
     void get(const std::string& id);
     void index(const std::string& id);
     std::string genEntry(DB_Key *keyInfo);
-    void generating_cert_stats(std::map<std::string, std::string> & stats);
 
     void post(const std::string &temp);
 

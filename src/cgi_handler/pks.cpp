@@ -23,6 +23,7 @@
 #include <common/config.h>
 #include <common/utils.h>
 #include <regex>
+#include <boost/bind.hpp>
 
 
 using namespace std;
@@ -44,6 +45,7 @@ Pks::Pks(cppcms::service &srv): cppcms::application(srv)
 {
 
     dbm = std::make_shared<CGI_DBManager>();
+    dbm->execute_query("DELETE FROM stash WHERE name LIKE \"recompute%\";");
 
     //attach(new json_service(srv), "/numbers", 1);
     attach( new json_service(srv),
@@ -241,14 +243,41 @@ void Pks::stats(){
     //render("stats", stats);
 }
 
-void Pks::generating_cert_stats(std::map<std::string, std::string> & stats){
-}
-
-
 json_service::json_service(cppcms::service &srv):
-    cppcms::rpc::json_rpc_server(srv)
+    cppcms::rpc::json_rpc_server(srv),
+    timer_(srv.get_io_service())
 {
     bind("get_stats",cppcms::rpc::json_method(&json_service::get_stats,this), method_role);
+    // Add timeouts to the system
+    last_wake_ = time(0);
+    on_timer(booster::system::error_code());
+}
+
+void json_service::on_timer(booster::system::error_code const &e){
+    if(e) return; // cancelation
+
+    // check idle connections for more then 10 seconds
+    if(time(0) - last_wake_ > 10) {
+        broadcast("");
+    }
+
+    // restart timer
+    timer_.expires_from_now(booster::ptime::seconds(5));
+    timer_.async_wait(boost::bind(&json_service::on_timer, booster::intrusive_ptr<json_service>(this),_1));
+}
+
+void json_service::broadcast(std::string what)
+{
+    // update timeout
+    last_wake_ = time(0);
+    // Prepare response
+    cppcms::json::value response = what;
+    // Send it to everybody
+    for(waiters_type::iterator waiter=waiters_.begin();waiter!=waiters_.end();++waiter) {
+        booster::shared_ptr<cppcms::rpc::json_call> call = *waiter;
+        call->return_result(response);
+    }
+    waiters_.clear();
 }
 
 cppcms::json::value parse_stats(const std::string &res){
@@ -991,6 +1020,10 @@ cppcms::json::value userid_stats(){
     return full_stats;
 }
 
+void json_service::remove_context(booster::shared_ptr<cppcms::rpc::json_call> call)
+{
+    waiters_.erase(call);
+}
 
 void json_service::get_stats(std::string what){
     std::map<std::string, std::function<cppcms::json::value()>> function_map = {
@@ -1011,32 +1044,61 @@ void json_service::get_stats(std::string what){
             return_result(all_stats); // ???
             return;
         }
+        std::string out;
+        dbm->get_from_cache("recompute"+what, out);
+        std::cout << "recompute in progress? " << what << " " << out << std::endl;
+        if (out == "true"){
+            //recompute already in progress
+            // async
+            booster::shared_ptr<cppcms::rpc::json_call> call=release_call();
+            waiters_.insert(call);
+    
+            // set disconnect callback
+            call->context().async_on_peer_reset(
+                boost::bind(
+                    &json_service::remove_context,
+                    booster::intrusive_ptr<json_service>(this),
+                    call));
+            return;
+        }
         dbm->store_in_cache("recompute"+what, "true");
+
+        // async
+        booster::shared_ptr<cppcms::rpc::json_call> call=release_call();
+        waiters_.insert(call);
+
+        // set disconnect callback
+        call->context().async_on_peer_reset(
+            boost::bind(
+                &json_service::remove_context,
+                booster::intrusive_ptr<json_service>(this),
+                call));
+
         all_stats = f->second();
         std::string value = all_stats[what].save();
         dbm->store_in_cache(what, value);
         dbm->store_in_cache("recompute"+what, "");
-        return_result(all_stats[what]);
+        broadcast("");
     } else {
         // serve last results even if expired
         cppcms::json::value stats = parse_stats(res);
         return_result(stats);
-    }
-    if (expired){
-        // recalculate expired data
-        auto f = function_map.find(what);
-        if (f != function_map.end()){
-            std::string res = "";
-            dbm->get_from_cache("recompute"+what, res);
-            if (res != ""){
-                //recompute already in progress
-                return;
+        if (expired){
+            // recalculate expired data
+            auto f = function_map.find(what);
+            if (f != function_map.end()){
+                std::string res = "";
+                dbm->get_from_cache("recompute"+what, res);
+                if (res != ""){
+                    //recompute already in progress
+                    return;
+                }
+                dbm->store_in_cache("recompute"+what, "true");
+                auto new_stats = f->second();
+                std::string value = new_stats[what].save();
+                dbm->store_in_cache(what, value);
+                dbm->store_in_cache("recompute"+what, "");
             }
-            dbm->store_in_cache("recompute"+what, "true");
-            auto new_stats = f->second();
-            std::string value = new_stats[what].save();
-            dbm->store_in_cache(what, value);
-            dbm->store_in_cache("recompute"+what, "");
         }
     }
 }
