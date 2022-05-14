@@ -299,6 +299,17 @@ void DBManager::insertCSV(bool lock){
         begin_transaction();
         insertCSV(f, table);
         end_transaction();
+
+        // Delete inserted file
+        if (CONTEXT.vm.count("noclean") == 0){
+            try{
+                remove(f.c_str());
+            }catch (exception &e){
+                syslog(LOG_CRIT, "Error during deletion of files. The file will remaining in the temp folder. - %s",
+                                  e.what());
+            }
+        }
+
     }
     if (lock) unlockTables();
 }
@@ -387,15 +398,6 @@ void DBManager::insertCSV(const string &f, const unsigned int &table){
     } while (backoff > 0 && num_retries < 5);
     if (backoff > 0){
         Utils::put_in_error(CONTEXT.dbsettings.error_folder, f, table);
-    }
-    // Delete inserted file
-    if (CONTEXT.vm.count("noclean") == 0){
-        try{
-            remove(f.c_str());
-        }catch (exception &e){
-            syslog(LOG_CRIT, "Error during deletion of files. The file will remaining in the temp folder. - %s",
-                              e.what());
-        }
     }
 }
 
