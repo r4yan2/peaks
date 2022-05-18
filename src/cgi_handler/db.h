@@ -11,7 +11,7 @@
 
 typedef std::tuple<int, bool, int, int> certificate_data_t;
 typedef std::tuple<int, bool> userattribute_data_t;
-typedef std::tuple<int, int, int, int, int, std::string, int> pubkey_data_t;
+typedef std::tuple<int, int, int, int, int, std::string, int, int> pubkey_data_t;
 typedef std::tuple<int, int, int, int, int, int> signature_data_t;
 typedef std::tuple<int, std::string> userid_data_t;
 using namespace peaks::common;

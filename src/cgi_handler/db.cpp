@@ -97,7 +97,7 @@ void CGI_DBManager::prepare_queries(){
     get_certificates_analysis_stmt = prepare_query("SELECT len as length, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year, is_unpacked FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id");
     get_certificates_generic_stats_stmt = prepare_query("SELECT max(len) as maxlen, min(len) as minlen, count(len) as countlen from gpg_keyserver");
     get_user_attributes_data_stmt = prepare_query("SELECT LENGTH(image) as length, (encoding IS NOT NULL) as isImage FROM UserAttribute");
-    get_pubkey_data_stmt = prepare_query("SELECT pubAlgorithm, YEAR(creationtime) as year, BIT_LENGTH(n) as n_length, BIT_LENGTH(p) as p_length, BIT_LENGTH(q) as q_length, vulnerabilityDescription, vulnerabilityCode FROM Pubkey LEFT JOIN KeyStatus on Pubkey.fingerprint = KeyStatus.fingerprint WHERE YEAR(creationtime) >= (?) and YEAR(creationtime) <= (?)");
+    get_pubkey_data_stmt = prepare_query("SELECT pubAlgorithm, YEAR(creationtime) as year, BIT_LENGTH(n) as n_length, BIT_LENGTH(p) as p_length, BIT_LENGTH(q) as q_length, vulnerabilityDescription, vulnerabilityCode, is_analyzed FROM Pubkey LEFT JOIN KeyStatus on Pubkey.fingerprint = KeyStatus.fingerprint WHERE YEAR(creationtime) >= (?) and YEAR(creationtime) <= (?)");
     get_signature_data_stmt = prepare_query("SELECT isRevocation, isExpired, pubAlgorithm, YEAR(creationTime) as year, issuingKeyId, signedKeyId from Signatures");
     get_userid_data_stmt = prepare_query("SELECT ownerkeyid, name FROM UserID");
 }
@@ -621,7 +621,8 @@ pubkey_data_t CGI_DBManager::get_pubkey_data_from_iterator(std::shared_ptr<DBRes
             result->getInt("p_length"),
             result->getInt("q_length"),
             result->getString("vulnerabilityDescription"),
-            result->getInt("vulnerabilityCode")
+            result->getInt("vulnerabilityCode"),
+            result->getInt("is_analyzed")
         );
      }
     return pubkey_data_t();

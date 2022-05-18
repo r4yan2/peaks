@@ -243,13 +243,9 @@ void Pks::stats(){
 }
 
 json_service::json_service(cppcms::service &srv):
-    cppcms::rpc::json_rpc_server(srv),
-    timer_(srv.get_io_service())
+    cppcms::rpc::json_rpc_server(srv)
 {
     bind("get_stats",cppcms::rpc::json_method(&json_service::get_stats,this), method_role);
-    // Add timeouts to the system
-    last_wake_ = time(0);
-    on_timer(booster::system::error_code());
 }
 
 void json_service::on_timer(booster::system::error_code const &e){
@@ -476,7 +472,7 @@ cppcms::json::value certificate_stats(){
         full_stats["certificates"]["year"]["value"][i] = years_counter[y];
     }
 
-    full_stats["certificates"]["generic"]["Indexed %"] = float(unpacked) * 100.0 / float(certificates);
+    full_stats["certificates"]["generic"]["Indexed %"] = Utils::float_format(unpacked * 100.0 / certificates, 1) + "%";
     full_stats["certificates"]["generic"]["Number of stored certificates"] = certificates;
     full_stats["certificates"]["generic"]["Largest certificate"] = std::to_string(maxsize/MB) + " MB";
     full_stats["certificates"]["generic"]["Smallest certificate"] = std::to_string(minsize) + " B";
@@ -600,15 +596,16 @@ cppcms::json::value pubkey_stats(){
     std::map<int, int> year_pubkey_counter;
     for (int y = allowed_min_year; y < allowed_max_year; y++)
         year_pubkey_counter[y] = 0;
+    int analyzed_pubkeys = 0;
 
     std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
     std::shared_ptr<DBResult> data_iterator = dbm->get_pubkey_data_iterator(allowed_min_year, allowed_max_year);
 
     int pubkey_count = 0;
     for (; pubkey_count < data_iterator -> size(); pubkey_count++){
-        int algorithm, year, n, q, p, vulnerabilityCode;
+        int algorithm, year, n, q, p, vulnerabilityCode, is_analyzed;
         std::string vulnerabilityDescription;
-        std::tie(algorithm, year, n, p, q, vulnerabilityDescription, vulnerabilityCode) = dbm->get_pubkey_data_from_iterator(data_iterator);
+        std::tie(algorithm, year, n, p, q, vulnerabilityDescription, vulnerabilityCode, is_analyzed) = dbm->get_pubkey_data_from_iterator(data_iterator);
         auto it = algorithms_map.find(algorithm);
         if (it == algorithms_map.end())
             continue;
@@ -618,6 +615,8 @@ cppcms::json::value pubkey_stats(){
         pubkey_year_alg_dict[year][algorithm] = get(pubkey_year_alg_dict[year], algorithm, 0) + 1;
         for (int y=year; y<=allowed_max_year; y++)
             year_pubkey_counter[y] = get(year_pubkey_counter, y, 0) + 1;
+        if (is_analyzed == 1)
+            analyzed_pubkeys += 1;
 
         if (algorithm >=1 and algorithm <=3){
             //RSA
@@ -772,6 +771,7 @@ cppcms::json::value pubkey_stats(){
     full_stats["pubkey"]["generic"]["elliptic_count"] = ec;
     full_stats["pubkey"]["generic"]["total_valid"] = rsa+dsa+elg+ec;
     full_stats["pubkey"]["generic"]["total"] = pubkey_count;
+    full_stats["pubkey"]["generic"]["analyzed %"] = Utils::float_format(analyzed_pubkeys * 100 / pubkey_count, 1) + "%";
 
     for (int y=allowed_min_year,i=0; y<=allowed_max_year; y++,i++){
         full_stats["pubkey"]["generic"]["years"][i] = y;
@@ -1037,7 +1037,7 @@ void json_service::get_stats(std::string what){
     std::string res = "";
     bool expired = dbm->get_from_cache(what, res);
     if (res == ""){
-        cppcms::json::value all_stats;
+        cppcms::json::value all_stats = "";
         auto f = function_map.find(what);
         if (f == function_map.end()){
             return_result(all_stats); // ???
@@ -1046,36 +1046,16 @@ void json_service::get_stats(std::string what){
         std::string out;
         if (CONTEXT.get<bool>("recompute"+what)){
             //recompute already in progress
-            // async
-            booster::shared_ptr<cppcms::rpc::json_call> call=release_call();
-            waiters_.insert(call);
-    
-            // set disconnect callback
-            call->context().async_on_peer_reset(
-                boost::bind(
-                    &json_service::remove_context,
-                    booster::intrusive_ptr<json_service>(this),
-                    call));
+            return_result(all_stats);
             return;
         }
+        // computing will take a while. client will need to request again
+        return_result(all_stats);
         CONTEXT.set("recompute"+what, true);
-
-        // async
-        booster::shared_ptr<cppcms::rpc::json_call> call=release_call();
-        waiters_.insert(call);
-
-        // set disconnect callback
-        call->context().async_on_peer_reset(
-            boost::bind(
-                &json_service::remove_context,
-                booster::intrusive_ptr<json_service>(this),
-                call));
-
         all_stats = f->second();
         std::string value = all_stats[what].save();
         dbm->store_in_cache(what, value);
         CONTEXT.set("recompute"+what, false);
-        broadcast("");
     } else {
         // serve last results even if expired
         cppcms::json::value stats = parse_stats(res);

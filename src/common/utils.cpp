@@ -516,6 +516,15 @@ std::vector<NTL::ZZ_p> Zpoints(int num_samples){
   return points;
 }
 
+std::string float_format(double val, int dp) {
+    int charsNeeded = 1 + snprintf(NULL, 0, "%.*f", dp, val);
+    char *buffer = (char *) malloc(charsNeeded);
+    snprintf(buffer, charsNeeded, "%.*f", dp, val);
+    std::string out = std::string(buffer);
+    free(buffer);
+    return out;
+}
+
 }
 
 }

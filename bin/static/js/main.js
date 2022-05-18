@@ -1007,7 +1007,7 @@ function main() {
     rpc = new JsonRPC('/pks/numbers/rpc', ['get_stats']); 
     rpc.get_stats.on_result = function(params, values){
         if (values === ""){
-            loadTabData(params[0]);
+            setTimeout(() => {loadTabData(params[0])}, 10000); //repeat after 10s
             return;
         }
         const method = params[0];

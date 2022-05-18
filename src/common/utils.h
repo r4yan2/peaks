@@ -296,6 +296,7 @@ namespace Utils{
     std::map<std::string, std::string> parse(const std::string& query);
     std::string htmlEscape(const std::string& data);
     bool is_substring(const std::string &str1, const std::string &str2);
+    std::string float_format(double val, int dp);
 
     // stringFormat uses all char* arguments, and outputs a std::string
     template<typename ... Args>
