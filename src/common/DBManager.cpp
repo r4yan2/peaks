@@ -97,8 +97,11 @@ void DBManager::init_database(const string &filename){
 }
 
 DBManager::~DBManager(){
+    con->close();
+    delete con;
     if (driver != NULL)
         driver->threadEnd();
+
 }
 
 bool DBManager::ensure_database_connection(){
