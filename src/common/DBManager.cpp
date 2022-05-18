@@ -484,6 +484,7 @@ DBQuery::~DBQuery(){
 
 void DBQuery::setString(const int pos, const string & str){
     stmt->setString(pos, str);
+    params[pos] = str;
 }
 
 void DBQuery::setBlob(const int pos, const string & s){
@@ -517,7 +518,7 @@ void DBQuery::setBoolean(const int pos, const bool value){
 unique_ptr<DBResult> DBQuery::execute(){
     syslog(LOG_INFO, "Execute prepared query %s", query.c_str());
     for(const auto& elem : params){
-        syslog(LOG_INFO, "Params %s", elem.second.c_str());
+        syslog(LOG_INFO, "Param %d -> %s", elem.first, elem.second.c_str());
     }
     if (stmt->execute()){
         unique_ptr<DBResult> res = std::make_unique<DBResult>(stmt->getResultSet());

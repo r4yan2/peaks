@@ -142,6 +142,7 @@ namespace peaks{
             void parse_config(std::istream& conf, po::variables_map &vm);
             void write_config();
             bool has(const std::string &name);
+            void set(const std::string &name, const boost::any &value);
             template <typename T> T get(const std::string &name, T def = T()){
                 auto it = vm.find(name);
                 if (it != vm.end()){

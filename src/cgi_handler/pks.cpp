@@ -45,7 +45,6 @@ Pks::Pks(cppcms::service &srv): cppcms::application(srv)
 {
 
     dbm = std::make_shared<CGI_DBManager>();
-    dbm->execute_query("DELETE FROM stash WHERE name LIKE \"recompute%\";");
 
     //attach(new json_service(srv), "/numbers", 1);
     attach( new json_service(srv),
@@ -1045,9 +1044,7 @@ void json_service::get_stats(std::string what){
             return;
         }
         std::string out;
-        dbm->get_from_cache("recompute"+what, out);
-        std::cout << "recompute in progress? " << what << " " << out << std::endl;
-        if (out == "true"){
+        if (CONTEXT.get<bool>("recompute"+what)){
             //recompute already in progress
             // async
             booster::shared_ptr<cppcms::rpc::json_call> call=release_call();
@@ -1061,7 +1058,7 @@ void json_service::get_stats(std::string what){
                     call));
             return;
         }
-        dbm->store_in_cache("recompute"+what, "true");
+        CONTEXT.set("recompute"+what, true);
 
         // async
         booster::shared_ptr<cppcms::rpc::json_call> call=release_call();
@@ -1077,7 +1074,7 @@ void json_service::get_stats(std::string what){
         all_stats = f->second();
         std::string value = all_stats[what].save();
         dbm->store_in_cache(what, value);
-        dbm->store_in_cache("recompute"+what, "");
+        CONTEXT.set("recompute"+what, false);
         broadcast("");
     } else {
         // serve last results even if expired
@@ -1087,17 +1084,15 @@ void json_service::get_stats(std::string what){
             // recalculate expired data
             auto f = function_map.find(what);
             if (f != function_map.end()){
-                std::string res = "";
-                dbm->get_from_cache("recompute"+what, res);
-                if (res != ""){
+                if (CONTEXT.get<bool>("recompute"+what)){
                     //recompute already in progress
                     return;
                 }
-                dbm->store_in_cache("recompute"+what, "true");
+                CONTEXT.set("recompute"+what, true);
                 auto new_stats = f->second();
                 std::string value = new_stats[what].save();
                 dbm->store_in_cache(what, value);
-                dbm->store_in_cache("recompute"+what, "");
+                CONTEXT.set("recompute"+what, false);
             }
         }
     }

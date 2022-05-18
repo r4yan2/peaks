@@ -282,4 +282,8 @@ std::string Context::init_options(int argc, char* argv[]){
         return (it != vm.end());
     }
 
+    void Context::set(const std::string &name, const boost::any &value){
+        vm.emplace(name, po::variable_value(value, false));
+    }
+
 
