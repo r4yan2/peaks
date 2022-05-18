@@ -46,6 +46,7 @@ Context::Context(){
         ("unpacker_threads", po::value<int>()->default_value(1))
         ("analyzer_interval", po::value<int>()->default_value(60))
         ("analyzer_threads", po::value<int>()->default_value(1))
+        ("analyzer_rsa_modulus", po::value<int>()->default_value(0))
         ("unpacker_limit", po::value<int>()->default_value(10000))
         ("analyzer_limit", po::value<int>()->default_value(10000))
     ;
@@ -97,6 +98,7 @@ Context::Context(){
         ("limit,l", po::value<int>(), "set limit to how many keys to unpack per run")
         ("only", po::value<int>()->default_value(-1), "set number of threads")
         ("csv-only", po::bool_switch()->default_value(false), "stop certificate import after creating csv")
+        ("rsa-modulus", po::bool_switch()->default_value(false), "enable RSA analysis")
         ;
 
     recon_desc.add_options()

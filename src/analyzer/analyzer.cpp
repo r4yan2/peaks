@@ -88,10 +88,13 @@ void Analyzer::run(){
         pool->Add_Job([=] { analyze_pubkeys(pks); });
     }
 
-    syslog(LOG_INFO, "Starting RSA modulus analysis");
+    if (CONTEXT.get<bool>("rsa-modulus", false) || CONTEXT.get<int>("analyzer_rsa_modulus", 0)){
+        syslog(LOG_INFO, "Starting RSA modulus analysis");
 
-    if (!pk.empty() && exist_rsa){
-        analyze_RSA_modulus_common_factor(dbm, nThreads);
+        if (!pk.empty() && exist_rsa){
+            // lot of cpu/ram needed here
+            analyze_RSA_modulus_common_factor(dbm, nThreads);
+        }
     }
 
     syslog(LOG_INFO, "Starting signature analysis");
