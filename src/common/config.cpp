@@ -49,6 +49,7 @@ Context::Context(){
         ("analyzer_rsa_modulus", po::value<int>()->default_value(0))
         ("unpacker_limit", po::value<int>()->default_value(10000))
         ("analyzer_limit", po::value<int>()->default_value(10000))
+        ("cgi_serve_stats", po::value<int>()->default_value(0), "expose the stats api")
     ;
 
     db_config.add_options()
@@ -110,6 +111,9 @@ Context::Context(){
     build_desc.add_options()
         ("csv-only", po::bool_switch()->default_value(false), "csv generate only, no write to DB")
          ;
+
+    cgi_desc.add_options()
+        ;
 
 }
 
@@ -241,7 +245,8 @@ std::string Context::init_options(int argc, char* argv[]){
         std::make_pair("recon", recon_desc),
         std::make_pair("dump", dump_desc),
         std::make_pair("analyze", analyzer_desc),
-        std::make_pair("build", build_desc)
+        std::make_pair("build", build_desc),
+        std::make_pair("serve", cgi_desc)
     };
 
     auto it = command_map.find(cmd);

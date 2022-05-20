@@ -160,7 +160,7 @@ class DBManager {
         std::string get_certificate_from_filestore(const std::string &hash);
         std::shared_ptr<std::istream> get_certificate_stream_from_filestore(const std::string &filename, const int);
         std::tuple<std::string, int> store_certificate_to_filestore(const std::string &);
-        bool get_from_cache(const std::string &key, std::string & value);
+        int get_from_cache(const std::string &key, std::string & value);
         void store_in_cache(const std::string &key, const std::string &value);
         
         /** @brief Bulk-insert CSV into the database

@@ -124,7 +124,8 @@ namespace peaks{
                 unpack_desc,
                 analyzer_desc,
                 recon_desc,
-                build_desc
+                build_desc,
+                cgi_desc
                 ;
             settings::DBSettings dbsettings;
             settings::Ptree_config treesettings;

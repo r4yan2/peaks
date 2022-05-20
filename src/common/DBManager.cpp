@@ -31,7 +31,7 @@ void DBManager::connect_schema(){
     get_certificate_from_filestore_stmt = prepare_query("SELECT filename, origin, len FROM gpg_keyserver WHERE hash = (?)");
     get_filestore_index_from_stash_stmt = prepare_query("SELECT value FROM stash WHERE name = 'filestore_index'");
     store_filestore_index_to_stash_stmt = prepare_query("REPLACE INTO stash (name, value) VALUES ('filestore_index', ?)");
-    get_from_cache_stmt = prepare_query("SELECT value, ((created + INTERVAL (?) day) < NOW()) as expired FROM stash WHERE name = (?)");
+    get_from_cache_stmt = prepare_query("SELECT value, TIMESTAMPDIFF(SECOND, NOW(), created) as diff FROM stash WHERE name = (?)");
     set_in_cache_stmt = prepare_query("REPLACE INTO stash(`name`,`value`, `created`) VALUES (?, ?, NOW())");
     // filestorage
     int idx = 0;
@@ -247,21 +247,20 @@ shared_ptr<std::istream> DBManager::get_certificate_stream_from_filestore(const 
     //return res;
 }
 
-bool DBManager::get_from_cache(const string &key, std::string &value){
+int DBManager::get_from_cache(const string &key, std::string &value){
     string res = "";
-    bool expired = false;
+    int diff = false;
     try{
-        get_from_cache_stmt->setInt(1, CONTEXT.dbsettings.expire_interval);
-        get_from_cache_stmt->setString(2, key);
+        get_from_cache_stmt->setString(1, key);
         unique_ptr<DBResult> result = get_from_cache_stmt->execute();
         while (result->next()){
             value = result->getString("value");
-            expired = result->getBoolean("expired");
+            diff = result->getBoolean("diff");
         }
     }catch(exception &e){
         syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
     }
-    return expired;
+    return diff;
 
 }
 

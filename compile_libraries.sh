@@ -241,20 +241,6 @@ function compile_boost () {
     fi
 }
 
-function compile_docker () {
-    if [ ! -d lib/nghttp2 ] && [ "$BUILD" == "Docker" ]
-    then
-        echo "Compiling nghttp2 static lib"
-        git clone https://github.com/nghttp2/nghttp2
-        cd nghttp2
-        mkdir build
-        cd build
-        cmake -DENABLE_STATIC_LIB=ON -DCMAKE_INSTALL_PREFIX="$PREFIX" ..
-        make -j$NCPU install
-        cd "$PEAKS_PATH"
-    fi
-}
-
 function compile_openpgp () {
     echo 'Compiling OpenPGP'
     

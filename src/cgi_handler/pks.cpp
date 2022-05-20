@@ -46,10 +46,11 @@ Pks::Pks(cppcms::service &srv): cppcms::application(srv)
 
     dbm = std::make_shared<CGI_DBManager>();
 
-    //attach(new json_service(srv), "/numbers", 1);
-    attach( new json_service(srv),
-            "numbers", "/numbers{1}", // mapping  
-            "/numbers(/(.*))?", 1);   // dispatching  
+    if (CONTEXT.get<int>("cgi_serve_stats") == 1){
+        attach( new json_service(srv),
+                "numbers", "/numbers{1}", // mapping  
+                "/numbers(/(.*))?", 1);   // dispatching  
+    }
 
     dispatcher().assign("/lookup", &Pks::lookup, this);
     mapper().assign("lookup", "/lookup");
@@ -456,7 +457,7 @@ cppcms::json::value certificate_stats(){
         }
         if (!found)
             bins[i] += 1;
-        if (year > allowed_min_year && year < allowed_max_year)
+        if (year >= allowed_min_year && year <= allowed_max_year)
             years_counter[year] = get(years_counter, year, 0) + 1;
     }
     int i = 0;
@@ -1035,7 +1036,7 @@ void json_service::get_stats(std::string what){
     };
     std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
     std::string res = "";
-    bool expired = dbm->get_from_cache(what, res);
+    bool expired = ( dbm->get_from_cache(what, res) > CONTEXT.get<int>("expire_interval") * 24 * 60 * 60 );
     if (res == ""){
         cppcms::json::value all_stats = "";
         auto f = function_map.find(what);

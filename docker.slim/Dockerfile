@@ -13,7 +13,6 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     && make -j2 \
     && cd / \
     && mkdir -p /var/peaks/filestorage \
-    && cp -r /peaks/bin/static /var/peaks/static \
     && rm -rf peaks \
     && apt-get remove -y dialog apt-utils build-essential m4 curl python cmake git libcurl4-openssl-dev libpcre3-dev libicu-dev libgcrypt20-dev zlib1g-dev libbz2-dev libgmp-dev libssl-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libboost-test-dev libmysqlcppconn-dev \
     && apt-get autoremove -y \

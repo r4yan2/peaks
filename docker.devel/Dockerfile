@@ -15,8 +15,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     && cmake -DCMAKE_BUILD_TYPE=Static -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/bin -DCMAKE_LIB_PREFIX=/peaks/lib .. \
     && make -j2 \
     && cd / \
-    && mkdir -p /var/peaks/filestorage \
-    && cp -r /peaks/bin/static /var/peaks/static
+    && mkdir -p /var/peaks/filestorage
 
 COPY data /srv/peaks
 
