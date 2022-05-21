@@ -25,13 +25,23 @@ if [ -z "$GMP" ]
 then
     GMP="ON"
 fi
+if [ -z "$CLEAN" ]
+then
+    if [ "$BUILD" == "Release" ]
+    then
+        CLEAN=1
+    else
+        CLEAN=0
+    fi
+fi
+
 
 PEAKS_PATH=$PWD
 LIB_PATH="$PREFIX"/lib
 INCL_PATH="$PREFIX"/include
 
 function compile_gmp () {
-    if [ ! -d lib/gmp ];
+    if [ ! -f $LIB_PATH/libgmp.a ];
     then
     
         echo 'Compiling GMP'
@@ -103,7 +113,7 @@ function compile_gmp () {
         
         cd "$PEAKS_PATH"
         
-        if [ ! "$BUILD" == "Debug" ]
+        if [ "$CLEAN" == "1" ]
         then
             echo 'Removing GMP sources'
             rm -rf gmp*
@@ -113,7 +123,7 @@ function compile_gmp () {
 }
 
 function compile_ntl () {
-    if [ ! -d lib/ntl ]
+    if [ ! -f $LIB_PATH/libntl.a ]
     then
     
         echo 'Compiling NTL'
@@ -171,7 +181,7 @@ function compile_ntl () {
     
         cd "$PEAKS_PATH"
     
-        if [ ! "$BUILD" == "Debug" ]
+        if [ "$CLEAN" == "1" ]
         then
             echo 'Removing NTL sources'
             rm -rf ntl*
@@ -180,7 +190,7 @@ function compile_ntl () {
 }
 
 function compile_cppcms () {
-    if [ ! -d lib/cppcms ]
+    if [[ ! -f $LIB_PATH/libcppcms.a || ! -f $LIB_PATH/libbooster.a ]]
     then
     
         echo 'Compiling CPPCMS'
@@ -209,7 +219,7 @@ function compile_cppcms () {
     
         cd "$PEAKS_PATH"
     
-        if [ ! "$BUILD" == "Debug" ]
+        if [ "$CLEAN" == "1" ]
         then
             echo 'Removing CPPCMS sources'
             rm -rf cppcms*
@@ -219,7 +229,7 @@ function compile_cppcms () {
 }
 
 function compile_boost () {
-    if [ ! -d lib/boost ]
+    if [ ! -f $LIB_PATH/libboost_filesystem.a ]
     then
     
         echo 'Compiling required boost lib'
@@ -232,7 +242,7 @@ function compile_boost () {
     
         cd "$PEAKS_PATH"
     
-        if [ ! "$BUILD" == "Debug" ]
+        if [ "$CLEAN" == "1" ]
         then
             echo 'Removing sources'
             rm -r boost_1_76_0/
@@ -244,7 +254,7 @@ function compile_boost () {
 function compile_openpgp () {
     echo 'Compiling OpenPGP'
     
-    if [ ! -d OpenPGP ]
+    if [ ! -f OpenPGP/CMakeLists.txt ]
     then
         git clone -b peaks https://github.com/r4yan2/OpenPGP
     fi
@@ -262,7 +272,7 @@ function compile_openpgp () {
     fi
     make -j$NCPU install
     cd "$PEAKS_PATH"
-    if [ ! "$BUILD" == "Debug" ]
+    if [ "$CLEAN" == "1" ]
     then
         echo 'Removing sources'
         rm -r OpenPGP/
