@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS `Signatures` (
   KEY `Unique_index` (`issuingKeyId`,`signedKeyId`,`signedUsername`(255),`creationTime`),
   KEY `issuing_uid` (`issuingUsername`(255)),
   KEY `is_analyzed` (`is_analyzed`),
-  KEY `isRevocation` (`isRevocation`),
+  KEY `isRevocation` (`isRevocation`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -190,7 +190,7 @@ CREATE TABLE IF NOT EXISTS `selfSignaturesMetadata` (
   `keyExpirationTime` datetime DEFAULT NULL,
   `isPrimaryUserId` tinyint(1) NOT NULL,
   `signedUserId` varchar(750) DEFAULT NULL,
-  PRIMARY KEY (`id`),
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ptree` (
