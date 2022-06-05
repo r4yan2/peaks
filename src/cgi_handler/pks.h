@@ -60,6 +60,7 @@ public:
      * method assigned to collect key from the client
      */
     void add();
+    void remove();
     /**
      * method assigned to collect and display stats on the current instance
      */
@@ -69,6 +70,7 @@ private:
     std::shared_ptr<CGI_DBManager> dbm;
     void get(const std::string& id);
     void index(const std::string& id);
+    void remove(const std::string& value, const std::string& test);
     std::string genEntry(DB_Key *keyInfo);
 
     void post(const std::string &temp);

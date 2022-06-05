@@ -105,6 +105,8 @@ public:
 
     void UpdateSignatureIssuingUsername();
 
+    void insert_into_blocklist(const std::string & ID);
+
 private:
 
     DBSettings settings;
@@ -121,7 +123,8 @@ private:
         update_revoked_2,
         update_valid,
         commit,
-        set_unpacking_status_stmt;
+        set_unpacking_status_stmt,
+        insert_into_blocklist_stmt;
 
     std::mutex mtx;
 };

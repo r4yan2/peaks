@@ -35,12 +35,14 @@ IMPORT_DBManager::~IMPORT_DBManager()
 {}
 
 void IMPORT_DBManager::drop_index_gpg_keyserver(){
+    std::cout << "Drop index" << std::endl;
 	execute_query("ALTER TABLE gpg_keyserver DROP INDEX id;");
 	execute_query("ALTER TABLE gpg_keyserver DROP INDEX fingerprint;");
 	execute_query("ALTER TABLE gpg_keyserver DROP INDEX HASH;");
 }
 
 void IMPORT_DBManager::build_index_gpg_keyserver(){
+    std::cout << "Rebuilding index" << std::endl;
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `id` (`ID`);");
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `fingerprint` (`fingerprint`, `version`);");
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `HASH` (`hash` ASC);");

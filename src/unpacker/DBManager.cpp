@@ -31,7 +31,7 @@ void UNPACKER_DBManager::prepare_queries(){
     //con->createStatement()->execute("set foreign_key_checks = 0;");
 
     // Create prepared Statements
-    get_analyzable_cert_stmt = prepare_query("SELECT version, fingerprint, filename, origin, len "
+    get_analyzable_cert_stmt = prepare_query("SELECT version, fingerprint, filename, origin, len, hash "
                                          "FROM gpg_keyserver WHERE is_unpacked = 0 LIMIT ?");
     
     get_signature_by_index = prepare_query("SELECT id "
@@ -52,6 +52,7 @@ void UNPACKER_DBManager::prepare_queries(){
     update_revoked_1 = prepare_query("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
                   "signedFingerprint, signedUsername FROM Signatures WHERE isRevocation = 1;");
     update_revoked_2 = prepare_query("UPDATE Signatures INNER JOIN revocationSignatures on (Signatures.issuingKeyId = revocationSignatures.issuingKeyId and Signatures.signedFingerprint = revocationSignatures.signedFingerprint and Signatures.signedUsername = revocationSignatures.signedUsername) set isRevoked = 1, isValid = -1 where isRevoked = 0 and isRevocation = 0;");
+    insert_into_blocklist_stmt = prepare_query("INSERT IGNORE INTO blocklist (ID) VALUES (?)");
     commit = prepare_query("COMMIT;");
 
 }
@@ -92,6 +93,7 @@ DBStruct::gpg_keyserver_data UNPACKER_DBManager::get_certificate_from_results(co
         tmp_field.filename = result->getString("filename");
         tmp_field.origin = result->getInt("origin");
         tmp_field.len = result->getInt("len");
+        tmp_field.hash = result->getString("hash");
         tmp_field.certificate = get_certificate_from_filestore(tmp_field.filename, tmp_field.origin, tmp_field.len);
     }
     return tmp_field;
@@ -333,6 +335,16 @@ void UNPACKER_DBManager::UpdateIsValid() {
         syslog(LOG_DEBUG, "update_valid DONE");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_valid FAILED, the validity of Signatures will be not up to date! - %s",
+                          e.what());
+    }
+}
+
+void UNPACKER_DBManager::insert_into_blocklist(const std::string &ID) {
+    try{
+        insert_into_blocklist_stmt->setBigInt(1, ID);
+        insert_into_blocklist_stmt->execute();
+    }catch(exception &e){
+        syslog(LOG_CRIT, "insert_into_blocklist_stmt FAILED, the blocklist was not updated! - %s",
                           e.what());
     }
 }

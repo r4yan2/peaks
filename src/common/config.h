@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <boost/program_options.hpp>
+#include <boost/program_options/positional_options.hpp>
 #include <boost/program_options/variables_map.hpp>
 #include "DBManager.h"
 #include <string>
@@ -125,7 +126,11 @@ namespace peaks{
                 analyzer_desc,
                 recon_desc,
                 build_desc,
-                cgi_desc
+                cgi_desc,
+                blocklist_desc
+                ;
+            po::positional_options_description
+                blocklist_positional
                 ;
             settings::DBSettings dbsettings;
             settings::Ptree_config treesettings;

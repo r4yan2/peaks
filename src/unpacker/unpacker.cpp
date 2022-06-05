@@ -16,6 +16,16 @@
 namespace peaks{
 namespace unpacker{
 
+void blocklist(){
+    std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>();
+    auto blocklist = CONTEXT.get<std::vector<std::string>>("ID");
+    for (auto & ID: blocklist){
+        auto kid = Utils::hexToUll(ID);
+        dbm->insert_into_blocklist(kid);
+        dbm->remove_key_from_db(kid);
+    }
+}
+
 void unpack(){
     Unpacker u;
     int iterations = CONTEXT.get<int>("only");
@@ -56,15 +66,15 @@ Unpacker::Unpacker(){
     std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>();
     if (CONTEXT.get<bool>("reset")){
         //reset unpacking status
+        dbm->begin_transaction();
         dbm->execute_query("truncate Pubkey");
         dbm->execute_query("truncate Signatures");
         dbm->execute_query("truncate selfSignaturesMetadata");
         dbm->execute_query("truncate UserID");
         dbm->execute_query("truncate UserAttribute");
         dbm->execute_query("truncate Unpacker_errors");
-        dbm->execute_query("LOCK TABLE gpg_keyserver WRITE");
         dbm->execute_query("UPDATE gpg_keyserver SET is_unpacked = 0");
-        dbm->execute_query("UNLOCK TABLES");
+        dbm->end_transaction();
         std::cout << "Unpacker status reset completed!" << std::endl;
         exit(0);
     }
@@ -119,6 +129,7 @@ void Unpacker::run(){
     }
     pool->terminate();
 
+    dbm->flushCSVFiles();
     dbm->closeCSVFiles();
     store_keymaterial(dbm);
 
@@ -215,10 +226,10 @@ void Unpacker::store_keymaterial(const std::shared_ptr<UNPACKER_DBManager> &dbm)
     dbm->store_in_cache("unpacker", "saving");
     dbm->insertCSV();
     dbm->store_in_cache("unpacker", "");
-    dbm->UpdateSignatureIssuingFingerprint();
-    dbm->UpdateSignatureIssuingUsername();
-    dbm->UpdateIsExpired();
-    dbm->UpdateIsRevoked();
+    //dbm->UpdateSignatureIssuingFingerprint();
+    //dbm->UpdateSignatureIssuingUsername();
+    //dbm->UpdateIsExpired();
+    //dbm->UpdateIsRevoked();
     //dbm->UpdateIsValid();
 }
 
@@ -406,11 +417,9 @@ void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
     }
     while(!unpackedSignatures.empty()){
         auto it = unpackedSignatures.front();
-        if(find(unpackedSignatures.begin() + 1, unpackedSignatures.end(), it) == unpackedSignatures.end() || !dbm->existSignature(it)) {
-            dbm->write_signature_csv(it);
-            if (it.issuingKeyId == it.signedKeyId && !it.signedUsername.empty()){
-                dbm->write_self_signature_csv(it);
-            }
+        dbm->write_signature_csv(it);
+        if (it.issuingKeyId == it.signedKeyId && !it.signedUsername.empty()){
+            dbm->write_self_signature_csv(it);
         }
         unpackedSignatures.pop_front(); //release memory
     }

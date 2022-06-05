@@ -39,8 +39,6 @@ void CGI_DBManager::prepare_queries(){
                                        "0 as creationTime, name "
                                        "FROM UserID WHERE MATCH(name) AGAINST (? IN BOOLEAN MODE)) "
                                        "AS keys_list GROUP BY kID");
-    insert_gpg_stmt = prepare_query("REPLACE INTO gpg_keyserver "
-                                    "VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?);");
 
     insert_uid_stmt = prepare_query("INSERT INTO UserID "
                                        "VALUES (?, ?, ?, 0, 0);");
@@ -76,6 +74,7 @@ void CGI_DBManager::prepare_queries(){
                                        "signedUsername, isExpired, isRevocation FROM Signatures WHERE signedFingerprint = UNHEX(?) "
                                        "and (signedUsername = (?) OR signedUsername is NULL) and (sign_Uatt_id = (?) OR "
                                        "sign_Uatt_id is null) ORDER BY creationTime DESC;");
+    get_signature_issuingusername_stmt = prepare_query("select COALESCE(S.issuingUsername, U.name) as issuingUsername from (select * FROM Signatures WHERE issuingKeyID = UNHEX(?) AND signedKeyID = UNHEX(?) AND signedUsername = ? AND signedFingerprint = ?) as S JOIN UserID U on S.issuingKeyId=U.ownerKeyId;");
 
     vindex_uatt_stmt = prepare_query("SELECT id FROM UserAttribute WHERE fingerprint = UNHEX(?) and name = (?)");
 
@@ -137,7 +136,7 @@ std::string CGI_DBManager::shortIDQuery(const string &keyID) {
     // Get the 32 MSBs of the key IDs
 
     shortid_stmt->setString(1, "%" + keyID);
-    std::unique_ptr<DBResult> result = longid_stmt->execute();
+    std::unique_ptr<DBResult> result = shortid_stmt->execute();
     if (result->next()) {
         std::string filename = result->getString("filename");
         int origin = result->getInt("origin");
@@ -226,11 +225,12 @@ forward_list<DB_Key*> *CGI_DBManager::indexQuery(string key) {
     //key = OpenPGP::ascii2radix64(key);
     //transform(key.begin(), key.end(), key.begin(), ::toupper);
     
-    std::vector<std::string> splitted;
-    boost::split(splitted, key, boost::is_any_of(" ()*+-<>@~"), boost::token_compress_on);
-    for (auto &str: splitted)
-        str.insert(str.begin(), '+');
-    string searchString = boost::join(splitted, " ");
+    //std::vector<std::string> splitted;
+    //boost::split(splitted, key, boost::is_any_of(" ()*+-<>@~"), boost::token_compress_on);
+    //for (auto &str: splitted)
+    //    str.insert(str.begin(), '+');
+    //string searchString = boost::join(splitted, " ");
+    auto searchString = key;
     index_stmt->setString(1, searchString);
     index_stmt->setString(2, searchString);
     std::unique_ptr<DBResult> result = index_stmt->execute();
@@ -272,37 +272,6 @@ forward_list<DB_Key*> *CGI_DBManager::indexQuery(string key) {
         keyList->push_front(key);
     }
     return keyList;
-}
-
-void CGI_DBManager::insert_gpg_keyserver(const gpg_keyserver_data &gk) {
-    check_database_connection();
-    std::tuple <std::string, int> res = store_certificate_to_filestore(gk.certificate); 
-    try {
-        insert_gpg_stmt->setInt(1, gk.version);
-        insert_gpg_stmt->setBigInt(2, gk.ID);
-        insert_gpg_stmt->setBlob(3, new istringstream(gk.fingerprint));
-        insert_gpg_stmt->setString(4, gk.hash);
-        insert_gpg_stmt->setInt(5, gk.error_code);
-        insert_gpg_stmt->setString(6, std::get<0>(res));
-        insert_gpg_stmt->setInt(7, std::get<1>(res));
-        insert_gpg_stmt->setInt(8, gk.certificate.size());
-        insert_gpg_stmt->execute();
-    }catch (std::exception &e){
-        syslog(LOG_ERR, "insert_gpg_stmt FAILED - %s", e.what());
-    }
-}
-
-void CGI_DBManager::update_gpg_keyserver(const gpg_keyserver_data &gk) {
-    check_database_connection();
-    //try {
-    //    update_gpg_stmt->setBlob(1, new istringstream(gk.certificate));
-    //    update_gpg_stmt->setString(2, gk.hash);
-    //    update_gpg_stmt->setString(3, hexlify(gk.fingerprint, true));
-    //    update_gpg_stmt->setInt(4, gk.version);
-    //    update_gpg_stmt->execute();
-    //}catch (std::exception &e){
-    //    syslog(LOG_ERR, "update_gpg_stmt FAILED - %s", e.what());
-    //}
 }
 
 void CGI_DBManager::insert_user_id(const userID &uid) {
@@ -420,11 +389,19 @@ std::forward_list<signature> CGI_DBManager::get_signatures(const std::string &si
         tmp_sign.key_exp_time = sign_result->getString("keyExpirationTime").substr(0, 10);
         if (sign_result->getString("issuingKeyId") == sign_result->getString("signedKeyId")){
             tmp_sign.issuingUID = "[selfsig]";
-        }else if (sign_result->getString("issuingUsername") == "" ||
-                tmp_sign.hex_type == OpenPGP::Signature_Type::SUBKEY_BINDING_SIGNATURE){
-            tmp_sign.issuingUID = "[]";
         }else{
-            tmp_sign.issuingUID = sign_result->getString("issuingUsername");
+            //query issuingUsername
+            get_signature_issuingusername_stmt->setString(1, tmp_sign.issuingKeyID);
+            get_signature_issuingusername_stmt->setString(2, tmp_sign.signedKeyID);
+            get_signature_issuingusername_stmt->setString(3, signedUsername);
+            get_signature_issuingusername_stmt->setString(4, signedFingerprint);
+            std::unique_ptr<DBResult> issuingusername_result = get_signature_issuingusername_stmt->execute();
+            std::string issuingUsername = issuingusername_result->next() ? issuingusername_result->getString("issuingUsername") : "";
+            if (issuingUsername == "" || tmp_sign.hex_type == OpenPGP::Signature_Type::SUBKEY_BINDING_SIGNATURE){
+                tmp_sign.issuingUID = "[]";
+            }else{
+                tmp_sign.issuingUID = issuingUsername;
+            }
         }
         tmp_sign.is_revocation = sign_result->getBoolean("isRevocation");
 

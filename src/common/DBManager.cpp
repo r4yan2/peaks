@@ -7,6 +7,7 @@
 #include <common/FileManager.h>
 #include <common/Thread_Pool.h>
 #include <tuple>
+#include <recon_daemon/pTreeDB.h>
 
 using namespace std;
 namespace peaks{
@@ -24,15 +25,23 @@ DBManager::DBManager():
     connection_properties["OPT_SET_CHARSET_NAME"] = "utf8";
     connection_properties["OPT_LOCAL_INFILE"] = 1;
     con = driver->connect(connection_properties);
+
+    critical_section = false;
 }
 
 void DBManager::connect_schema(){
     con->setSchema(CONTEXT.dbsettings.db_database);
     get_certificate_from_filestore_stmt = prepare_query("SELECT filename, origin, len FROM gpg_keyserver WHERE hash = (?)");
+    get_certificate_from_filestore_by_id_stmt = prepare_query("SELECT filename, origin, len, hash FROM gpg_keyserver WHERE ID = (?)");
     get_filestore_index_from_stash_stmt = prepare_query("SELECT value FROM stash WHERE name = 'filestore_index'");
     store_filestore_index_to_stash_stmt = prepare_query("REPLACE INTO stash (name, value) VALUES ('filestore_index', ?)");
     get_from_cache_stmt = prepare_query("SELECT value, TIMESTAMPDIFF(SECOND, NOW(), created) as diff FROM stash WHERE name = (?)");
     set_in_cache_stmt = prepare_query("REPLACE INTO stash(`name`,`value`, `created`) VALUES (?, ?, NOW())");
+    delete_key_from_gpgkeyserver_stmt = prepare_query("DELETE FROM gpg_keyserver where ID = (?)");
+    check_blocklist_stmt = prepare_query("SELECT 1 FROM blocklist WHERE ID = (?)");
+    fetch_blocklist_stmt = prepare_query("SELECT ID FROM blocklist");
+    insert_gpg_stmt = prepare_query("REPLACE INTO gpg_keyserver "
+                                    "VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?);");
     // filestorage
     int idx = 0;
     try{
@@ -117,10 +126,12 @@ bool DBManager::ensure_database_connection(){
 }
 
 void DBManager::begin_transaction(){
+    if (critical_section) //already in transaction
+        return;
     try{
-        CONTEXT.critical_section = true;
-        execute_query("SET AUTOCOMMIT = 0");
-        execute_query("SET UNIQUE_CHECKS = 0");
+        critical_section = true;
+        //execute_query("SET AUTOCOMMIT = 0");
+        //execute_query("SET UNIQUE_CHECKS = 0");
         execute_query("SET sql_log_bin = 0");
         execute_query("SET foreign_key_checks = 0");
         execute_query("START TRANSACTION");
@@ -130,11 +141,13 @@ void DBManager::begin_transaction(){
 }
 
 void DBManager::end_transaction(){
+    if (!critical_section)
+        return; //already ended
     try{
-        CONTEXT.critical_section = false;
+        critical_section = false;
         execute_query("COMMIT");
-        execute_query("SET AUTOCOMMIT = 1");
-        execute_query("SET UNIQUE_CHECKS = 1");
+        //execute_query("SET AUTOCOMMIT = 1");
+        //execute_query("SET UNIQUE_CHECKS = 1");
         execute_query("SET sql_log_bin = 1");
         execute_query("SET foreign_key_checks = 1");
     }catch (exception &e){
@@ -207,12 +220,19 @@ tuple<std::string, int> DBManager::store_certificate_to_filestore(const std::str
     return make_tuple(FILEMANAGER.queryName(filestorage_handler), orig);
 }
 
-
 string DBManager::get_certificate_from_filestore(const std::string &filename, const int start, const int length){
     shared_ptr<std::istream> file = get_certificate_stream_from_filestore(filename, start);
     string buffer(length, ' ');
     file->read(&buffer[0], length); 
     return buffer;
+}
+
+void DBManager::remove_certificate_from_filestore(const std::string &filename, const int start, const int length){
+    shared_ptr<std::fstream> file = std::make_shared<std::fstream>(filename);
+    file->seekp(start, std::ios_base::beg);
+    std::string s(length, '0');
+    file->write(s.c_str(), s.size());
+    file->close();
 }
 
 string DBManager::get_certificate_from_filestore(const std::string &hash){
@@ -230,6 +250,89 @@ string DBManager::get_certificate_from_filestore(const std::string &hash){
         syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
     }
     return get_certificate_from_filestore(filename, start, length);
+}
+
+string DBManager::get_certificate_from_filestore_by_id(const std::string &kid){
+    string filename;
+    int start, length;
+    try{
+        get_certificate_from_filestore_by_id_stmt->setString(1, kid);
+        unique_ptr<DBResult> result = get_certificate_from_filestore_by_id_stmt->execute();
+        while(result->next()){
+            filename = result->getString("filename");
+            start = result->getInt("origin");
+            length = result->getInt("len");
+        }
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
+    }
+    return get_certificate_from_filestore(filename, start, length);
+}
+
+void DBManager::remove_key_from_db(const std::string &kid){
+    try{
+        begin_transaction();
+        get_certificate_from_filestore_by_id_stmt->setBigInt(1, kid);
+        std::unique_ptr<DBResult> result = get_certificate_from_filestore_by_id_stmt->execute();
+        if (result->next()) {
+            std::string filename = result->getString("filename");
+            int origin = result->getInt("origin");
+            int len = result->getInt("len");
+            std::string hash = result->getString("hash");
+            remove_certificate_from_filestore(filename, origin, len);
+            delete_key_from_gpgkeyserver_stmt->setBigInt(1, kid);
+            delete_key_from_gpgkeyserver_stmt->execute();
+            PTREE.remove(hash);
+        }
+        end_transaction();
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not delete key: %s", e.what());
+        rollback_transaction();
+    }
+}
+
+bool DBManager::check_blocklist(const std::string &kid){
+    try{
+        check_blocklist_stmt->setBigInt(1, kid);
+        std::unique_ptr<DBResult> result = check_blocklist_stmt->execute();
+        return !result->next();
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not check blocklist: %s", e.what());
+    }
+    return false;
+}
+
+std::set<std::string> DBManager::fetch_blocklist(){
+    std::set<std::string> res;
+    try{
+        std::unique_ptr<DBResult> result = fetch_blocklist_stmt->execute();
+        while (result->next())
+            res.insert(result->getString("ID"));
+    }catch(exception &e){
+        syslog(LOG_WARNING, "Could not check blocklist: %s", e.what());
+    }
+    return res;
+}
+
+void DBManager::insert_gpg_keyserver(const DBStruct::gpg_keyserver_data &gk) {
+    check_database_connection();
+    begin_transaction();
+    std::tuple <std::string, int> res = store_certificate_to_filestore(gk.certificate); 
+    try {
+        insert_gpg_stmt->setInt(1, gk.version);
+        insert_gpg_stmt->setBigInt(2, gk.ID);
+        insert_gpg_stmt->setBlob(3, new istringstream(gk.fingerprint));
+        insert_gpg_stmt->setString(4, gk.hash);
+        insert_gpg_stmt->setInt(5, gk.error_code);
+        insert_gpg_stmt->setString(6, std::get<0>(res));
+        insert_gpg_stmt->setInt(7, std::get<1>(res));
+        insert_gpg_stmt->setInt(8, gk.certificate.size());
+        insert_gpg_stmt->execute();
+        end_transaction();
+    }catch (std::exception &e){
+        syslog(LOG_ERR, "insert_gpg_stmt FAILED - %s", e.what());
+        rollback_transaction();
+    }
 }
 
 shared_ptr<std::istream> DBManager::get_certificate_stream_from_filestore(const std::string &filename, const int start){
@@ -303,7 +406,7 @@ void DBManager::insertCSV(bool lock){
         end_transaction();
 
         // Delete inserted file
-        if (CONTEXT.vm.count("noclean") == 0){
+        if (CONTEXT.get<bool>("noclean", false) == 0){
             try{
                 remove(f.c_str());
             }catch (exception &e){

@@ -42,7 +42,6 @@ public:
      */
     virtual void delete_node(const Bitset &key) = 0;
     virtual bool check_key(const std::string& key) = 0;
-    virtual std::vector<std::string> fetch_removed_elements() = 0;
     virtual std::vector<std::string> get_all_hash() = 0;
     virtual std::shared_ptr<DBResult> get_all_hash_iterator(int limit, int offset) = 0;
     virtual std::string get_hash_from_results(const std::shared_ptr<DBResult> & results) = 0;
@@ -91,14 +90,6 @@ class Recon_mysql_DBManager: public RECON_DBManager{
      */
     bool check_key(const std::string& key);
 
-    /** fetch removed hashes from gpg_keyserver 
-     *  after a successful recon run. Those hashes
-     *  will be removed from the ptree before inserting
-     *  the new one
-     *  @return vector of hashes to remove
-     * */
-    std::vector<std::string> fetch_removed_elements();
-
     void prepare_queries();
     
     //empty
@@ -118,9 +109,8 @@ private:
         delete_pnode_stmt,
         get_all_hash_stmt,
         get_all_hash_iterator_stmt,
-        check_key_stmt,
-        truncate_removed_hash_stmt,
-        get_removed_hash_stmt;
+        check_key_stmt
+            ;
 
     /**
      * sql query to bulk load from csv the data which will populate
@@ -170,10 +160,6 @@ public:
     void commit_memtree();
     void write_memtree_csv();
     
-    //empty
-    std::vector<std::string> fetch_removed_elements();
-
-
     DBStruct::node get_node(const Bitset &key);
     void insert_node(const DBStruct::node &n);
     void update_node(const DBStruct::node &n);

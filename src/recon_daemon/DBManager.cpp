@@ -25,11 +25,6 @@ RECON_DBManager::RECON_DBManager():
 
 RECON_DBManager::~RECON_DBManager(){}
 
-std::vector<std::string> Recon_memory_DBManager::fetch_removed_elements(){
-    throw std::runtime_error("Cannot fetch removed elements from memory database manager");
-}
-
-
 std::vector<std::string> Recon_mysql_DBManager::get_all_hash(){
     throw std::runtime_error("Useless to fetch hashes from the database in mysql database manager");
 };
@@ -70,10 +65,6 @@ void Recon_mysql_DBManager::prepare_queries(){
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE ptree FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
             "LINES TERMINATED BY '\\n' (@node_key, key_size, node_svalues, num_elements, leaf, node_elements) SET node_key = UNHEX(@node_key)"
             );
-
-	get_removed_hash_stmt = prepare_query("select hash from removed_hash");
-
-	truncate_removed_hash_stmt = prepare_query("truncate removed_hash");
 
 }
 
@@ -154,17 +145,6 @@ bool Recon_mysql_DBManager::check_key(const std::string& k){
         return false;
     }
     return true;
-}
-
-std::vector<std::string> Recon_mysql_DBManager::fetch_removed_elements(){
-    std::vector<std::string> hashes;
-    std::unique_ptr<DBResult> result = get_removed_hash_stmt->execute();
-    while(result->next()){
-        std::string hash = result->getString("hash");
-        hashes.push_back(hash);
-    }
-	truncate_removed_hash_stmt->execute();
-    return hashes;
 }
 
 Recon_memory_DBManager::Recon_memory_DBManager() : RECON_DBManager(){

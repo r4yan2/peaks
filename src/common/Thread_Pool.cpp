@@ -169,46 +169,45 @@ template<typename T> void SafeQueue<T>::enqueue(T t)
     c.notify_one();
   }
 
-SynchronizedFile::SynchronizedFile(const std::string& path, bool append):
+SynchronizedOutFile::SynchronizedOutFile(const std::string& path, bool append):
     name(path),
-    pos(0),
-	f(path, ios::out),
+	f(path, append?(ios::app):(ios::out)),
+    pos(f.tellp()),
 	m()
 {}
 
-SynchronizedFile::SynchronizedFile():
+SynchronizedOutFile::SynchronizedOutFile():
     name(),
-    pos(0),
     f(),
+    pos(0),
     m()
 {}
 
-SynchronizedFile::~SynchronizedFile(){
+SynchronizedOutFile::~SynchronizedOutFile(){
     close();
 }
 
-void SynchronizedFile::open(const std::string& path, bool append){
+void SynchronizedOutFile::open(const std::string& path, bool append){
 	std::lock_guard<std::mutex> lock(m);
     name = path;
-    auto mode = ios::in|ios::out;
-    if (append)
-        mode |= ios::app;
+    auto mode = append ? ios::app : ios::out;
     f = fstream(path, mode);
+    pos = f.tellp();
 }
 
-void SynchronizedFile::close(){
+void SynchronizedOutFile::close(){
 	std::lock_guard<std::mutex> lock(m);
     if (f.is_open())
         f.close();
 }
 
-void SynchronizedFile::flush(){
+void SynchronizedOutFile::flush(){
 	std::lock_guard<std::mutex> lock(m);
     if (f.is_open())
         f.flush();
 }
 
-std::size_t SynchronizedFile::write(const std::string& data, bool flush)
+std::size_t SynchronizedOutFile::write(const std::string& data, bool flush)
 {
 	std::lock_guard<std::mutex> lock(m);
     if (!f.is_open())
@@ -222,11 +221,11 @@ std::size_t SynchronizedFile::write(const std::string& data, bool flush)
     return orig;
 }
 
-std::string SynchronizedFile::get_name(){
+std::string SynchronizedOutFile::get_name(){
     return name;
 }
 
-std::size_t SynchronizedFile::size(){
+std::size_t SynchronizedOutFile::size(){
 	std::lock_guard<std::mutex> lock(m);
     return pos;
 }

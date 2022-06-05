@@ -23,7 +23,7 @@ namespace filemanager {
             size_t querySize(const handler);
             std::string queryName(const handler h);
         private:
-            std::map<handler, std::shared_ptr<SynchronizedFile>> handler_file_map;
+            std::map<handler, std::shared_ptr<SynchronizedOutFile>> handler_file_map;
             std::map<std::string, handler> name_handler_map;
             handler next_handler;
             Filemanager();

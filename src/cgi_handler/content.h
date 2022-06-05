@@ -37,14 +37,18 @@ namespace content  {
         }
     };
     struct remove_form : public cppcms::form {
-        cppcms::widgets::text search;
-        cppcms::widgets::submit submit;
+        cppcms::widgets::textarea verification;
+        cppcms::widgets::text keyid;
+        cppcms::widgets::submit remove;
 
         remove_form() {
-            submit.value("Remove the key!");
+            verification.rows(20);
+            verification.cols(66);
+            remove.value("Remove the key!");
 
-            add(search);
-            add(submit);
+            add(verification);
+            add(keyid);
+            add(remove);
         }
     };
     struct homepage : public cppcms::base_content {

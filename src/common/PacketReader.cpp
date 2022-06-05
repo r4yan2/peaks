@@ -14,23 +14,23 @@ using namespace std;
 using namespace OpenPGP;
 
 namespace peaks {
-namespace pks{
+namespace common{
 
-void pr::readPublicKeyPacket(const string &arm, peaks::pks::CGI_DBManager *dbm){
+void pr::readPublicKeyPacket(const string &arm, std::shared_ptr<DBManager> dbm, bool ptree_override){
     PublicKey::Ptr key(new PublicKey(arm));
 
     gpg_keyserver_data gk = {};
     vector<userID> uids;
     bool exist = false;
+    std::string oldkid = "";
 
-    cout << "Reading data..." << endl;
 
     try{
         for (const auto &p: key->get_packets()){
             if (p->get_tag() == Packet::PUBLIC_KEY){
                 // Verifico se la chiave è già presente nel DB ed eventualmente mergio
-                string q = hexlify(dynamic_pointer_cast<Packet::Tag6>(p)->get_fingerprint());
-                std::string query = dbm -> fingerprintQuery(q);
+                oldkid = mpitodec(rawtompi(key->keyid()));
+                std::string query = dbm -> get_certificate_from_filestore_by_id(oldkid);
                 if(query != ""){ exist = pr::manageMerge(key, query); }
                 break;
             }
@@ -116,23 +116,20 @@ void pr::readPublicKeyPacket(const string &arm, peaks::pks::CGI_DBManager *dbm){
         }
     }
 
-    cout << "Submitting data" << endl;
-    dbm->insert_gpg_keyserver(gk);
-    PTREE.insert(gk.hash);
-    //if (exist) {
-    //    dbm->update_gpg_keyserver(gk);
-    //} else {
-    //    dbm->insert_gpg_keyserver(gk);
-    //}
-
-    for (auto &uid: uids){
-        dbm->insert_user_id(uid);
+    auto ok = dbm->check_blocklist(gk.ID);
+    dbm->begin_transaction();
+    if (ok){
+        if (exist) {
+            dbm->remove_key_from_db(oldkid);
+        }
+        dbm->insert_gpg_keyserver(gk);
     }
-    cout << "Upload of the key finished" << endl;
+    if (ok || ptree_override) // keys coming from reconciliation need the hash in the prefix tree even if blocklisted
+        PTREE.insert(gk.hash);
+    dbm->end_transaction();
 }
 
 bool pr::manageMerge(PublicKey::Ptr key, const std::string & content){
-    cout << "Key already in the database, proceeding with merge" << endl;
     const Key::Ptr oldKey = make_shared<Key>(content);
     try{
         key->merge(oldKey);

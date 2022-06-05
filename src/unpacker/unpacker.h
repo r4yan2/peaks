@@ -31,6 +31,7 @@ class Unpacker{
 
 // static functions
 void unpack();
+void blocklist();
 void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm, const std::shared_ptr<DBResult> &, size_t, size_t);
 void unpack_key(const OpenPGP::Key::Ptr &key, std::shared_ptr<UNPACKER_DBManager> &dbm);
 DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey, const std::string &uatt_id="");

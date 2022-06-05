@@ -312,6 +312,11 @@ namespace Utils{
         return (stat (name.c_str(), &buffer) == 0);
     }
 
+	inline std::string hexToUll(const std::string &hex) {
+        unsigned long long ullKey = std::stoull(hex, nullptr, 16);
+        return std::to_string(ullKey);
+    }
+
     class Lazystring {
         private:
             std::function<std::string()> get_f;

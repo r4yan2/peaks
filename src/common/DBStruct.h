@@ -93,7 +93,13 @@ namespace DBStruct{
         unsigned int pk_status = 0;
 
         bool operator==(const signatures &s2) const{
-            return s == s2.s && r == s2.r;
+            return 
+                issuingKeyId == s2.issuingKeyId &&
+                signedKeyId == s2.signedKeyId &&
+                //signedUsername == s2.signedUsername &&
+                issuingFingerprint == s2.issuingFingerprint &&
+                signedFingerprint == s2.signedFingerprint &&
+                s == s2.s && r == s2.r && sString == s2.sString && rString == s2.rString;
         }
     };
 

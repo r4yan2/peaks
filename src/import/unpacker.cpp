@@ -6,6 +6,7 @@
 using namespace std;
 using namespace OpenPGP;
 using namespace peaks::common;
+typedef std::set<std::string> blocklist_t;
 
 namespace peaks{
 namespace import{
@@ -27,11 +28,14 @@ namespace Import {
                 syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", ec.message().c_str());
                 continue;
             }
-            DBStruct::gpg_keyserver_data gpg_keyserver_table;
-            std::tuple<std::string, int> res = dbm->store_certificate_to_filestore(key->raw());
-            read_gpg_keyserver_data(key, &gpg_keyserver_table, std::get<0>(res), std::get<1>(res), key_str.size());
+            DBStruct::gpg_keyserver_data gpg_keyserver_table = read_gpg_keyserver_data(key);
             hashes.push_back(gpg_keyserver_table.hash);
-            //dbm->write_gpg_keyserver_csv(gpg_keyserver_table);
+            if (CONTEXT.get<blocklist_t>("blocklist", blocklist_t()).count(gpg_keyserver_table.ID) > 0) 
+                continue;
+            std::tuple<std::string, int> res = dbm->store_certificate_to_filestore(key->raw());
+            gpg_keyserver_table.filename = std::get<0>(res);
+            gpg_keyserver_table.origin = std::get<1>(res);
+            gpg_keyserver_table.len = key_str.size();
             dbm->write_gpg_keyserver_table(gpg_keyserver_table);
         }
         return hashes;
@@ -80,8 +84,12 @@ namespace Import {
                         }
                         if (pos >= size)
                             end = true;
-                        DBStruct::gpg_keyserver_data gpg_keyserver_table;
-                        read_gpg_keyserver_data(key, &gpg_keyserver_table, f, start, pos-start);
+                        DBStruct::gpg_keyserver_data gpg_keyserver_table = read_gpg_keyserver_data(key);
+                        if (CONTEXT.get<blocklist_t>("blocklist", blocklist_t()).count(gpg_keyserver_table.ID) > 0) 
+                            continue;
+                        gpg_keyserver_table.filename = f;
+                        gpg_keyserver_table.origin = start;
+                        gpg_keyserver_table.len = pos-start;
                         dbm->write_gpg_keyserver_csv(gpg_keyserver_table);
                     }
                 }else{
@@ -96,14 +104,13 @@ namespace Import {
         }
     }
     
-    void read_gpg_keyserver_data(const OpenPGP::Key::Ptr &k, DBStruct::gpg_keyserver_data *gk, const std::string filename, const int pos, const int len) {
-        gk->fingerprint = k->fingerprint();
-        gk->version = k->version();
-        gk->ID = mpitodec(rawtompi(k->keyid()));
-        gk->hash = Utils::calculate_hash(k);
-        gk->filename = filename;
-        gk->origin = pos;
-        gk->len = len;
+    DBStruct::gpg_keyserver_data read_gpg_keyserver_data(const OpenPGP::Key::Ptr &k){
+        DBStruct::gpg_keyserver_data gk;
+        gk.fingerprint = k->fingerprint();
+        gk.version = k->version();
+        gk.ID = mpitodec(rawtompi(k->keyid()));
+        gk.hash = Utils::calculate_hash(k);
+        return gk;
     }
 
 }

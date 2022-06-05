@@ -9,7 +9,6 @@ Ptree::Ptree():
     root(std::make_shared<Pnode>(this)),
     dbm(std::make_shared<Recon_mysql_DBManager>())
 {
-    NTL::ZZ_p::init(CONTEXT.P_SKS);
     Bitset bs;
     try{
         root = node(bs);
@@ -31,6 +30,8 @@ Ptree::Ptree(std::shared_ptr<RECON_DBManager> dbm_):
 }
 
 Ptree& Ptree::ptree(){
+    //what about mapping the thread id to an init_done flag?
+    NTL::ZZ_p::init(CONTEXT.P_SKS);
     static Ptree instance;
     return instance;
 }
@@ -129,16 +130,10 @@ void Ptree::insert(const NTL::ZZ_p &z){
 void Ptree::update(const std::vector<std::string> &hash_to_insert){
 
     std::lock_guard<std::mutex> lock(mtx);
-    std::vector<std::string> hash_to_remove = dbm->fetch_removed_elements();
-    for (auto hash: hash_to_remove){
-        syslog(LOG_DEBUG, "removing %s from ptree", hash.c_str());
-        remove(hash);
-    }
     for (auto hash: hash_to_insert){
         syslog(LOG_DEBUG, "inserting %s into ptree", hash.c_str());
         insert(hash);
     }
-    syslog(LOG_DEBUG, "removed %d hashes from the ptree", int(hash_to_remove.size()));
     syslog(LOG_DEBUG, "inserted %d hashes into the ptree", int(hash_to_insert.size()));
 }
 

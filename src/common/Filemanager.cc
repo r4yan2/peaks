@@ -19,7 +19,7 @@ namespace filemanager{
         auto it = name_handler_map.find(path);
         if (it != name_handler_map.end())
             return it->second; //handler found!
-        auto ptr = std::make_shared<SynchronizedFile>(path, append);
+        auto ptr = std::make_shared<SynchronizedOutFile>(path, append);
         handler new_handler;
         do {
             new_handler = next_handler;

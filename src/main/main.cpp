@@ -132,6 +132,7 @@ void signalHandler(int signum) {
             std::make_pair("build", recon::build),
             std::make_pair("serve", pks::serve),
             std::make_pair("dump", dump::dump),
+            std::make_pair("blocklist", unpacker::blocklist),
 #ifdef BUILD_ANALYZER
             std::make_pair("analyze", analyzer::analyze),
 #endif

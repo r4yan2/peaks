@@ -21,17 +21,19 @@ void import() {
             exit(0);
         }
         std::make_shared<DBManager>()->init_database(filename);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // wait for mysql to initialize DB
     }
 
     std::shared_ptr<IMPORT_DBManager> dbm;
-    try{
-        dbm = std::make_shared<IMPORT_DBManager>();
-        Utils::create_folders(CONTEXT.dbsettings.tmp_folder);
-        Utils::create_folders(CONTEXT.dbsettings.error_folder);
-    }catch(std::exception &e){
-        std::cout << "Unable to connect to the database: "<< e.what() << std::endl;
-        exit(0);
+    while(true){
+        try{
+            dbm = std::make_shared<IMPORT_DBManager>();
+            Utils::create_folders(CONTEXT.dbsettings.tmp_folder);
+            Utils::create_folders(CONTEXT.dbsettings.error_folder);
+            break;
+        }catch(std::exception &e){
+            std::cout << "Unable to connect to the database (retry in 2 seconds): "<< e.what() << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // wait for mysql to initialize DB
+        }
     }
     std::string status = "";
     dbm->get_from_cache("import_status", status);
@@ -69,6 +71,9 @@ void import() {
         
         std::cout << "Keyfile per Thread: " << key_per_thread << std::endl;
 
+        //load blocklist if any
+        CONTEXT.set("blocklist", dbm->fetch_blocklist());
+
         generate_csv(dbm, files, path, nThreads, key_per_thread, CONTEXT.get<bool>("fastimport"));
     }
     if (!CONTEXT.get<bool>("csv-only")){
@@ -102,13 +107,9 @@ void generate_csv(std::shared_ptr<IMPORT_DBManager> dbm, std::vector<std::string
 void import_csv(std::shared_ptr<IMPORT_DBManager> dbm){
 
     std::cout << Utils::getCurrentTime() << "Writing in DB" << std::endl;
-    std::cout << "Drop index" << std::endl;
-    dbm->drop_index_gpg_keyserver();
     dbm->store_in_cache("import_status", "ready");
     dbm->insertCSV();
     dbm->store_in_cache("import_status", "done");
-    std::cout << "Rebuilding index" << std::endl;
-    dbm->build_index_gpg_keyserver();
 }
 
 }

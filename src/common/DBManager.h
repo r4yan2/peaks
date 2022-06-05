@@ -13,6 +13,7 @@
 
 #include <common/utils.h>
 #include "DBStruct.h"
+#include <set>
 
 namespace peaks{
 namespace common{
@@ -79,9 +80,22 @@ class DBManager {
             get_from_cache_stmt,
             set_in_cache_stmt,
             get_certificate_from_filestore_stmt,
+            get_certificate_from_filestore_by_id_stmt,
             get_filestore_index_from_stash_stmt,
-            store_filestore_index_to_stash_stmt;
+            store_filestore_index_to_stash_stmt,
+            delete_key_from_gpgkeyserver_stmt,
+            delete_key_from_signatures_stmt,
+            delete_key_from_userid_stmt,
+            delete_key_from_userattributes_stmt,
+            delete_key_from_selfsignatures_stmt,
+            delete_key_from_keystatus_stmt,
+            delete_key_from_signaturestatus_stmt,
+            check_blocklist_stmt,
+            fetch_blocklist_stmt,
+            insert_gpg_stmt
+            ;
         unsigned int filestorage_handler;
+        bool critical_section;
     static std::pair<std::string, std::string> 
         insert_certificate_stmt, 
         insert_brokenKey_stmt, 
@@ -91,7 +105,8 @@ class DBManager {
         insert_userID_stmt,
         insert_userAtt_stmt, 
         insert_unpackerErrors_stmt, 
-        insert_unpacked_stmt;
+        insert_unpacked_stmt
+        ;
 
     static std::string 
         create_unpacker_tmp_table,
@@ -157,12 +172,24 @@ class DBManager {
         void lockTables();
         void unlockTables();
         std::string get_certificate_from_filestore(const std::string&, const int, const int);
+        void remove_certificate_from_filestore(const std::string &filename, const int start, const int length);
         std::string get_certificate_from_filestore(const std::string &hash);
+        std::string get_certificate_from_filestore_by_id(const std::string& kid);
         std::shared_ptr<std::istream> get_certificate_stream_from_filestore(const std::string &filename, const int);
         std::tuple<std::string, int> store_certificate_to_filestore(const std::string &);
         int get_from_cache(const std::string &key, std::string & value);
         void store_in_cache(const std::string &key, const std::string &value);
+        void remove_key_from_db(const std::string &kid);
+        bool check_blocklist(const std::string &kid);
+        std::set<std::string> fetch_blocklist();
         
+	    /**
+	     * Insert into the certificate table in the database
+	     * the content of the new certificate
+	     * @param gk new certificate data
+	     */
+        void insert_gpg_keyserver(const DBStruct::gpg_keyserver_data &gk);
+
         /** @brief Bulk-insert CSV into the database
          * Insert multiple csv into the respective table 
          * of the database via LOAD DATA INFILE operation

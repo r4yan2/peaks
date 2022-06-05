@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <curl/curl.h>
+#include <common/PacketReader.h>
 
 namespace peaks{
 namespace recon{
@@ -119,18 +120,14 @@ void PeerManager::fetch_elements(const Peer &peer, const std::vector<NTL::ZZ_p> 
     }
     
     std::shared_ptr<IMPORT_DBManager> dbm = std::make_shared<IMPORT_DBManager>();
-    dbm->begin_transaction();
-    dbm->openCSVFiles();
 
-    std::vector<std::string> hashes = Import::unpack_string_th(dbm, keys);
-
-    dbm->insertCSV();
-
-    if (hashes.size() != elements.size()){
-        syslog(LOG_WARNING, "number of recovered keys does not match number of hashes recovered!");
+    for (auto &k: keys){
+        try{
+            pr::readPublicKeyPacket(k, dbm, true);
+        }catch(...){
+            // key unpacking failed
+        }
     }
-    PTREE.update(hashes);
-    dbm->end_transaction();
 }
 
 static size_t

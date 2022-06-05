@@ -39,20 +39,22 @@ Enter ASCII-armored PGP key here: <p>
 <% form as_table submit %>
 </form>
 
-<!-- WIP: Key removal
 <h3>
 <hr>
 <a name="remove">Remove a key</a></h3>
 
-Search String:
-
-<form method="post" action="" >
+To remove the key you need to provide an authenticity proof
+<br>
+Sign with the key you want to remove a file containing ONLY the text without quotes: "GDPR Request"
+<br>
+Example command to output the signature is: <i>gpg --sign --armor gdpr_request_file.txt</i>
+<br>
+Then paste the ASCII-armored content of the signature below along with the ID of the key to remove
+<form method="post" action="/pks/remove" >
 <% form as_table remove %>
 </form>
 
 <hr>
-
--->
 
 </body>
 </html>

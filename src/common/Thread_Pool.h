@@ -112,11 +112,11 @@ private:
   std::condition_variable c;
 };
 
-class SynchronizedFile {
+class SynchronizedOutFile {
 public:
-    SynchronizedFile (const std::string& path, bool append = false);
-	SynchronizedFile();
-	~SynchronizedFile();
+    SynchronizedOutFile (const std::string& path, bool append = false);
+	SynchronizedOutFile();
+	~SynchronizedOutFile();
     std::size_t write (const std::string& data, bool flush = false);
     std::string get_name ();
     void open(const std::string &, bool append = false);
@@ -126,8 +126,8 @@ public:
 
 private:
     std::string name;
-    std::size_t pos;
 	std::fstream f;
+    std::size_t pos;
 	std::mutex m;
 };
 

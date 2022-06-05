@@ -82,18 +82,6 @@ public:
     std::forward_list<DB_Key*> *indexQuery(std::string key);
 
 	/**
-	 * Updating certificate table in the database
-	 * with the content of the updated certificate
-	 * @param gk new certificate data
-	 */
-    void update_gpg_keyserver(const gpg_keyserver_data &gk);
-	/**
-	 * Insert into the certificate table in the database
-	 * the content of the new certificate
-	 * @param gk new certificate data
-	 */
-    void insert_gpg_keyserver(const gpg_keyserver_data &gk);
-	/**
 	 * Updating UserID table in the database
 	 * with the new userID data
 	 * @param uid new data
@@ -134,41 +122,37 @@ public:
 
 private:
 	std::shared_ptr<DBQuery>
-			shortid_stmt, 
-			longid_stmt, 
-			fprint_stmt, 
-			index_stmt, 
-			insert_gpg_stmt,
-            update_gpg_stmt, 
-			insert_uid_stmt, 
-			insert_brokenKey_stmt, 
-			vindex_prikey_full_id_stmt, 
-			vindex_prikey_short_id_stmt,
-            vindex_prikey_fp_stmt, 
-			vindex_uid_fp_stmt, 
-			vindex_signatures_stmt, 
-			vindex_uatt_stmt,
-            vindex_subkey_fp_stmt, 
-			vindex_key_vuln_stmt, 
-			vindex_sign_vuln_stmt, 
-			get_by_hash_stmt,
-      get_pnodes_stmt,
-      get_certificates_with_attributes_stmt,
-      get_from_cache_stmt,
-      store_in_cache_stmt,
-      get_certificates_analysis_stmt,
-      get_certificates_unpacking_status_stmt,
-      get_certificates_generic_stats_stmt,
-      get_user_attributes_data_stmt,
-      get_pubkey_data_stmt,
-      get_signature_data_stmt,
-      get_userid_data_stmt;
+        shortid_stmt, 
+        longid_stmt, 
+        fprint_stmt, 
+        index_stmt, 
+        update_gpg_stmt, 
+        insert_uid_stmt, 
+        insert_brokenKey_stmt, 
+        vindex_prikey_full_id_stmt, 
+        vindex_prikey_short_id_stmt,
+        vindex_prikey_fp_stmt, 
+        vindex_uid_fp_stmt, 
+        vindex_signatures_stmt, 
+        get_signature_issuingusername_stmt,
+        vindex_uatt_stmt,
+        vindex_subkey_fp_stmt, 
+        vindex_key_vuln_stmt, 
+        vindex_sign_vuln_stmt, 
+        get_by_hash_stmt,
+        get_pnodes_stmt,
+        get_certificates_with_attributes_stmt,
+        get_from_cache_stmt,
+        store_in_cache_stmt,
+        get_certificates_analysis_stmt,
+        get_certificates_unpacking_status_stmt,
+        get_certificates_generic_stats_stmt,
+        get_user_attributes_data_stmt,
+        get_pubkey_data_stmt,
+        get_signature_data_stmt,
+        get_userid_data_stmt
+            ;
     
-	std::string hexToUll(const std::string &hex) {
-        unsigned long long ullKey = std::stoull(hex, nullptr, 16);
-        return std::to_string(ullKey);
-    }
-
 
     key get_key_info(const std::unique_ptr<DBResult> & key_result);
 

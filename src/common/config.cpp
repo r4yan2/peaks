@@ -92,6 +92,7 @@ Context::Context(){
         ("csv-only", po::bool_switch()->default_value(false), "stop certificate import after creating csv")
         ("recover", po::bool_switch()->default_value(false), "recover")
         ("reset", po::bool_switch()->default_value(false), "reset")
+        ("noclean,n", po::bool_switch()->default_value(false), "do not clean temporary folder")
         ;
 
     analyzer_desc.add_options()
@@ -114,6 +115,12 @@ Context::Context(){
 
     cgi_desc.add_options()
         ;
+
+    blocklist_desc.add_options()
+        ("ID", po::value<std::vector<std::string>>()->multitoken(), "Key IDs to blocklist")
+        ;
+
+    blocklist_positional.add("ID", -1);
 
 }
 
@@ -240,20 +247,32 @@ std::string Context::init_options(int argc, char* argv[]){
     opts.erase(opts.begin());
     po::command_line_parser subcommand_parser(opts);
     std::map<std::string, po::options_description> command_map = {
-        std::make_pair("import", import_desc),
-        std::make_pair("unpack", unpack_desc),
-        std::make_pair("recon", recon_desc),
-        std::make_pair("dump", dump_desc),
-        std::make_pair("analyze", analyzer_desc),
-        std::make_pair("build", build_desc),
-        std::make_pair("serve", cgi_desc)
+        {"import", import_desc},
+        {"unpack", unpack_desc},
+        {"recon", recon_desc},
+        {"dump", dump_desc},
+        {"analyze", analyzer_desc},
+        {"build", build_desc},
+        {"serve", cgi_desc},
+        {"blocklist", blocklist_desc}
+    };
+
+    std::map<std::string, po::positional_options_description> positional_map = {
+        {"blocklist", blocklist_positional}
     };
 
     auto it = command_map.find(cmd);
     if (it == command_map.end())
         return cmd;
 
-    subcommand_parser.options((*it).second);
+    po::options_description options = it->second;
+    subcommand_parser.options(options);
+
+    auto it2 = positional_map.find(cmd);
+    if(it2 != positional_map.end()){
+        po::positional_options_description positional = it2->second;
+        subcommand_parser.positional(positional);
+    }
 
     po::store(subcommand_parser.run(), vm);
     po::notify(vm); // throws on error, so do after help in case of problems

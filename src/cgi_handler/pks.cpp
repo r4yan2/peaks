@@ -19,7 +19,7 @@
 #include "boost/lexical_cast.hpp"
 #include <Packets/Key.h>
 #include <common/errors.h>
-#include "PacketReader.h"
+#include <common/PacketReader.h>
 #include <common/config.h>
 #include <common/utils.h>
 #include <regex>
@@ -60,6 +60,9 @@ Pks::Pks(cppcms::service &srv): cppcms::application(srv)
 
     dispatcher().assign("/add", &Pks::add, this);
     mapper().assign("add", "/add");
+
+    dispatcher().assign("/remove", &Pks::remove, this);
+    mapper().assign("remove", "/remove");
 
     dispatcher().assign("/stats", &Pks::stats, this);
     mapper().assign("stats", "/stats");
@@ -136,22 +139,33 @@ void Pks::add(){
     }
 }
 
+void Pks::remove(){
+    if (request().request_method()=="POST"){
+        syslog(LOG_DEBUG, "REMOVE");
+        const string verification = request().post("_1");
+        const string keyid = request().post("_2");
+        remove(keyid, verification);
+    }
+}
+
 void Pks::homepage() {
     content::homepage c;
     if(request().request_method()=="POST") {
         c.submit.load(context());
         c.remove.load(context());
-        if(c.submit.submit.value()) {
+        std::cout << c.submit.submit.value() << std::endl;
+        std::cout << c.submit.reset.value() << std::endl;
+        std::cout << c.remove.remove.value() << std::endl;
+        std::cout << c.submit.keytext.value() << std::endl;
+        std::cout << c.remove.keyid.value() << std::endl;
+        std::cout << c.remove.verification.value() << std::endl;
+        if(c.submit.validate()) {
             syslog(LOG_DEBUG, "SUBMIT");
             string temp = c.submit.keytext.value();
             temp.erase(std::remove(temp.begin(), temp.end(), '\r'), temp.end());
             post(temp);
         } else if(c.submit.reset.value()) {
             syslog(LOG_DEBUG, "RESET");
-        } else if(c.remove.submit.value()) {
-            syslog(LOG_DEBUG, "REMOVE %s", c.remove.search.value().c_str());
-            // [TODO] Implement key remove (kek)
-            // [TODO] Fix that when remove is pressed, reset is triggered
         }
         c.submit.clear();
         c.remove.clear();
@@ -160,10 +174,28 @@ void Pks::homepage() {
     render("homepage", home);
 }
 
+void Pks::remove(const string& value, const string& test){
+    //syslog(LOG_DEBUG, "REMOVE %s", c.remove.search.value().c_str());
+    // [TODO] Implement key remove (kek)
+    // [TODO] Fix that when remove is pressed, reset is triggered
+    auto cert = dbm->longIDQuery(value);
+    auto sig = test;
+    Key::Ptr key;
+    key = std::make_shared<Key>();
+    key->read_raw(cert);
+    key->set_type(PGP::PUBLIC_KEY_BLOCK);
+    const OpenPGP::CleartextSignature signature(sig);
+    const int verified = OpenPGP::Verify::cleartext_signature(*key, signature);
+    if (verified && signature.get_message() == "GDPR request"){
+        dbm->remove_key_from_db(hexToUll(value));
+        response().status(cppcms::http::response::ok);
+        response().out() << "Key deleted succesfully";
+    }
+}
 
 void Pks::post(const string& arm){
     try {
-        pr::readPublicKeyPacket(arm, dbm.get());
+        pr::readPublicKeyPacket(arm, dbm);
         response().status(cppcms::http::response::ok);
         response().out() << "Key uploaded succesfully";
     }catch (error_code &ec){
