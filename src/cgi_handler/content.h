@@ -20,6 +20,10 @@ namespace content  {
         std::string searchString;
         std::string key_component;
     };
+    struct stats : public cppcms::base_content {
+        std::string settings;
+        std::string membership;
+    };
     struct submit_form : public cppcms::form {
         cppcms::widgets::textarea keytext;
         cppcms::widgets::submit reset;
@@ -55,9 +59,6 @@ namespace content  {
         submit_form submit;
         remove_form remove;
     };
-    struct stats : public cppcms::base_content{
-    };
-
 
 };
 

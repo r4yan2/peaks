@@ -3,6 +3,7 @@
 --
 
 CREATE TABLE IF NOT EXISTS `gpg_keyserver` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `version` tinyint(3) unsigned NOT NULL,
   `ID` bigint(20) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
@@ -12,6 +13,8 @@ CREATE TABLE IF NOT EXISTS `gpg_keyserver` (
   `filename` TEXT NOT NULL,
   `origin` int(11) NOT NULL,
   `len` int(11) NOT NULL,
+  `created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
   KEY `fingerprint` (`fingerprint`, `version`),
   KEY `id` (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -21,6 +24,7 @@ CREATE TABLE IF NOT EXISTS `gpg_keyserver` (
 --
 
 CREATE TABLE IF NOT EXISTS `Pubkey` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `keyId` bigint(20) unsigned NOT NULL,
   `version` tinyint(3) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
@@ -37,7 +41,8 @@ CREATE TABLE IF NOT EXISTS `Pubkey` (
   `y` blob,
   `curveOID` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_analyzed` tinyint(4) NOT NULL DEFAULT '0',
-  PRIMARY KEY (`fingerprint`, `version`),
+  PRIMARY KEY (`id`),
+  KEY `Secondary` (`fingerprint`, `version`),
   KEY `n` (`n`(200)),
   KEY `keyId` (`keyId`,`fingerprint`),
   KEY `Pubkey_cert` (`PriFingerprint`, `version`),

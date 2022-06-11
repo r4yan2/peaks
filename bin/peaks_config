@@ -35,3 +35,4 @@ membership_config = /etc/peaks/membership
 default_dump_path = /tmp/pgp_dump/
 tmp_folder = /tmp/peaks_unique/
 error_folder = /tmp/peaks_error/
+web_assets_folder = /var/peaks/assets

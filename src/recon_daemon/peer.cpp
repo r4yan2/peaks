@@ -14,22 +14,12 @@ namespace peaks{
 namespace recon{
 PeerManager::PeerManager():
     cn()
-{
-    std::ifstream f(CONTEXT.peersettings.membership_config);
-    std::string addr;
-    int port;
-    while(f >> addr >> port){
-        membership.push_back(std::make_pair(addr, port));
-    }
-    if (membership.size() == 0){
-        syslog(LOG_ERR, "Membership file provided is empty!");
-    }
-}
+{}
 
 Connection PeerManager::choose_partner(){
-    
+    auto membership = CONTEXT.get<membership_t>("membership");
     int choice = Utils::get_random(membership.size());
-    member m = membership[choice];
+    member m(std::get<1>(membership[choice]), std::get<2>(membership[choice]));
     syslog(LOG_DEBUG, "choose as partner: %s", m.first.c_str());
     Connection connection = cn.init_peer(m);
     connection.check_remote_config(); 
@@ -62,11 +52,12 @@ void PeerManager::serve(){
 
     cn.setup_listener(CONTEXT.peersettings.peaks_recon_port);
     std::vector<std::string> addresses;
+    auto membership = CONTEXT.get<membership_t>("membership");
     std::transform(
         membership.begin(),
         membership.end(),
         std::back_inserter(addresses),
-        (const std::string& (*)(const member&))std::get<0>
+        (const std::string& (*)(const std::tuple<std::string, std::string, int>&))std::get<1>
     );
 
     for (;;){
@@ -256,6 +247,7 @@ std::vector<NTL::ZZ_p> Connection::interact_with_client(){
 
 void PeerManager::gossip(){
     NTL::ZZ_p::init(NTL::conv<NTL::ZZ>(CONTEXT.msgsettings.P_SKS_STRING.c_str()));
+    auto membership = CONTEXT.get<membership_t>("membership");
     for (;;){
         try{
             syslog(LOG_DEBUG, "starting gossip client");

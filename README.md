@@ -100,6 +100,53 @@ make
 Configuration
 -----
 
+## Docker Compose
+
+The easiest way to have an up and running peaks keyserver is to use a `docker-compose` file.
+
+```
+version: '3.3'
+
+services:
+    db:
+      image: mysql:5.7
+      volumes:
+         - ./peaks_db:/var/lib/mysql:rw
+      environment:
+         MYSQL_ROOT_PASSWORD: "mysupersuperpassword"
+      command: --innodb_buffer_pool_size=2000M --innodb_log_file_size=500M --innodb_log_buffer_size=500M --innodb_support_xa=0 --innodb_flush_log_at_trx_commit=0 --innodb_doublewrite=0 --max-allowed-packet=500M
+    peaks:
+      depends_on:
+         - db
+      image: r4yan2/peaks:latest
+      volumes:
+        - ./config:/etc/peaks
+        - ./filestore:/var/peaks
+        - ./pgp_dump:/tmp/pgp_dump
+      environment:
+        MYSQL_HOST: "db"
+        MYSQL_PORT: 3306
+        MYSQL_USER: "root"
+        MYSQL_PASSWORD: "mysupersuperpassword"
+      ports:
+         - 11370:11370
+         - 11371:11371
+      command:
+        - sh
+        - -c
+        - /srv/peaks/init.sh && svscan /srv/peaks/service
+```
+
+**Volumes**
+* `config` is the path to the config folder, if an empty folder is provided, an init script will create a default config and membership file for you
+* `filestore` volume holds new key material
+* `pgp_dump` is the path to the current dump
+
+**Environment**
+* `MYSQL_HOST` `MYSQL_PORT` `MYSQL_USER` `MYSQL_PASSWORD` may be changed as needed (just make sure `MYSQL_ROOT_PASSWORD` and `MYSQL_PASSORD` match)
+
+Then run `docker-compose up -d`
+
 ## Database
 
 peaks require a mysql 5.6 or 5.7 installation to work.

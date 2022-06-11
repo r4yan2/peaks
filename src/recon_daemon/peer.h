@@ -26,8 +26,6 @@ class PeerManager{
     private:
         /** hold the Connection Manager reference*/
         Connection_Manager cn;
-        /** hold the list of peers specified in membership file */
-        std::vector<member> membership;
 
     public:
         /** 

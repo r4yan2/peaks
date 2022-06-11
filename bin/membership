@@ -1,1 +1,11 @@
-172.17.0.4 11370
+
+#************************************************************************#
+#* membership - list of servers to peer with along with optional        *#
+#*              administrative contact information                      *#
+#************************************************************************#
+
+# NOTE: Reconciliation will start if and only if the other hosts include a
+# similar entry in their own membership file for your own server.
+#
+# Name    Address      Port   #Optional comment
+# test    172.17.0.4   11370  #Registered on 1/1/1970

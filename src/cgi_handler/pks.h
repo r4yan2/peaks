@@ -81,6 +81,8 @@ private:
     std::string getVulnList(const std::forward_list<std::string> &vulnerabilities);
 
     std::string fp_format(const std::string &fp);
+    std::string getSettingsStats();
+    std::string getMembershipStats();
 };
 
 }

@@ -271,9 +271,50 @@ void Pks::get(const string& id) {
 void Pks::stats(){
     content::stats stats;
     syslog(LOG_INFO, "Serving stats");
-    response().set_redirect_header("/html/stats.html");
-    //render("stats", stats);
+    if (CONTEXT.get<int>("cgi_serve_stats") == 1){
+      response().set_redirect_header("/html/stats.html");
+    } else {
+      stats.settings = getSettingsStats();
+      stats.membership = getMembershipStats();
+      render("stats", stats);
+    }
 }
+
+
+std::string Pks::getMembershipStats(){
+    std::string res = "";
+    for (auto &it: CONTEXT.get<membership_t>("membership"))
+      res += Utils::stringFormat("<tr>"
+                                 "<td>%s</td>"
+                                 "<td>%s</td>"
+                                 "<td>%d</td>"
+                                 "</tr>", Utils::htmlEscape(std::get<0>(it)).c_str(), Utils::htmlEscape(std::get<1>(it)).c_str(), std::get<2>(it));
+    return res;
+}
+
+std::string Pks::getSettingsStats(){
+    std::vector<std::string> allowed_settings = {
+        "name",
+        "version",
+        "filters"
+    };
+    std::vector<std::string> allowed_settings_int = {
+        "http_port",
+        "recon_port"
+    };
+
+    std::string res = "";
+    for (auto &it: allowed_settings)
+      res += Utils::stringFormat("<tr><td>%s</td><td>%s</td></tr>", 
+              Utils::htmlEscape(it).c_str(), Utils::htmlEscape(CONTEXT.get<std::string>(it, "")).c_str()
+            );
+    for (auto &it: allowed_settings_int)
+      res += Utils::stringFormat("<tr><td>%s</td><td>%d</td></tr>", 
+              Utils::htmlEscape(it).c_str(), CONTEXT.get<int>(it, 0)
+            );
+    return res;
+}
+
 
 json_service::json_service(cppcms::service &srv):
     cppcms::rpc::json_rpc_server(srv)
@@ -541,29 +582,35 @@ cppcms::json::value userattribute_stats(){
     int maxsize_image = 0;
     int maxsize_noimage = 0;
 
-    for (const auto &flag: {true, false}){
-        std::vector<int> bins(limits.size()+1, 0);
-        std::string is_image = flag ? "image" : "other";
-        int userattributes = 0;
-        for (; userattributes < ua_data_iterator->size(); userattributes++){
-            int length;
-            bool is_data_image;
-            std::tie(length, is_data_image) = dbm->get_user_attribute_data_from_iterator(ua_data_iterator);
-            if (is_data_image != flag)
-                continue;
-            image_user_attributes += flag?1:0;
-            other_user_attributes += flag?0:1;
-            for (int i=0; i<limits.size(); i++){
-                (flag?maxsize_image:maxsize_noimage) = std::max(flag?maxsize_image:maxsize_noimage, length);
-                if (length < limits[i]){
-                    bins[i] += 1;
-                    break;
-                }
+    std::vector<int> image_bins(limits.size()+1, 0);
+    std::vector<int> other_bins(limits.size()+1, 0);
+    int userattributes = 0;
+    for (; userattributes < ua_data_iterator->size(); userattributes++){
+        int length;
+        bool is_data_image;
+        std::tie(length, is_data_image) = dbm->get_user_attribute_data_from_iterator(ua_data_iterator);
+        if (is_data_image)
+          image_user_attributes += 1;
+        else
+          other_user_attributes += 1;
+        for (int i=0; i<limits.size(); i++){
+            if (is_data_image)
+                maxsize_image = std::max(maxsize_image, length);
+            else
+                maxsize_noimage = std::max(maxsize_noimage, length);
+            if (length < limits[i]){
+                if (is_data_image)
+                    image_bins[i] += 1;
+                else 
+                    other_bins[i] += 1;
+                break;
             }
         }
-        for (int i=0; i<bins.size(); i++)
-            full_stats["userattributes"][is_image]["size"][i] = bins[i];
     }
+    for (int i=0; i<image_bins.size(); i++)
+        full_stats["userattributes"]["image"]["size"][i] = image_bins[i];
+    for (int i=0; i<other_bins.size(); i++)
+        full_stats["userattributes"]["other"]["size"][i] = other_bins[i];
     int i = 0;
     for (; i<limits.size(); i++){
         full_stats["userattributes"]["ticks"][i] = std::to_string(limits[i]/KB);
@@ -804,7 +851,7 @@ cppcms::json::value pubkey_stats(){
     full_stats["pubkey"]["generic"]["elliptic_count"] = ec;
     full_stats["pubkey"]["generic"]["total_valid"] = rsa+dsa+elg+ec;
     full_stats["pubkey"]["generic"]["total"] = pubkey_count;
-    full_stats["pubkey"]["generic"]["analyzed %"] = Utils::float_format(analyzed_pubkeys * 100 / pubkey_count, 1) + "%";
+    full_stats["pubkey"]["generic"]["analyzed %"] = Utils::float_format(analyzed_pubkeys * 100.0 / pubkey_count, 1) + "%";
 
     for (int y=allowed_min_year,i=0; y<=allowed_max_year; y++,i++){
         full_stats["pubkey"]["generic"]["years"][i] = y;

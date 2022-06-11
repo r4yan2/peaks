@@ -526,6 +526,5 @@ std::string float_format(double val, int dp) {
 }
 
 }
-
 }
 }

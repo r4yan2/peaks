@@ -11,6 +11,7 @@
 #include <NTL/ZZ_p.h>
 
 namespace po = boost::program_options;
+typedef std::vector<std::tuple<std::string, std::string, int>> membership_t;
 
 namespace peaks{
   
@@ -54,9 +55,6 @@ namespace peaks{
   };
   
   struct Recon_config{
-  
-      /** path to the membership file, used to know who are the peers for the syncronization */
-      std::string membership_config;
   
       /** port used for the recon protocol */
       int peaks_recon_port;

@@ -6,6 +6,8 @@
 <html>
 <head>
 <title>Peaks PGP Key Server</title>
+<link href="/css/style.css" rel="stylesheet">
+
 </head>
 <body>
 
@@ -43,18 +45,21 @@ Enter ASCII-armored PGP key here: <p>
 <hr>
 <a name="remove">Remove a key</a></h3>
 
-To remove the key you need to provide an authenticity proof
+To remove a key you need to prove to be the owner:
 <br>
 Sign with the key you want to remove a file containing ONLY the text without quotes: "GDPR Request"
 <br>
-Example command to output the signature is: <i>gpg --sign --armor gdpr_request_file.txt</i>
+Example command to output the signature for keyID <i>ABDC1410FA7276A6</i> is: <i>gpg -u ABDC1410FA7276A6 --clearsign --armor file.txt</i>
 <br>
-Then paste the ASCII-armored content of the signature below along with the ID of the key to remove
+Then paste below the ASCII-armored content of <i>file.txt.asc</i> and the ID of the key to remove
 <form method="post" action="/pks/remove" >
 <% form as_table remove %>
 </form>
 
 <hr>
+
+<a href="https://github.com/r4yan2/peaks">About</a>
+<a href="/pks/stats">Statistics</a>
 
 </body>
 </html>

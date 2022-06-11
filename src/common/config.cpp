@@ -1,7 +1,9 @@
 #include "config.h"
+#include <boost/algorithm/string/constants.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/parsers.hpp>
 #include <boost/program_options/variables_map.hpp>
+#include <boost/algorithm/string.hpp>
 #include <common/utils.h>
 #include <syslog.h>
 
@@ -173,7 +175,6 @@ void Context::setContext(const po::variables_map & _vm){
     };
 
     peersettings = {
-        vm["membership_config"].as<std::string>(),
         vm["recon_port"].as<int>(),
         vm["request_chunk_size"].as<int>(),
         vm.count("dryrun"),
@@ -183,7 +184,23 @@ void Context::setContext(const po::variables_map & _vm){
         vm["max_recover_size"].as<int>()
     };
 
-
+    std::ifstream f(vm["membership_config"].as<std::string>());
+    membership_t membership;
+    std::string line;
+    while(std::getline(f, line)){
+        boost::trim(line);
+        if (line[0] == '#')
+            continue;
+        std::vector<std::string> v;
+        boost::split(v, line, boost::is_any_of(" "), boost::algorithm::token_compress_on);
+        if (v.size() < 3)
+            continue;
+        membership.push_back(std::make_tuple(v[0], v[1], stoi(v[2])));
+    }
+    if (membership.size() == 0){
+        syslog(LOG_WARNING, "Membership file provided is empty!");
+    }
+    set("membership", membership);
 }
 
 std::string Context::init_options(int argc, char* argv[]){
