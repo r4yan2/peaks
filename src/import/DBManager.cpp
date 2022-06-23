@@ -28,7 +28,7 @@ IMPORT_DBManager::IMPORT_DBManager():DBManager()
 void IMPORT_DBManager::prepare_queries() {
     get_signature_by_index = prepare_query("SELECT id "
                                      "FROM Signatures WHERE r = (?) and s = (?)");
-    insert_gpg_keyserver = prepare_query("INSERT INTO gpg_keyserver (version,ID,fingerprint,hash,is_unpacked,error_code,filename,origin,len) VALUES (?,?,?,?,?,?,?,?,?)");
+    insert_gpg_keyserver = prepare_query("INSERT INTO gpg_keyserver (version,keyId,fingerprint,hash,is_unpacked,error_code,filename,origin,len) VALUES (?,?,?,?,?,?,?,?,?)");
 }
 
 IMPORT_DBManager::~IMPORT_DBManager()
@@ -36,14 +36,14 @@ IMPORT_DBManager::~IMPORT_DBManager()
 
 void IMPORT_DBManager::drop_index_gpg_keyserver(){
     std::cout << "Drop index" << std::endl;
-	execute_query("ALTER TABLE gpg_keyserver DROP INDEX id;");
+	execute_query("ALTER TABLE gpg_keyserver DROP INDEX kid;");
 	execute_query("ALTER TABLE gpg_keyserver DROP INDEX fingerprint;");
 	execute_query("ALTER TABLE gpg_keyserver DROP INDEX HASH;");
 }
 
 void IMPORT_DBManager::build_index_gpg_keyserver(){
     std::cout << "Rebuilding index" << std::endl;
-	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `id` (`ID`);");
+	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `kid` (`keyId`);");
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `fingerprint` (`fingerprint`, `version`);");
 	execute_query("ALTER TABLE gpg_keyserver ADD INDEX `HASH` (`hash` ASC);");
 }

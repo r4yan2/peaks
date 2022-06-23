@@ -21,8 +21,8 @@ DBManager::DBManager():
     connection_properties["password"] = CONTEXT.dbsettings.db_password;
     connection_properties["port"] = CONTEXT.dbsettings.db_port;
     connection_properties["CLIENT_MULTI_STATEMENTS"] = true;
-    connection_properties["OPT_CHARSET_NAME"] = "utf8";
-    connection_properties["OPT_SET_CHARSET_NAME"] = "utf8";
+    connection_properties["OPT_CHARSET_NAME"] = "utf8mb4";
+    connection_properties["preInit"] = "SET NAMES utf8mb4;SET CHARACTER SET utf8mb4;";
     connection_properties["OPT_LOCAL_INFILE"] = 1;
     con = driver->connect(connection_properties);
 
@@ -32,16 +32,25 @@ DBManager::DBManager():
 void DBManager::connect_schema(){
     con->setSchema(CONTEXT.dbsettings.db_database);
     get_certificate_from_filestore_stmt = prepare_query("SELECT filename, origin, len FROM gpg_keyserver WHERE hash = (?)");
-    get_certificate_from_filestore_by_id_stmt = prepare_query("SELECT filename, origin, len, hash FROM gpg_keyserver WHERE ID = (?)");
+    get_certificate_from_filestore_by_id_stmt = prepare_query("SELECT filename, origin, len, hash FROM gpg_keyserver WHERE keyId = (?)");
     get_filestore_index_from_stash_stmt = prepare_query("SELECT value FROM stash WHERE name = 'filestore_index'");
     store_filestore_index_to_stash_stmt = prepare_query("REPLACE INTO stash (name, value) VALUES ('filestore_index', ?)");
     get_from_cache_stmt = prepare_query("SELECT value, TIMESTAMPDIFF(SECOND, NOW(), created) as diff FROM stash WHERE name = (?)");
     set_in_cache_stmt = prepare_query("REPLACE INTO stash(`name`,`value`, `created`) VALUES (?, ?, NOW())");
-    delete_key_from_gpgkeyserver_stmt = prepare_query("DELETE FROM gpg_keyserver where ID = (?)");
-    check_blocklist_stmt = prepare_query("SELECT 1 FROM blocklist WHERE ID = (?)");
-    fetch_blocklist_stmt = prepare_query("SELECT ID FROM blocklist");
-    insert_gpg_stmt = prepare_query("REPLACE INTO gpg_keyserver "
-                                    "VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?);");
+    delete_key_from_gpgkeyserver_stmt = prepare_query("DELETE FROM gpg_keyserver where keyId = (?)");
+    check_blocklist_stmt = prepare_query("SELECT 1 FROM blocklist WHERE keyId = (?)");
+    fetch_blocklist_stmt = prepare_query("SELECT keyId FROM blocklist");
+    insert_gpg_stmt = prepare_query("REPLACE INTO gpg_keyserver VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, NOW());");
+    insert_into_blocklist_stmt = prepare_query("INSERT IGNORE INTO blocklist (keyId) VALUES (?)");
+    insert_into_pubkey_stmt = prepare_query("INSERT INTO Pubkey(keyId,version,fingerprint,priFingerprint,pubAlgorithm,creationTime,expirationTime,e,n,p,q,g,y,curveOID) VALUES(?,?,?,?,?,?,nullif(?, ''),?,?,?,?,?,?,?)");
+    insert_into_signature_stmt = prepare_query("INSERT INTO Signatures(type,pubAlgorithm,hashAlgorithm,version,issuingKeyId,signedKeyId,issuingFingerprint,signedFingerprint,signedUsername,issuingUsername,sign_Uatt_id,regex,creationTime,keyExpirationTime,r,s,flags,hashHeader,signedHash,hashMismatch,expirationTime,revocationCode,revocationReason,revocationSigId,isRevocable,isExportable,isExpired,isRevocation) VALUES(?,?,?,?,?,?,nullif(?, ''),?,nullif(?, ''),nullif(?, ''),nullif(?, ''),nullif(?, ''),?,nullif(?, ''),?,?,nullif(?, ''),?,?,?,nullif(?, ''),?,?,?,?,?,?,?)");
+    insert_into_selfsignature_stmt = prepare_query("INSERT INTO selfSignaturesMetadata(type,pubAlgorithm,hashAlgorithm,version,issuingKeyId,issuingFingerprint,preferedHash,preferedCompression,preferedSymmetric,trustLevel,keyExpirationTime,isPrimaryUserId,signedUserId) VALUES(?,?,?,?,?,?,?,?,?,?,nullif(?, ''),?,?)");
+    insert_into_userid_stmt = prepare_query("INSERT INTO UserID(ownerkeyID, fingerprint, name) VALUES(?,?,?)");
+    insert_into_userattributes_stmt = prepare_query("INSERT INTO UserAttribute(id, fingerprint, name, encoding, image) VALUES(?,?,?,?,?)");
+    insert_into_unpackererrors_stmt = prepare_query("INSERT INTO Unpacker_errors(version,fingerprint,error) VALUES(?,?,?)");
+    update_gpg_keyserver_stmt = prepare_query("UPDATE gpg_keyserver SET is_unpacked = (?) WHERE version = (?) AND fingerprint = (?)");
+
+
     // filestorage
     int idx = 0;
     try{
@@ -249,6 +258,8 @@ string DBManager::get_certificate_from_filestore(const std::string &hash){
     }catch(exception &e){
         syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
     }
+    if (filename == "")
+        return "";
     return get_certificate_from_filestore(filename, start, length);
 }
 
@@ -266,6 +277,8 @@ string DBManager::get_certificate_from_filestore_by_id(const std::string &kid){
     }catch(exception &e){
         syslog(LOG_WARNING, "Could not fetch cache from the DB: %s", e.what());
     }
+    if (filename == "")
+        return "";
     return get_certificate_from_filestore(filename, start, length);
 }
 
@@ -307,7 +320,7 @@ std::set<std::string> DBManager::fetch_blocklist(){
     try{
         std::unique_ptr<DBResult> result = fetch_blocklist_stmt->execute();
         while (result->next())
-            res.insert(result->getString("ID"));
+            res.insert(result->getString("keyId"));
     }catch(exception &e){
         syslog(LOG_WARNING, "Could not check blocklist: %s", e.what());
     }
@@ -506,6 +519,311 @@ void DBManager::insertCSV(const string &f, const unsigned int &table){
     }
 }
 
+void DBManager::insert_into_blocklist(const std::string &ID) {
+    try{
+        insert_into_blocklist_stmt->setBigInt(1, ID);
+        insert_into_blocklist_stmt->execute();
+    
+    }catch(exception &e){
+        syslog(LOG_CRIT, "insert_into_blocklist_stmt FAILED, the blocklist was not updated! - %s",
+                          e.what());
+    }
+}
+
+
+
+void DBManager::write_unpacked_csv(const OpenPGP::Key::Ptr &key, const DBStruct::Unpacker_errors &mod){
+    try{
+        ostringstream f;
+        f << '"' << to_string(key->version()) << "\",";
+        f << '"' << hexlify(key->fingerprint()) << "\",";
+        if (mod.modified){
+            f << '"' << "2" << "\",";
+        }else{
+            f << '"' << "1" << "\",";
+        }
+        f << "\n";
+        FILEMANAGER.write(file_list.at(Utils::TABLES::UNPACKED), f.str());
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_unpacked_csv FAILED, the key will result not UNPACKED in the database! - %s", e.what());
+    }
+}
+
+
+void DBManager::write_unpacked_table(const OpenPGP::Key::Ptr &key, const DBStruct::Unpacker_errors &mod){
+    try {
+        if (mod.modified){
+            update_gpg_keyserver_stmt->setInt(1, 2);
+        } else {
+            update_gpg_keyserver_stmt->setInt(1, 1);
+        }
+        update_gpg_keyserver_stmt->setInt(2, key->version());
+        update_gpg_keyserver_stmt->setString(3, key->fingerprint());
+        update_gpg_keyserver_stmt->execute();
+    } catch (exception &e){
+        syslog(LOG_CRIT, "write_unpacked_table FAILED, the key will result not UNPACKED in the database! - %s", e.what());
+    }
+}
+
+void DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
+    try{
+        ostringstream f;
+        f << '"' << pubkey.keyId << "\",";
+        f << '"' << pubkey.version << "\",";
+        f << '"' << hexlify(pubkey.fingerprint) << "\",";
+        f << '"' << hexlify(pubkey.priFingerprint) << "\",";
+        f << '"' << pubkey.pubAlgorithm << "\",";
+        f << '"' << pubkey.creationTime << "\",";
+        f << '"' << pubkey.expirationTime << "\",";
+        for (const auto &v: pubkey.algValue){
+            f << '"' << hexlify(v) << "\",";
+        }
+        f << '"' << pubkey.curve<< "\",";
+        f << "\n";
+        FILEMANAGER.write(file_list.at(Utils::TABLES::PUBKEY), f.str());
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_pubkey_csv FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
+    }
+}
+
+void DBManager::write_pubkey_table(const DBStruct::pubkey &pubkey) {
+    try{
+        int pos = 1;
+        insert_into_pubkey_stmt->setString(pos++, pubkey.keyId);
+        insert_into_pubkey_stmt->setInt(pos++, pubkey.version);
+        insert_into_pubkey_stmt->setString(pos++, pubkey.fingerprint);
+        insert_into_pubkey_stmt->setString(pos++, pubkey.priFingerprint);
+        insert_into_pubkey_stmt->setInt(pos++, pubkey.pubAlgorithm);
+        insert_into_pubkey_stmt->setString(pos++, pubkey.creationTime);
+        insert_into_pubkey_stmt->setString(pos++, pubkey.expirationTime);
+        
+        for (const auto &v: pubkey.algValue){
+            insert_into_pubkey_stmt->setString(pos++, v);
+        }
+        insert_into_pubkey_stmt->setString(pos++, pubkey.curve);
+        insert_into_pubkey_stmt->execute();
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_pubkey_table FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
+    }
+}
+
+
+void DBManager::write_userID_csv(const DBStruct::userID &uid) {
+    try{
+        ostringstream f;
+        f << '"' << uid.ownerkeyID << "\",";
+        f << '"' << hexlify(uid.fingerprint) << "\",";
+        f << '"' << ascii2radix64(uid.name) << "\",";
+        f << "\n";
+        FILEMANAGER.write(file_list.at(Utils::TABLES::USERID), f.str());
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_userID_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
+    }
+}
+
+void DBManager::write_userID_table(const DBStruct::userID &uid) {
+    try{
+        int pos = 1;
+        insert_into_userid_stmt->setString(pos++, uid.ownerkeyID);
+        insert_into_userid_stmt->setString(pos++, uid.fingerprint);
+        insert_into_userid_stmt->setString(pos++, uid.name);
+        insert_into_userid_stmt->execute();
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_userID_table FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
+    }
+}
+
+void DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
+    try{
+        ostringstream f;
+        f << '"' << to_string(ua.id) << "\",";
+        f << '"' << hexlify(ua.fingerprint) << "\",";
+        f << '"' << ascii2radix64(ua.name) << "\",";
+        f << '"' << ua.encoding << "\",";
+        f << '"' << hexlify(ua.image) << "\",";
+        f << "\n";
+        FILEMANAGER.write(file_list.at(Utils::TABLES::USER_ATTRIBUTES), f.str());
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_userAttributes_csv FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                          e.what());
+    }
+}
+
+void DBManager::write_userAttributes_table(const DBStruct::userAtt &ua) {
+    int pos = 1;
+    try{
+        insert_into_userattributes_stmt->setInt(pos++, ua.id);
+        insert_into_userattributes_stmt->setString(pos++, ua.fingerprint);
+        insert_into_userattributes_stmt->setString(pos++, ua.name);
+        insert_into_userattributes_stmt->setInt(pos++, ua.encoding);
+        insert_into_userattributes_stmt->setString(pos++, ua.image);
+        insert_into_userattributes_stmt->execute();
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_userAttributes_table FAILED, the UserID not have the results of the unpacking in the database! - %s",
+                          e.what());
+    }
+}
+
+
+void DBManager::write_signature_csv(const DBStruct::signatures &ss) {
+    try{
+        ostringstream f;
+        f << '"' << ss.type << "\",";
+        f << '"' << ss.pubAlgorithm << "\",";
+        f << '"' << ss.hashAlgorithm << "\",";
+        f << '"' << ss.version << "\",";
+        f << '"' << ss.issuingKeyId << "\",";
+        f << '"' << ss.signedKeyId << "\",";
+        f << '"' << hexlify(ss.issuingFingerprint) << "\",";
+        f << '"' << hexlify(ss.signedFingerprint) << "\",";
+        f << '"' << ascii2radix64(ss.signedUsername) << "\",";
+        f << '"' << ascii2radix64(ss.issuingUsername) << "\",";
+        f << '"' << ss.uatt_id << "\",";
+        f << '"' << ascii2radix64(ss.regex) << "\",";
+        f << '"' << ss.creationTime << "\",";
+        f << '"' << ss.expirationTime << "\",";
+        f << '"' << hexlify(ss.rString) << "\",";
+        f << '"' << hexlify(ss.sString) << "\",";
+        f << '"' << hexlify(ss.flags) << "\",";
+        f << '"' << hexlify(ss.hashHeader) << "\",";
+        f << '"' << hexlify(ss.signedHash) << "\",";
+        f << '"' << ss.hashMismatch << "\",";
+        f << '"' << ss.keyExpirationTime << "\",";
+        f << '"' << ss.revocationCode << "\",";
+        f << '"' << ascii2radix64(ss.revocationReason) << "\",";
+        f << '"' << ss.revocationSigId << "\",";
+        f << '"' << ss.isRevocable << "\",";
+        f << '"' << ss.isExportable << "\",";
+        f << '"' << ss.isExpired << "\",";
+        f << '"' << ss.isRevocation << "\",";
+        f << "\n";
+        FILEMANAGER.write(file_list.at(Utils::TABLES::SIGNATURE), f.str());
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s",
+                          e.what());
+    }
+}
+
+void DBManager::write_signature_table(const DBStruct::signatures &ss) {
+    int pos = 1;
+    try{
+        insert_into_signature_stmt->setInt(pos++, ss.type);
+        insert_into_signature_stmt->setInt(pos++, ss.pubAlgorithm);
+        insert_into_signature_stmt->setInt(pos++, ss.hashAlgorithm);
+        insert_into_signature_stmt->setInt(pos++, ss.version);
+        insert_into_signature_stmt->setString(pos++, ss.issuingKeyId);
+        insert_into_signature_stmt->setString(pos++, ss.signedKeyId);
+        insert_into_signature_stmt->setString(pos++, ss.issuingFingerprint);
+        insert_into_signature_stmt->setString(pos++, ss.signedFingerprint);
+        insert_into_signature_stmt->setString(pos++, ss.signedUsername);
+        insert_into_signature_stmt->setString(pos++, ss.issuingUsername);
+        insert_into_signature_stmt->setString(pos++, ss.uatt_id);
+        insert_into_signature_stmt->setString(pos++, ss.regex);
+        insert_into_signature_stmt->setString(pos++, ss.creationTime);
+        insert_into_signature_stmt->setString(pos++, ss.expirationTime);
+        insert_into_signature_stmt->setString(pos++, ss.rString);
+        insert_into_signature_stmt->setString(pos++, ss.sString);
+        insert_into_signature_stmt->setString(pos++, ss.flags);
+        insert_into_signature_stmt->setString(pos++, ss.hashHeader);
+        insert_into_signature_stmt->setString(pos++, ss.signedHash);
+        insert_into_signature_stmt->setInt(pos++, ss.hashMismatch);
+        insert_into_signature_stmt->setString(pos++, ss.keyExpirationTime);
+        insert_into_signature_stmt->setInt(pos++, ss.revocationCode);
+        insert_into_signature_stmt->setString(pos++, ss.revocationReason);
+        insert_into_signature_stmt->setInt(pos++, ss.revocationSigId);
+        insert_into_signature_stmt->setInt(pos++, ss.isRevocable);
+        insert_into_signature_stmt->setInt(pos++, ss.isExportable);
+        insert_into_signature_stmt->setInt(pos++, ss.isExpired);
+        insert_into_signature_stmt->setInt(pos++, ss.isRevocation);
+        insert_into_signature_stmt->execute();
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_signature_table FAILED, the signature not have the results of the unpacking in the database! - %s",
+                          e.what());
+    }
+}
+
+void DBManager::write_self_signature_csv(const DBStruct::signatures &ss) {
+    try{
+        ostringstream f;
+        f << '"' << ss.type << "\",";
+        f << '"' << ss.pubAlgorithm << "\",";
+        f << '"' << ss.hashAlgorithm << "\",";
+        f << '"' << ss.version << "\",";
+        f << '"' << ss.issuingKeyId << "\",";
+        f << '"' << hexlify(ss.issuingFingerprint) << "\",";
+        f << '"' << hexlify(ss.preferedHash) << "\",";
+        f << '"' << hexlify(ss.preferedCompression) << "\",";
+        f << '"' << hexlify(ss.preferedSymmetric) << "\",";
+        f << '"' << ss.trustLevel << "\",";
+        f << '"' << ss.keyExpirationTime << "\",";
+        f << '"' << ss.isPrimaryUserId << "\",";
+        f << '"' << ascii2radix64(ss.signedUsername) << "\",";
+        f << "\n";
+        FILEMANAGER.write(file_list.at(Utils::TABLES::SELF_SIGNATURE), f.str());
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_self_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s",
+                          e.what());
+    }
+}
+
+void DBManager::write_self_signature_table(const DBStruct::signatures &ss) {
+    int pos = 1;
+    try{
+        insert_into_selfsignature_stmt->setInt(pos++, ss.type);
+        insert_into_selfsignature_stmt->setInt(pos++, ss.pubAlgorithm);
+        insert_into_selfsignature_stmt->setInt(pos++, ss.hashAlgorithm);
+        insert_into_selfsignature_stmt->setInt(pos++, ss.version);
+        insert_into_selfsignature_stmt->setString(pos++, ss.issuingKeyId);
+        insert_into_selfsignature_stmt->setString(pos++, ss.issuingFingerprint);
+        insert_into_selfsignature_stmt->setString(pos++, ss.preferedHash);
+        insert_into_selfsignature_stmt->setString(pos++, ss.preferedCompression);
+        insert_into_selfsignature_stmt->setString(pos++, ss.preferedSymmetric);
+        insert_into_selfsignature_stmt->setInt(pos++, ss.trustLevel);
+        insert_into_selfsignature_stmt->setString(pos++, ss.keyExpirationTime);
+        insert_into_selfsignature_stmt->setInt(pos++, ss.isPrimaryUserId);
+        insert_into_selfsignature_stmt->setString(pos++, ss.signedUsername);
+        insert_into_selfsignature_stmt->execute();
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_self_signature_table FAILED, the signature not have the results of the unpacking in the database! - %s",
+                          e.what());
+    }
+}
+
+
+void DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod){
+    try{
+        ostringstream f;
+        for (const auto &c: mod.comments){
+            f << '"' << mod.version << "\",";
+            f << '"' << hexlify(mod.fingerprint) << "\"";
+            f << '"' << c << "\",";
+            f << "\n";
+        }
+        FILEMANAGER.write(file_list.at(Utils::TABLES::UNPACKER_ERRORS), f.str());
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_unpackerErrors_csv FAILED, the error of the unpacking will not be in the database! - %s",
+                          e.what());
+    }
+}
+
+void DBManager::write_unpackerErrors_table(const DBStruct::Unpacker_errors &mod){
+    try{
+        for (const auto &c: mod.comments){
+            int pos = 1;
+            insert_into_unpackererrors_stmt->setInt(pos++, mod.version);
+            insert_into_unpackererrors_stmt->setString(pos++, mod.fingerprint);
+            insert_into_unpackererrors_stmt->setString(pos++, c);
+            insert_into_unpackererrors_stmt->execute();
+        }
+    }catch (exception &e){
+        syslog(LOG_CRIT, "write_unpackerErrors_table FAILED, the error of the unpacking will not be in the database! - %s",
+                          e.what());
+    }
+}
+
+
+
+
 pair<std::string, std::string> DBManager::insert_pubkey_stmt = std::make_pair<string, string>("LOAD DATA LOCAL INFILE '",
                                      "' IGNORE INTO TABLE Pubkey FIELDS TERMINATED BY ',' ENCLOSED BY '\"'"
                                      "LINES TERMINATED BY '\\n' "
@@ -566,7 +884,7 @@ string DBManager::drop_unpacker_tmp_table = "DROP TEMPORARY TABLE tmp_unpacker;"
 
     pair<std::string, std::string> DBManager::insert_certificate_stmt = std::make_pair<string, string>(
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE gpg_keyserver FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
-            "LINES TERMINATED BY '\\n' (version,ID,@hexfingerprint,hash,is_unpacked,error_code,filename,origin,len) "
+            "LINES TERMINATED BY '\\n' (version,keyId,@hexfingerprint,hash,is_unpacked,error_code,filename,origin,len) "
             "SET fingerprint = UNHEX(@hexfingerprint)");
 
 

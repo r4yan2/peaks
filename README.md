@@ -6,103 +6,105 @@ Peaks is an OpenPGP keyserver aiming to be fast, reliable, documented and able t
 Contents
 -------
 
-* Install
-    * Snap
-    * Docker
-    * Compile
-* Configuration
-    * Database
-    * Config and membership
-* Usage
-* Docker-compose
+* [Get](#get)
+    * [Docker](#docker)
+    * [Snap](#snap)
+    * [Compile](#compile)
+* [Configure](#configuration)
+    * [Docker Compose](#dockercompose)
+    * [Manual Configuration](#manual)
+      * [Database](#database)
+      * [Configuration files](#config_membership)
+    * [Config file](#peaks_config)
+* [Use](#usage)
 
+<a name="get"/>
 
-Install
--------
+# Get
+
+The easier way to get peaks is to use one of the packaged versions or, if you prefer, to compile it yourself
+
+<a name="docker"/>
+
+## Docker
+
+```bash
+docker pull r4yan2/peaks:slim
+```
+
+<a name="snap"/>
 
 ## Snap
 
 [![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/peaks)
 
-By far the easieast and comfy solution, just
-
 ```bash
 sudo snap install peaks
 ```
 
-## Docker
-
-```bash
-docker pull peaks:latest
-```
-
-**Note**: the docker container is suitable to be used as stand alone binary
+<a name="compile"/>
 
 ## Compile
 
-Be sure to download the full repo (including submodules)
+Download the full repository
 
 ```bash
-git clone --recursive https://github.com/r4yan2/peaks.git
+git clone https://github.com/r4yan2/peaks
 ```
 
-or if you have just downloaded the zip archive of this repository without the submodule or cloned without `--recursive`
+or download and extract the zip archive of repository
+https://github.com/r4yan2/peaks/archive/refs/heads/master.zip
+
+Peaks depends on the following libraries and tools:
+* build-essential
+* cmake
+* [Boost Libraries](https://www.boost.org/)
+  * System
+  * Filesystem
+  * Program Options
+  * Unit Test Framework
+* curl development files
+* pcre development files
+* zlib development files
+* mysql cpp connector
+* [Gnu Multiple precision arithmetic library](https://gmplib.org/)
+
+**On Debian/Ubuntu you can install these dependencies with**
 
 ```bash
-cd peaks/
-git submodule update --init --recursive
+apt-get install -y build-essential cmake m4 curl python git libcurl4-openssl-dev libpcre3-dev libicu-dev libgcrypt20-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libboost-test-dev libmysqlcppconn-dev libssl-dev
 ```
 
-Peaks depends on:
-* build-essential (and cmake)
-* Boost Libraries
-	* System
-	* Filesystem
-	* Program Options
-    * Unit Test Framework
-* cppcms
-    * pcre development files
-    * zlib development files
-* mysqlcppconnector
-* NTL
-* GMP
-* OpenPGP
+Some dependencies are not packaged and needs to be compiled, a bash script has been created to do it automatically
 
-**On Debian/Ubuntu you can install part of the dependencies with**
 
 ```bash
-apt-get install -y build-essential m4 curl python git libcurl4-openssl-dev libpcre3-dev libicu-dev libgcrypt20-dev zlib1g-dev libbz2-dev libgmp-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libboost-test-dev libmysqlcppconn-dev libssl-dev
+BUILD=Release PREFIX=$PWD/lib ./compile_libraries.sh
 ```
+* `PREFIX` might be changed according to your needs, if you would like a system install set as prefix `/usr/local` (You might need to execute the script with `sudo`)
 
-### Cmake
-
-First of all install cmake if you still don't have it
-```bash
-apt install cmake
-```
-
-NTL, GMP and OpenPGP can be compiled running
-
-```bash
-BUILD=Release PREFIX=/usr/local ./compile_libraries.sh
-```
-
-Then, to compile the keyserver:
+NTL, GMP and OpenPGP libraries will be ready.
+We can now compile the keyserver:
 
 ```bash
 mkdir build && cd build/
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_LIB_PREFIX=/usr/local -DCMAKE_INSTALL_PREFIX=/usr/local/bin ..
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_LIB_PREFIX=../$PWD/lib -DCMAKE_INSTALL_PREFIX=/usr/local/bin ..
 make
 ```
 
-`-DCMAKE_LIB_PREFIX` and `-DCMAKE_INSTALL_PREFIX` can be customized to suit your needs
+* `-DCMAKE_LIB_PREFIX` needs to match `PREFIX`
+* `-DCMAKE_INSTALL_PREFIX` is the output folder of the binary, if removed, the output will be the `bin` folder in the project root
 
-Configuration
------
+<a name="config"/>
+
+# Configure
+
+<a name="dockercompose"/>
 
 ## Docker Compose
 
 The easiest way to have an up and running peaks keyserver is to use a `docker-compose` file.
+As multiple configuration options are available, it is provided an example configuration that will work on most systems with minimal modifications
 
 ```
 version: '3.3'
@@ -114,11 +116,11 @@ services:
          - ./peaks_db:/var/lib/mysql:rw
       environment:
          MYSQL_ROOT_PASSWORD: "mysupersuperpassword"
-      command: --innodb_buffer_pool_size=2000M --innodb_log_file_size=500M --innodb_log_buffer_size=500M --innodb_support_xa=0 --innodb_flush_log_at_trx_commit=0 --innodb_doublewrite=0 --max-allowed-packet=500M
+      command: --innodb_buffer_pool_size=1000M --innodb_log_file_size=250M --innodb_log_buffer_size=250M --innodb_support_xa=0 --innodb_flush_log_at_trx_commit=0 --innodb_doublewrite=0 --max-allowed-packet=250M
     peaks:
       depends_on:
          - db
-      image: r4yan2/peaks:latest
+      image: r4yan2/peaks:slim
       volumes:
         - ./config:/etc/peaks
         - ./filestore:/var/peaks
@@ -137,28 +139,47 @@ services:
         - /srv/peaks/init.sh && svscan /srv/peaks/service
 ```
 
-**Volumes**
-* `config` is the path to the config folder, if an empty folder is provided, an init script will create a default config and membership file for you
-* `filestore` volume holds new key material
-* `pgp_dump` is the path to the current dump
+**Volumes/Mount**
+* `peaks_db` is where the database will store the persistent data
+* `config` is the path to the config folder, if an empty folder is provided, the init script will create a default config and membership file for you
+* `filestore` will hold new key material
+* `pgp_dump` is the path to the current dump, please note that references to these files will be used to retrieve key material when needed, so you **shall not** delete the files after setup
 
 **Environment**
 * `MYSQL_HOST` `MYSQL_PORT` `MYSQL_USER` `MYSQL_PASSWORD` may be changed as needed (just make sure `MYSQL_ROOT_PASSWORD` and `MYSQL_PASSORD` match)
 
-Then run `docker-compose up -d`
+**Commands**
+* mysql command line is just an example to improve performances over the default parameters, if you are short on RAM it is possible to use just `--innodb_support_xa=0 --innodb_flush_log_at_trx_commit=0 --innodb_doublewrite=0`. However, the queries will possibly we slower.
 
-## Database
+
+The image contains a `init.sh` file that will take care of initialization.
+Just run `docker-compose up -d`, the script will:
+* inizialize the config, if necessary
+* import the key material present in `pgp_dump`
+* build the prefix tree required for reconciliation
+* start peaks deamons:
+  * web server, peaks web interface will be available at http://server-ip:port/pks
+  * unpacker server, a indexing service to query the database from the web interface
+  * reconciliation keyserver
+
+<a name="manual"/>
+
+## Manual configuration
+
+<a name="database"/>
+
+### Database
 
 peaks require a mysql 5.6 or 5.7 installation to work.
-Using the ![docker image](https://hub.docker.com/_/mysql/) is perhaps the easiest and most straghtforward way to configure a mysql server, more on this in the [relevant section](#Docker)
+No particular operation needs to be done in mysql itself, peaks will automatically set up the database. Just ensure there is an user with [create database permissions](https://dev.mysql.com/doc/refman/5.7/en/grant.html)
 
-In order to specify the database parameters to peaks you need to tweak the peaks settings, more on this in the upcoming sections
+<a name="config_membership"/>
 
-## Config and membership
+### Config and membership
 
 Peaks will look for a configuration file `peaks_config` in one of the following locations:
 
-* the current location
+* the `peaks` binary location
 * `/var/lib/peaks/peaks_config`
 * `/etc/peaks/peaks_config`
 
@@ -169,16 +190,16 @@ peaks config > peaks_config
 ```
 
 Most of the default parameters will do just fine for most cases.
-In particular you need to change the **database configuration** according to your system setup, otherwise peaks will hang or complain or both.
+The **database configuration** needs to be changed according to your system setup, otherwise peaks will hang or complain or both.
 
-Please take a look into the [dedicated section](#options) to know more about the config.
+Please take a look into the [dedicated section](#peaks_config) to know more about the config.
 
 In the configuration file it will be required to set up the location of the *membership* file
-For those new to the keyserver, a membership file holds the information of the peer which agreed to synchronize key material with you. More info in the [membership](#membership) section
+For those new to the keyservers, a membership file holds the information of the peer which agreed to synchronize key material with you. More info in the [membership](#membership) section
 
+<a name="usage"/>
 
-Usage
------
+# Use
 
 The main **peaks** executable accept the following commands:
 
@@ -188,7 +209,7 @@ The main **peaks** executable accept the following commands:
 * serve - serve the pgp infrastructure through the web interface
 * recon - start reconing with other peers
 * unpack - divide and analyze the stored certificates in the actual key material
-* analyze - analyze the key material to find known vulnerabilities (**WARNING**: this will increase your database size and you will have no benefits from using this command)
+* analyze - analyze the key material to find known vulnerabilities (**WARNING**: CPU/Memory/Disk intensive, for key security analysis only)
 
 `peaks -h` will give the list of accepted commands and options
 
@@ -200,28 +221,21 @@ You will need to have a collection of `pgp` dump that peaks will import.
 peaks import --init <path_to_DB_initialization_file> --path <path_to_dump> --threads <N>
 ```
 
-* `init` will let peaks handle the initialization of the DB schema. A file has been prepared for this purpose under the `bin` subdirectory. In case restrictive database access is used probably peaks will not have the necessary permission to init the DB. The process can be completed manually before the first run by using the dedicated `schema.sql` in the `database` folder.
-* `path` should point to the folder keeping the .pgp files
-* `threads` is the number of threads to use to parse the key material
+* `init` DB initialization file. A `schema.sql` might be found under the `bin` folder
+* `path` folder keeping the .pgp files
+* `threads` number of threads to use
 
-**Note**: to reduce the operation time and the I/O stress on the target machine peaks will **not** import certificate in the database, just their metadata, so you should not remove them after the import procedure
+**Note**: to reduce the operation time, database size and I/O stress on the target machine peaks will **not** import certificate in the database, just their metadata, so you should not remove them after the import procedure
 
-In case you would like to discard the imported certificate data just connect to a mysql shell and issue
+### Build the prefix tree
 
-```sql
-use gpg_keyserver;
-truncate gpg_keyserver;
-```
-
-## Build the prefix tree
-
-After succesfully importing the certificate you need to generate the ptree to reconcile with other keyservers
+After succesfully importing the certificate you need to generate the metadata to reconcile with other keyservers
 
 ```bash
 peaks build
 ```
 
-## Start up the server process
+### Start up the server process
 
 To be able to query peaks from the web interface (and to allow other keyserver to fetch key-material from you) run
 
@@ -229,37 +243,45 @@ To be able to query peaks from the web interface (and to allow other keyserver t
 peaks serve
 ```
 
+At the beginning, no key will be searchable using the web interface. This because the key material needs to be indexed first.
+A daemon will slowly unpack the certificates
+**Note** if you don't want/need the web search you can skip this step, the key can be directly fetched using the keyID/fingerprint via command line tools
 
+```bash
+peks unpack
+```
 
-## Reconcile
+### Reconcile
 
-To keep-up with other keyservers you need to start the daemon(s) provided with
-peaks:
-
-* reconciliation daemon
-* unpacker daemon
-* server
-* (optional) if you are a researcher you might also be intrested to
-  the analyzer, otherwise just pretend that such command does not exists
-
-To start reconciling please setup the config file and the **membership** file accordingly. Then, just run
+To start reconciling please setup the config file and the **membership** file accordingly.
+Then, just run
 
 ```bash
 peaks recon
 ```
 
-To run the daemon for the unpacking of key material (needed to allow humans to search keys from the web interface). This process will run in batch to avoid using too much resources, it will take a while to complete
+
+### Blocklist
+
+Sometimes it may be necessary for server administrator to block certain key.
+Just provide the list of key IDs to the `blocklist` command.
+
+Note that the blocked keys will be completely wiped from the database and cannot be readded again
 
 ```bash
-peaks unpack
+peaks blocklist ID1 ID2
 ```
+
+<a name="peaks_config"/>
 
 ## Configuration options
 
 Now will follow a list of the configuration options that could be modified from the main configuration file
 
-### Generic settings
+### Internal settings
 
+These settings change the way metadata are organized or the behavior of reconciliation.
+It is better to leave them as default
 
 |Name|Default Value|Brief Explanation|Should be changed?|
 |----|-----------------|-------------|------------------|
@@ -268,6 +290,21 @@ Now will follow a list of the configuration options that could be modified from 
 |pthree_thresh_mult|10| multiplicative constant| NO|
 |P_SKS_STRING|5305128895516023225051275203|finite field used by SKS|NO|
 |reconciliation_timeout|45|timeout for the reconciliation protocol|NO|
+|max_read_len_shift | 24 |max_read_len will be set according to this value| NO|
+|max_recover_size | 15000 | maximum keys to be recovered in a single session| NO|
+|max_request_queue_len | 60000 | maximum length of the server request | NO|
+|request_chunk_size | 100| maximum number of keys to be request whitin a single hashquery request|with care|
+|max_outstanding_recon_req | 100 ||
+|async_timeout_sec | 1|network timeout - second|NO|
+|async_timeout_usec | 0 |network timeout - millisecond|NO|
+
+
+### Generic settings
+
+These settings are generic and may be changed
+
+|Name|Default Value|Brief Explanation|Should be changed?|
+|----|-----------------|-------------|------------------|
 |version|1.1.6 |version sent to sks, needed for compatiblity|NO|
 |recon_port|11372|Port of which expose the recon service|YES|
 |http_port | 11373|Port on which expose the web server|YES|
@@ -275,45 +312,28 @@ Now will follow a list of the configuration options that could be modified from 
 |filters | yminsky.dedup,yminsky.merge|filters to merge certificates|NO|
 |name | peaks_recon|name of the server|YES|
 |gossip_interval | 60 | interval between gossip attemps|YES|
-|max_read_len_shift | 24 |max_read_len will be set according to this value| NO|
-|max_recover_size | 15000 | maximum keys to be recovered in a single session| NO|
-|default_timeout | 300 | default communication timout | YES|
-|max_request_queue_len | 60000 | maximum length of the server request | NO|
-|request_chunk_size | 100| maximum number of keys to be request whitin a single hashquery request|
-|max_outstanding_recon_req | 100 ||
-|sks_bitstring | 0     |compatibility mode|NO|
-|async_timeout_sec | 1|network timeout - second|NO|
-|async_timeout_usec | 0 |network timeout - millisecond|NO|
-|unpacker_limit | 10000|Upper limit to the number of certificates unpacked in a single run|YES|
-|analyzer_limit | 10000|Upper limit to the number of certificates analyzed in a single run|YES|
+|max_unpacker_keysize | unset | upper size limit to the key to index (in bytes) | YES|
+|unpacker_interval | 60 | interval in seconds between indexing runs | YES |
+|unpacker_threads | 1 | number of threads used by the indexer | YES|
+|analyzer_interval | 60 | interval in seconds between analyzer runs | YES |
+|analyzer_threads | 1 | number of threads used by the analyzer | YES|
+|analyzer_rsa_modulus | 0 | whether to run the RSA modulus scan| YES|
+|unpacker_limit | 10000 | limit number of keys indexed at once | YES |
+|analyzer_limit | 10000 | limit number of keys analyzed at once | YES |
+|cgi_serve_stats | 0 | whether to expose the statistics via api | YES|
 
-### Membership file
-
-This file will host hostname and port of the keyserver that agree to reconcile with you.
-Empty lines and lines commented via `#` are ignored
-Note that the agreement with another keyserver operator is necessary: if your keyserver does not appear in the membership file of the other server it will refuse the connection.
-
-```Example
-yourserver.example.net         11370   # Your full name <emailaddress for admin purposes> 
-keyserver.gingerbear.net       11370   # John P. Clizbe <John@Gingerbear.net>          
-sks.keyservers.net             11370   # John P. Clizbe <John@Gingerbear.net>          
-keyserver.rainydayz.org        11370   # Andy Ruddock <andy.ruddock@rainydayz.org>     
-keyserver.computer42.org       11370   # H.-Dirk Schmitt <dirk@computer42.org>         
-
-```
-
-### Database settings
+#### Database settings
 
 This settings needs to be changed according to your setup
 
-|Name|Brief Explanation|
-|----|-----------------|
-|db_host |   database host   |
-|db_user | database user    |
-|db_database | database name|
-|db_password| database user password|
+|Name|Default Value|Brief Explanation|
+|----|-------------|-----------------|
+|db_host ||   database host   |
+|db_user || database user    |
+|db_database || database name|
+|db_password|| database user password|
 
-### File and folders settings     
+#### File and folders settings     
 
 This settings might be changed according to your needs
 
@@ -323,21 +343,24 @@ This settings might be changed according to your needs
 |default_dump_path | /tmp/pgp_dump/ |
 |tmp_folder | /tmp/peaks_tmp |
 |error_folder | /tmp/peaks_errors |
+|filestorage_format | /var/peaks/filestorage/peaks_filestorage_%d.pgp | filestorage format |
+|filestorage_maxsize | 100 | single file max size |
+|expire_interval | 15 | expire interval for cache (statistics api only) |
 
-### Running tests
+<a name="membership"/>
 
-Tests can be compiled passing the appropriate parameter to cmake
+### Membership file
 
-`cmake -DTEST=ON`
+This file will host hostname and port of the keyserver that agree to reconcile with you.
 
-test will be generated under bin/peaks-test
+Empty lines and lines commented via `#` are ignored
+Note that the agreement with another keyserver operator is necessary: if your keyserver does not appear in the membership file of the other server it will refuse the connection.
 
-## Guidelines for commit
+```Example
+yourserver.example.net         11370   # Your full name <emailaddress for admin purposes>
+keyserver.gingerbear.net       11370   # John P. Clizbe <John@Gingerbear.net>          
+sks.keyservers.net             11370   # John P. Clizbe <John@Gingerbear.net>          
+keyserver.rainydayz.org        11370   # Andy Ruddock <andy.ruddock@rainydayz.org>     
+keyserver.computer42.org       11370   # H.-Dirk Schmitt <dirk@computer42.org>         
 
-Short non tedius guidelines for commit titles, do whatever you want with the
-message but try to explain why the commit was needed at least.
-
-* [FIX] fixing stuff
-* [CHG] changin stuff
-* [IMP] new implementation
-* [DEL] deleting stuff
+```

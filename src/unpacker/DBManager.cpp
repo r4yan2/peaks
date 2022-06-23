@@ -52,9 +52,6 @@ void UNPACKER_DBManager::prepare_queries(){
     update_revoked_1 = prepare_query("INSERT IGNORE INTO revocationSignatures select issuingKeyId, "
                   "signedFingerprint, signedUsername FROM Signatures WHERE isRevocation = 1;");
     update_revoked_2 = prepare_query("UPDATE Signatures INNER JOIN revocationSignatures on (Signatures.issuingKeyId = revocationSignatures.issuingKeyId and Signatures.signedFingerprint = revocationSignatures.signedFingerprint and Signatures.signedUsername = revocationSignatures.signedUsername) set isRevoked = 1, isValid = -1 where isRevoked = 0 and isRevocation = 0;");
-    insert_into_blocklist_stmt = prepare_query("INSERT IGNORE INTO blocklist (ID) VALUES (?)");
-    commit = prepare_query("COMMIT;");
-
 }
 
 UNPACKER_DBManager::~UNPACKER_DBManager(){
@@ -137,153 +134,6 @@ void UNPACKER_DBManager::set_as_not_analyzable(const int &version, const string 
     }
 }
 
-void UNPACKER_DBManager::write_unpacked_csv(const OpenPGP::Key::Ptr &key, const DBStruct::Unpacker_errors &mod){
-    try{
-        ostringstream f;
-        f << '"' << to_string(key->version()) << "\",";
-        f << '"' << hexlify(key->fingerprint()) << "\",";
-        if (mod.modified){
-            f << '"' << "2" << "\",";
-        }else{
-            f << '"' << "1" << "\",";
-        }
-        f << "\n";
-        FILEMANAGER.write(file_list.at(Utils::TABLES::UNPACKED), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_unpacked_csv FAILED, the key will result not UNPACKED in the database! - %s", e.what());
-    }
-}
-
-void UNPACKER_DBManager::write_pubkey_csv(const DBStruct::pubkey &pubkey) {
-    try{
-        ostringstream f;
-        f << '"' << pubkey.keyId << "\",";
-        f << '"' << pubkey.version << "\",";
-        f << '"' << hexlify(pubkey.fingerprint) << "\",";
-        f << '"' << hexlify(pubkey.priFingerprint) << "\",";
-        f << '"' << pubkey.pubAlgorithm << "\",";
-        f << '"' << pubkey.creationTime << "\",";
-        f << '"' << pubkey.expirationTime << "\",";
-        for (const auto &v: pubkey.algValue){
-            f << '"' << hexlify(v) << "\",";
-        }
-        f << '"' << pubkey.curve<< "\",";
-        f << "\n";
-        FILEMANAGER.write(file_list.at(Utils::TABLES::PUBKEY), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_pubkey_csv FAILED, the key not have the results of the unpacking in the database! - %s", e.what());
-    }
-}
-
-void UNPACKER_DBManager::write_userID_csv(const DBStruct::userID &uid) {
-    try{
-        ostringstream f;
-        f << '"' << uid.ownerkeyID << "\",";
-        f << '"' << hexlify(uid.fingerprint) << "\",";
-        f << '"' << ascii2radix64(uid.name) << "\",";
-        f << "\n";
-        FILEMANAGER.write(file_list.at(Utils::TABLES::USERID), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_userID_csv FAILED, the UserID not have the results of the unpacking in the database! - %s", e.what());
-    }
-}
-
-
-void UNPACKER_DBManager::write_userAttributes_csv(const DBStruct::userAtt &ua) {
-    try{
-        ostringstream f;
-        f << '"' << to_string(ua.id) << "\",";
-        f << '"' << hexlify(ua.fingerprint) << "\",";
-        f << '"' << ascii2radix64(ua.name) << "\",";
-        f << '"' << ua.encoding << "\",";
-        f << '"' << ua.image << "\",";
-        f << "\n";
-        FILEMANAGER.write(file_list.at(Utils::TABLES::USER_ATTRIBUTES), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_userAttributes_csv FAILED, the UserID not have the results of the unpacking in the database! - %s",
-                          e.what());
-    }
-}
-
-void UNPACKER_DBManager::write_signature_csv(const DBStruct::signatures &ss) {
-    try{
-        ostringstream f;
-        f << '"' << ss.type << "\",";
-        f << '"' << ss.pubAlgorithm << "\",";
-        f << '"' << ss.hashAlgorithm << "\",";
-        f << '"' << ss.version << "\",";
-        f << '"' << ss.issuingKeyId << "\",";
-        f << '"' << ss.signedKeyId << "\",";
-        f << '"' << hexlify(ss.issuingFingerprint) << "\",";
-        f << '"' << hexlify(ss.signedFingerprint) << "\",";
-        f << '"' << ss.signedUsername << "\",";
-        f << '"' << ss.issuingUsername << "\",";
-        f << '"' << ss.uatt_id << "\",";
-        f << '"' << ascii2radix64(ss.regex) << "\",";
-        f << '"' << ss.creationTime << "\",";
-        f << '"' << ss.expirationTime << "\",";
-        f << '"' << hexlify(ss.rString) << "\",";
-        f << '"' << hexlify(ss.sString) << "\",";
-        f << '"' << hexlify(ss.flags) << "\",";
-        f << '"' << hexlify(ss.hashHeader) << "\",";
-        f << '"' << hexlify(ss.signedHash) << "\",";
-        f << '"' << ss.hashMismatch << "\",";
-        f << '"' << ss.keyExpirationTime << "\",";
-        f << '"' << ss.revocationCode << "\",";
-        f << '"' << ascii2radix64(ss.revocationReason) << "\",";
-        f << '"' << ss.revocationSigId << "\",";
-        f << '"' << ss.isRevocable << "\",";
-        f << '"' << ss.isExportable << "\",";
-        f << '"' << ss.isExpired << "\",";
-        f << '"' << ss.isRevocation << "\",";
-        f << "\n";
-        FILEMANAGER.write(file_list.at(Utils::TABLES::SIGNATURE), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s",
-                          e.what());
-    }
-}
-
-void UNPACKER_DBManager::write_self_signature_csv(const DBStruct::signatures &ss) {
-    try{
-        ostringstream f;
-        f << '"' << ss.type << "\",";
-        f << '"' << ss.pubAlgorithm << "\",";
-        f << '"' << ss.hashAlgorithm << "\",";
-        f << '"' << ss.version << "\",";
-        f << '"' << ss.issuingKeyId << "\",";
-        f << '"' << hexlify(ss.issuingFingerprint) << "\",";
-        f << '"' << hexlify(ss.preferedHash) << "\",";
-        f << '"' << hexlify(ss.preferedCompression) << "\",";
-        f << '"' << hexlify(ss.preferedSymmetric) << "\",";
-        f << '"' << ss.trustLevel << "\",";
-        f << '"' << ss.keyExpirationTime << "\",";
-        f << '"' << ss.isPrimaryUserId << "\",";
-        f << '"' << ss.signedUsername << "\",";
-        f << "\n";
-        FILEMANAGER.write(file_list.at(Utils::TABLES::SELF_SIGNATURE), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_self_signature_csv FAILED, the signature not have the results of the unpacking in the database! - %s",
-                          e.what());
-    }
-}
-
-void UNPACKER_DBManager::write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod){
-    try{
-        ostringstream f;
-        for (const auto &c: mod.comments){
-            f << '"' << mod.version << "\",";
-            f << '"' << hexlify(mod.fingerprint) << "\"";
-            f << '"' << c << "\",";
-            f << "\n";
-        }
-        FILEMANAGER.write(file_list.at(Utils::TABLES::UNPACKER_ERRORS), f.str());
-    }catch (exception &e){
-        syslog(LOG_CRIT, "write_unpackerErrors_csv FAILED, the error of the unpacking will not be in the database! - %s",
-                          e.what());
-    }
-}
-
 void UNPACKER_DBManager::UpdateSignatureIssuingFingerprint() {
     try{
         update_issuing_fingerprint->execute();
@@ -306,7 +156,7 @@ void UNPACKER_DBManager::UpdateSignatureIssuingUsername() {
 
 void UNPACKER_DBManager::UpdateIsExpired() {
     try{
-        commit->execute();
+        execute_query("COMMIT");
         update_expired->execute();
         syslog(LOG_DEBUG, "update_expired_stmt DONE");
     }catch (exception &e){
@@ -317,7 +167,7 @@ void UNPACKER_DBManager::UpdateIsExpired() {
 
 void UNPACKER_DBManager::UpdateIsRevoked() {
     try{
-        commit->execute();
+        execute_query("COMMIT");
         //update_revoked_1->execute();
         update_revoked_2->execute();
         syslog(LOG_DEBUG, "update_revoked DONE");
@@ -330,21 +180,11 @@ void UNPACKER_DBManager::UpdateIsRevoked() {
 
 void UNPACKER_DBManager::UpdateIsValid() {
     try{
-        commit->execute();
+        execute_query("COMMIT");
         update_valid->execute();
         syslog(LOG_DEBUG, "update_valid DONE");
     }catch (exception &e){
         syslog(LOG_CRIT, "update_valid FAILED, the validity of Signatures will be not up to date! - %s",
-                          e.what());
-    }
-}
-
-void UNPACKER_DBManager::insert_into_blocklist(const std::string &ID) {
-    try{
-        insert_into_blocklist_stmt->setBigInt(1, ID);
-        insert_into_blocklist_stmt->execute();
-    }catch(exception &e){
-        syslog(LOG_CRIT, "insert_into_blocklist_stmt FAILED, the blocklist was not updated! - %s",
                           e.what());
     }
 }

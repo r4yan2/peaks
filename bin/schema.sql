@@ -3,9 +3,8 @@
 --
 
 CREATE TABLE IF NOT EXISTS `gpg_keyserver` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `version` tinyint(3) unsigned NOT NULL,
-  `ID` bigint(20) unsigned NOT NULL,
+  `keyId` bigint(20) unsigned NOT NULL,
   `fingerprint` binary(20) NOT NULL,
   `hash` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_unpacked` tinyint(4) NOT NULL DEFAULT '0',
@@ -14,9 +13,8 @@ CREATE TABLE IF NOT EXISTS `gpg_keyserver` (
   `origin` int(11) NOT NULL,
   `len` int(11) NOT NULL,
   `created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `fingerprint` (`fingerprint`, `version`),
-  KEY `id` (`ID`)
+  PRIMARY KEY (`keyId`),
+  KEY `fingerprint` (`fingerprint`, `version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -146,7 +144,6 @@ CREATE TABLE IF NOT EXISTS `UserID` (
   `fingerprint` binary(20) NOT NULL,
   `name` varchar(750) NOT NULL,
   `is_analyze` tinyint(4) DEFAULT NULL,
-  `bindingAuthentic` tinyint(4) NOT NULL,
   PRIMARY KEY (`fingerprint`,`name`(191)),
   FULLTEXT (`name`(191)),
   FOREIGN KEY `UserID_Pubkey_binding` (`fingerprint`) REFERENCES `Pubkey` (`fingerprint`) ON DELETE CASCADE
@@ -169,8 +166,8 @@ CREATE TABLE IF NOT EXISTS `Unpacker_errors` (
 --
 
 CREATE TABLE IF NOT EXISTS `blocklist` (
-  `ID` bigint(20) unsigned NOT NULL,
-  PRIMARY KEY (`ID`)
+  `keyId` bigint(20) unsigned NOT NULL,
+  PRIMARY KEY (`keyId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --

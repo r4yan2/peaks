@@ -3,6 +3,7 @@
 #include <thread>
 #include "Thread_Pool.h"
 #include <iostream>
+#include <assert.h>
 using namespace std;
 
 namespace peaks{
@@ -59,6 +60,7 @@ void Thread_Pool::terminate(){
     for (auto &th: pool_vect){
         th.join();
     }
+    assert(done());
 }
 
 bool Thread_Pool::done(){
@@ -69,28 +71,28 @@ bool Thread_Pool::done(){
 }
 
 std::shared_ptr<Job> Thread_Pool::Request_Job(){
-    unique_lock <mutex> lock(queue_mutex);
     while(true){
-        if (queue.empty()){
-            condition.wait(lock);
-        }
-        bool all_done = true;
-        for (auto & j: queue){
-            if (!j->free())
-                continue;
-            all_done = false;
-            bool dep_ok = true;
-            for (auto & jp: j->get_dependencies())
-                if (!jp->done())
-                    dep_ok = false;
-            if (dep_ok){
-                j->set_assigned();
-                return j;
+        {
+            std::lock_guard <mutex> lock(queue_mutex);
+            bool all_done = true;
+            for (auto & j: queue){
+                if (!j->free())
+                    continue;
+                all_done = false;
+                bool dep_ok = true;
+                for (auto & jp: j->get_dependencies())
+                    if (!jp->done())
+                        dep_ok = false;
+                if (dep_ok){
+                    j->set_assigned();
+                    return j;
+                }
+            }
+            if (all_done && state == Pool_Status::DONE) {
+                return nullptr;
             }
         }
-        if (all_done && state == Pool_Status::DONE) {
-            return nullptr;
-        }
+    	std::this_thread::sleep_for(std::chrono::milliseconds{500});
     }
 }
 
@@ -111,7 +113,7 @@ void Job::execute(){
     try{
         assignment();
     }catch(std::exception &e){
-        std::cout << e.what() << std::endl;
+        std::cerr << e.what() << std::endl;
     }
     status = Job_Status::DONE;
 }

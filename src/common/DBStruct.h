@@ -52,8 +52,8 @@ namespace DBStruct{
         std::string signedKeyId = "";
         std::string issuingFingerprint = "";
         std::string signedFingerprint = "";
-        Utils::Lazystring signedUsername = "";
-        Utils::Lazystring issuingUsername = "";
+        std::string signedUsername = "";
+        std::string issuingUsername = "";
         std::string uatt_id = "";
         std::string regex = "";
         std::string creationTime = "";
@@ -115,7 +115,7 @@ namespace DBStruct{
         std::string fingerprint = "";
         std::string name = "";
         int encoding = 0;
-        Utils::Lazystring image = "";
+        std::string image = "";
     };
 
     struct KeyStatus{

@@ -17,7 +17,7 @@ namespace peaks{
 namespace unpacker{
 
 void blocklist(){
-    std::shared_ptr<UNPACKER_DBManager> dbm = std::make_shared<UNPACKER_DBManager>();
+    std::shared_ptr<DBManager> dbm = std::make_shared<DBManager>();
     auto blocklist = CONTEXT.get<std::vector<std::string>>("ID");
     for (auto & ID: blocklist){
         auto kid = Utils::hexToUll(ID);
@@ -233,7 +233,9 @@ void Unpacker::store_keymaterial(const std::shared_ptr<UNPACKER_DBManager> &dbm)
     //dbm->UpdateIsValid();
 }
 
-void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
+void unpack_key( const Key::Ptr &key, const shared_ptr<DBManager> &dbm, bool direct_write){
+    if (direct_write)
+        dbm->begin_transaction();
 
     Key::pkey pk;
     DBStruct::Unpacker_errors modified;
@@ -403,29 +405,31 @@ void unpack_key( const Key::Ptr &key, shared_ptr<UNPACKER_DBManager> &dbm){
                 s.issuingFingerprint = p.fingerprint;
             }
         }
-        dbm->write_pubkey_csv(p);
+        direct_write ? dbm->write_pubkey_table(p) : dbm->write_pubkey_csv(p);
     }
     while(!unpackedUserID.empty()){
         auto u = unpackedUserID.front();
-        dbm->write_userID_csv(u);
+        direct_write ? dbm->write_userID_table(u) : dbm->write_userID_csv(u);
         unpackedUserID.pop_front();
     }
     while(!unpackedUserAttributes.empty()){
         auto u = unpackedUserAttributes.front();
-        dbm->write_userAttributes_csv(u);
+        direct_write ? dbm->write_userAttributes_table(u) : dbm->write_userAttributes_csv(u);
         unpackedUserAttributes.pop_front();
     }
     while(!unpackedSignatures.empty()){
         auto it = unpackedSignatures.front();
-        dbm->write_signature_csv(it);
+        direct_write ? dbm->write_signature_table(it) : dbm->write_signature_csv(it);
         if (it.issuingKeyId == it.signedKeyId && !it.signedUsername.empty()){
-            dbm->write_self_signature_csv(it);
+            direct_write ? dbm->write_self_signature_table(it) : dbm->write_self_signature_csv(it);
         }
         unpackedSignatures.pop_front(); //release memory
     }
 
-    dbm->write_unpackerErrors_csv(modified);
-    dbm->write_unpacked_csv(key, modified);
+    direct_write ? dbm->write_unpackerErrors_table(modified) : dbm->write_unpackerErrors_csv(modified);
+    direct_write ? dbm->write_unpacked_table(key, modified) : dbm->write_unpacked_csv(key, modified);
+    if (direct_write)
+        dbm->end_transaction();
 }
 
 DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const Packet::Key::Ptr &priKey, const string &uatt_id) {
@@ -444,8 +448,7 @@ DBStruct::signatures get_signature_data(const Key::SigPairs::iterator &sp, const
         ss.signedFingerprint = priKey->get_fingerprint();
         if (user->get_tag() == Packet::USER_ID){
             Packet::Tag13::Ptr u = dynamic_pointer_cast<Packet::Tag13>(user);
-            ss.signedUsername.set_f([=]{return ascii2radix64(u -> get_contents());});
-            ss.signedUsername.set_empty(u -> get_contents().empty());
+            ss.signedUsername = u -> get_contents();
         }else{
             if (uatt_id != "")
                 ss.uatt_id = uatt_id;
@@ -716,12 +719,12 @@ void get_userAttributes_data(const Packet::Tag::Ptr &p, DBStruct::userAtt &ua_st
             case Subpacket::Tag17::IMAGE_ATTRIBUTE: {
                 Subpacket::Tag17::Sub1::Ptr s1t17 = static_pointer_cast<Subpacket::Tag17::Sub1>(a);
                 ua_struct.encoding = s1t17 -> get_encoding();
-                ua_struct.image = Utils::Lazystring([=]{return hexlify(s1t17 -> get_image());}, s1t17->raw().empty());
+                ua_struct.image = s1t17 -> get_image();
                 break;
             }
             default:
                 Subpacket::Tag17::SubWrong::Ptr swt17 = static_pointer_cast<Subpacket::Tag17::SubWrong>(a);
-                ua_struct.image = Utils::Lazystring([=]{return hexlify(swt17 -> raw());}, swt17->raw().empty());
+                ua_struct.image = swt17 -> raw();
                 syslog(LOG_WARNING, "Not valid user attribute subpacket tag found: %d, saving anyway with encoding = 0", a->get_type());
                 break;
         }
@@ -795,7 +798,7 @@ void get_tag2_subpackets_data(const std::vector<Subpacket::Tag2::Sub::Ptr> &subp
             }
             case Subpacket::Tag2::SIGNERS_USER_ID: {
                 Subpacket::Tag2::Sub28::Ptr s28 = dynamic_pointer_cast<Subpacket::Tag2::Sub28>(p);
-                ss->issuingUsername = Utils::Lazystring([=]{return ascii2radix64(s28->get_signer());}, s28->get_signer().empty());
+                ss->issuingUsername = s28->get_signer();
                 break;
             }
             case Subpacket::Tag2::REASON_FOR_REVOCATION: {

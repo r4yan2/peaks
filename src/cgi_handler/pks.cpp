@@ -153,12 +153,6 @@ void Pks::homepage() {
     if(request().request_method()=="POST") {
         c.submit.load(context());
         c.remove.load(context());
-        std::cout << c.submit.submit.value() << std::endl;
-        std::cout << c.submit.reset.value() << std::endl;
-        std::cout << c.remove.remove.value() << std::endl;
-        std::cout << c.submit.keytext.value() << std::endl;
-        std::cout << c.remove.keyid.value() << std::endl;
-        std::cout << c.remove.verification.value() << std::endl;
         if(c.submit.validate()) {
             syslog(LOG_DEBUG, "SUBMIT");
             string temp = c.submit.keytext.value();
@@ -354,7 +348,8 @@ cppcms::json::value parse_stats(const std::string &res){
     if (res != ""){
         int i = 0;
         const char *start = res.data();
-        stats.load(start, res.end().base(), false, &i);
+        if (!stats.load(start, res.end().base(), false, &i))
+           std::cerr << "Error parsing string " << res << "\nat line " << i << std::endl;
     }
     return stats;
 }

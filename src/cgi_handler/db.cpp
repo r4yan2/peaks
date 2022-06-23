@@ -23,10 +23,10 @@ CGI_DBManager::CGI_DBManager(): DBManager() {
 
 void CGI_DBManager::prepare_queries(){
     shortid_stmt = prepare_query("SELECT filename, origin, len FROM "
-                                       "gpg_keyserver WHERE LPAD(CONV(ID,16,10),16,0) LIKE (?);");
+                                       "gpg_keyserver WHERE LPAD(CONV(keyId,16,10),16,0) LIKE (?);");
 
     longid_stmt = prepare_query("SELECT filename, origin, len FROM "
-                                       "gpg_keyserver WHERE ID = CONV((?),16,10);");
+                                       "gpg_keyserver WHERE keyId = CONV((?),16,10);");
     fprint_stmt = prepare_query("SELECT filename, origin, len FROM "
                                        "gpg_keyserver WHERE fingerprint = unhex(?);");
     index_stmt = prepare_query("SELECT nLength, pLength, pubAlgorithm, creationTime, "
@@ -41,7 +41,7 @@ void CGI_DBManager::prepare_queries(){
                                        "AS keys_list GROUP BY kID");
 
     insert_uid_stmt = prepare_query("INSERT INTO UserID "
-                                       "VALUES (?, ?, ?, 0, 0);");
+                                       "VALUES (?, ?, ?, 0);");
 
     vindex_prikey_full_id_stmt = prepare_query("SELECT hex(keyId) as keyId, creationTime, "
                                        "is_analyzed, length(n)*8 as length_n, length(p)*8 as length_p, pubAlgorithm, version, "
@@ -91,9 +91,9 @@ void CGI_DBManager::prepare_queries(){
     
     get_certificates_unpacking_status_stmt = prepare_query("select is_unpacked, count(is_unpacked) as aggr from gpg_keyserver group by is_unpacked;");
 
-    get_certificates_with_attributes_stmt = prepare_query("SELECT DISTINCT(gpg_keyserver.id) as unique_id FROM gpg_keyserver join UserAttribute on gpg_keyserver.fingerprint=UserAttribute.fingerprint");
+    get_certificates_with_attributes_stmt = prepare_query("SELECT DISTINCT(gpg_keyserver.keyId) as unique_id FROM gpg_keyserver join UserAttribute on gpg_keyserver.fingerprint=UserAttribute.fingerprint");
 
-    get_certificates_analysis_stmt = prepare_query("SELECT len as length, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year, is_unpacked FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.id");
+    get_certificates_analysis_stmt = prepare_query("SELECT len as length, (ua.id IS NOT NULL) as hasUserAttribute, YEAR(pu.creationtime) as year, is_unpacked FROM gpg_keyserver as gp LEFT JOIN UserAttribute as ua on gp.fingerprint = ua.fingerprint LEFT JOIN Pubkey as pu on pu.keyId = gp.keyId");
     get_certificates_generic_stats_stmt = prepare_query("SELECT max(len) as maxlen, min(len) as minlen, count(len) as countlen from gpg_keyserver");
     get_user_attributes_data_stmt = prepare_query("SELECT LENGTH(image) as length, (encoding IS NOT NULL) as isImage FROM UserAttribute");
     get_pubkey_data_stmt = prepare_query("SELECT pubAlgorithm, YEAR(creationtime) as year, BIT_LENGTH(n) as n_length, BIT_LENGTH(p) as p_length, BIT_LENGTH(q) as q_length, vulnerabilityDescription, vulnerabilityCode, is_analyzed FROM Pubkey LEFT JOIN KeyStatus on Pubkey.fingerprint = KeyStatus.fingerprint WHERE YEAR(creationtime) >= (?) and YEAR(creationtime) <= (?)");

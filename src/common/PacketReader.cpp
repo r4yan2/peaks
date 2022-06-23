@@ -8,6 +8,7 @@
 #include <thread>
 #include "db.h"
 #include <recon_daemon/pTreeDB.h>
+#include <unpacker/unpacker.h>
 
 
 using namespace std;
@@ -117,6 +118,8 @@ void pr::readPublicKeyPacket(const string &arm, std::shared_ptr<DBManager> dbm, 
     }
 
     auto ok = dbm->check_blocklist(gk.ID);
+
+    // first transaction to insert the certificate, should never fail
     dbm->begin_transaction();
     if (ok){
         if (exist) {
@@ -126,6 +129,11 @@ void pr::readPublicKeyPacket(const string &arm, std::shared_ptr<DBManager> dbm, 
     }
     if (ok || ptree_override) // keys coming from reconciliation need the hash in the prefix tree even if blocklisted
         PTREE.insert(gk.hash);
+    dbm->end_transaction();
+
+    // Unpacking will be done in a separate transaction, may fail if unpacking is already locking the tables, so key will be unpacked later
+    dbm->begin_transaction();
+    peaks::unpacker::unpack_key(key, dbm, true);
     dbm->end_transaction();
 }
 
