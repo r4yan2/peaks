@@ -210,6 +210,7 @@ The main **peaks** executable accept the following commands:
 * recon - start reconing with other peers
 * unpack - divide and analyze the stored certificates in the actual key material
 * analyze - analyze the key material to find known vulnerabilities (**WARNING**: CPU/Memory/Disk intensive, for key security analysis only)
+* blocklist - mark some keyID as blocked, eventually removing keys from DB
 
 `peaks -h` will give the list of accepted commands and options
 

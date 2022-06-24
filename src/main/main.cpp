@@ -68,6 +68,7 @@ void signalHandler(int signum) {
        std::cout << std::endl;
    
        std::cout << "  build                Build the prefix-tree" << std::endl;
+       std::cout << "    --csv-only         only create temporary csv file, do not import into DB" << std::endl;
    
        std::cout << std::endl;
    
@@ -110,6 +111,15 @@ void signalHandler(int signum) {
        std::cout << "    --server-only      Start only as server" << std::endl;
        std::cout << "    --dryrun           Recon without inserting into DB" << std::endl;
    
+       std::cout << std::endl;
+
+
+       std::cout << "  blocklist ID1 ID2..  Insert IDs into blocklist and remove keys from DB" << std::endl;
+
+       std::cout << std::endl;
+
+       std::cout << "  config               Output a default config" << std::endl;
+
        std::cout << std::endl;
        exit(0);
    }

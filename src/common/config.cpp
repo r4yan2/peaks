@@ -46,11 +46,13 @@ Context::Context(){
         ("max_unpacker_keysize", po::value<int>()->default_value(-1))
         ("unpacker_interval", po::value<int>()->default_value(60))
         ("unpacker_threads", po::value<int>()->default_value(1))
+        ("unpacker_limit", po::value<int>()->default_value(10000))
+#ifdef BUILD_ANALYZER
         ("analyzer_interval", po::value<int>()->default_value(60))
         ("analyzer_threads", po::value<int>()->default_value(1))
         ("analyzer_rsa_modulus", po::value<int>()->default_value(0))
-        ("unpacker_limit", po::value<int>()->default_value(10000))
         ("analyzer_limit", po::value<int>()->default_value(10000))
+#endif
         ("cgi_serve_stats", po::value<int>()->default_value(0), "expose the stats api")
     ;
 
@@ -223,7 +225,7 @@ std::string Context::init_options(int argc, char* argv[]){
     
     bool parsed_config = false;
     for (const auto &filename: filenames){
-       std::cerr << "searching config file " << filename << std::endl;
+       syslog(LOG_INFO, "searching config file %s", filename.c_str());
        std::ifstream cFile(filename);
        if (cFile.is_open()){
            parse_config(cFile, vm);
@@ -232,12 +234,9 @@ std::string Context::init_options(int argc, char* argv[]){
        }
     }
     
-    if (parsed_config){
-        std::cerr << "config file found!" << std::endl;
-    }else{
-        std::cerr << "config file NOT found! Proceeding with default options" << std::endl;
-        std::istringstream empty("");
-        parse_config(empty, vm);
+    if (!parsed_config){
+        std::cerr << "config file NOT found! Exit" << std::endl;
+        exit(0);
     }
     setContext(vm);
     
@@ -257,8 +256,8 @@ std::string Context::init_options(int argc, char* argv[]){
     }
     log_upto = LOG_UPTO(vm["debug"].as<int>());
  
-    std::string logname = "peaks" + cmd;
-    openlog(logname.c_str(), log_option, LOG_USER);
+    std::string * logname = new std::string("peaks " + cmd);
+    openlog(logname->c_str(), log_option, LOG_USER);
     setlogmask(log_upto);
 
     opts.erase(opts.begin());

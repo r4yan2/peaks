@@ -19,6 +19,8 @@ namespace unpacker{
 void blocklist(){
     std::shared_ptr<DBManager> dbm = std::make_shared<DBManager>();
     auto blocklist = CONTEXT.get<std::vector<std::string>>("ID");
+    if (blocklist.empty())
+        std::cout << "No key IDs provided!" << std::endl;
     for (auto & ID: blocklist){
         auto kid = Utils::hexToUll(ID);
         dbm->insert_into_blocklist(kid);
