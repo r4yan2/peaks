@@ -1,0 +1,38 @@
+<% c++ #include <content.h> %>
+<% skin mitpgpskin %>
+<% view stats uses peaks::pks::content::stats %>
+<% template render() %>
+
+<html>
+<head>
+<title>Peaks PGP Key Server</title>
+<link href="/css/style.css" rel="stylesheet">
+
+</head>
+<body>
+
+<h1>Peaks Keyserver Stats</h1>
+
+<h2> Settings </h2>
+
+<table>
+<%= settings | raw %>
+</table>
+
+<h2> Membership </h2>
+
+<table>
+<tr>
+  <th>Name</th>
+  <th>Address</th>
+  <th>port</th>
+</tr>
+<%= membership | raw %>
+</table>
+
+</body>
+</html>
+
+<% end template %>
+<% end view %>
+<% end skin %>
