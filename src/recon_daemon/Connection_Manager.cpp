@@ -178,7 +178,10 @@ bool Connection::check_remote_config(){
 
     send_message(local_config);
 
-    Peer_config* remote_config = (Peer_config*) read_message();
+    bool ok = false;
+    Message * cfg = read_message(ok);
+    if (!ok) throw std::runtime_error("Could not check remote config");
+    Peer_config* remote_config = (Peer_config*) cfg;
     syslog(LOG_DEBUG, "received remote config");
 
     if (!m.try_lock()){
@@ -220,7 +223,6 @@ bool Connection::check_remote_config(){
     if (!(toggle_keep_alive(1, 1, 1, 60)))
         syslog(LOG_WARNING, "could not enable keep alive");
     
-    set_timeout();
     return true;
 }
 
@@ -238,174 +240,188 @@ bool Connection::read_n_bytes(void *buf, std::size_t n, int signal){
     std::size_t offset = 0;
     char *cbuf = reinterpret_cast<char*>(buf);
     ssize_t ret;
-    while (true) {
-        ret = recv(sockfd, cbuf + offset, n - offset, signal);
-        if (ret < 0){
-            std::string errmsg = "";
+    std::string errmsg = "";
+    timeval tv;
+    tv.tv_sec  = CONTEXT.connsettings.async_timeout_sec;
+    tv.tv_usec = CONTEXT.connsettings.async_timeout_usec;
+    fd_set fd;
+    FD_ZERO(&fd);
+    FD_SET(sockfd, &fd);
+    int retval = select(sockfd + 1, &fd, NULL, NULL, &tv);
+    switch (retval){
+        case 0: //timeout
+            syslog(LOG_DEBUG, "Timeout on select");
+            return false;
+        case -1: //Error
             switch(errno){
-                //EAGAIN have the same number as EWOULDBLOCK, but for portability should be checked separately
-                case EWOULDBLOCK:
-				        errmsg = "Receive operation would block, try to raise the timeout";
-                        break;
-                case EBADF:
-				        errmsg = "The given socket is an invalid descriptor";
-                        break;
-                case ECONNREFUSED:
-				        errmsg = "A remote host refused to allow the network connection (typically because it is not running the requested service).";
-                        break;
-				case EFAULT:
-				        errmsg = "The receive buffer pointer(s) point outside the process's address space.";
-                        break;
-                case EINTR:
-				        errmsg = "The receive was interrupted by delivery of a signal before any data were available; see signal(7).";
-                        break;
-                case EINVAL:
-				        errmsg = "Invalid argument passed.";
-                        break;
-                case ENOMEM:
-				        errmsg = "Could not allocate memory for recvmsg().";
-                        break;
-                case ENOTCONN:
-				        errmsg = "The socket is associated with a connection-oriented protocol and has not been connected";
-                        break;
-                case ENOTSOCK:
-				        errmsg = "The argument sockfd does not refer to a socket.";
-                        break;
-                default:
-                        errmsg = "Unkown error on recv";
+                case EBADF: errmsg =  "An invalid file descriptor was given"; break;
+                case EINTR: errmsg = "A signal was caught"; break;
+                case EINVAL: errmsg = "The value contained within timeout is invalid"; break;
+                case ENOMEM: errmsg = "Unable to allocate memory for internal tables."; break;
+                default: errmsg = "Select return -1, errno unrecognized"; break;
             }
-            syslog(LOG_DEBUG, "%s (%d)", errmsg.c_str(), errno);
-            throw std::invalid_argument(strerror(errno));
-        } else if (ret == 0) {
-            // No data available
-            if (offset == 0){
-                syslog(LOG_WARNING, "No data available, Expected: %d, Got: %d", int(n), int(offset+ret));   
-                return false;
-            }else{
-                //Protocol Exception
-                syslog(LOG_WARNING, "Underflow on recv");
-                throw std::underflow_error("Unexpected end of stream");
+            throw std::runtime_error(Utils::stringFormat("Network error on select: %s", errmsg));
+        default:
+            while (true) {
+                ret = recv(sockfd, cbuf + offset, n - offset, signal);
+                if (ret < 0){
+                    switch(errno){
+                        //EAGAIN have the same number as EWOULDBLOCK, but for portability should be checked separately
+                        case EWOULDBLOCK:
+	        			        errmsg = "Receive operation would block, try to raise the timeout";
+                                break;
+                        case EBADF:
+	        			        errmsg = "The given socket is an invalid descriptor";
+                                break;
+                        case ECONNREFUSED:
+	        			        errmsg = "A remote host refused to allow the network connection (typically because it is not running the requested service).";
+                                break;
+	        			case EFAULT:
+	        			        errmsg = "The receive buffer pointer(s) point outside the process's address space.";
+                                break;
+                        case EINTR:
+	        			        errmsg = "The receive was interrupted by delivery of a signal before any data were available; see signal(7).";
+                                break;
+                        case EINVAL:
+	        			        errmsg = "Invalid argument passed.";
+                                break;
+                        case ENOMEM:
+	        			        errmsg = "Could not allocate memory for recvmsg().";
+                                break;
+                        case ENOTCONN:
+	        			        errmsg = "The socket is associated with a connection-oriented protocol and has not been connected";
+                                break;
+                        case ENOTSOCK:
+	        			        errmsg = "The argument sockfd does not refer to a socket.";
+                                break;
+                        default:
+                                errmsg = "Unkown error on recv";
+                    }
+                    syslog(LOG_DEBUG, "%s (%d)", errmsg.c_str(), errno);
+                    return false;
+                } else if (ret == 0) {
+                    // No data available
+                    if (offset == 0){
+                        syslog(LOG_WARNING, "No data available, Expected: %d, Got: %d", int(n), int(offset+ret));   
+                        throw std::underflow_error("Unexpected end of stream");
+                    }else{
+                        //Protocol Exception
+                        syslog(LOG_WARNING, "Underflow on recv");
+                        throw std::underflow_error("Unexpected end of stream");
+                    }
+                } else if (offset + ret == n) {
+                    // All n bytes read
+                    return true;
+                } else {
+                    offset += ret;
+                }
             }
-        } else if (offset + ret == n) {
-            // All n bytes read
-            return true;
-        } else {
-            offset += ret;
-        }
     }
 }
 
 std::string Connection::read_string_direct(){
    std::uint32_t size;
    std::string res = "failed";
-   if (read_n_bytes(&size, sizeof(size))) {
-       size = Utils::swap(size);
-       if (size > CONTEXT.connsettings.max_read_len) 
-           syslog(LOG_WARNING, "Oversized message!");
-       Buffer buf(size);
-       read_n_bytes(buf.data(), size);
-       res = buf.to_str();
-   } else
-       syslog(LOG_WARNING, "Unexpected end of stream");
+   if (!read_n_bytes(&size, sizeof(size))) throw std::runtime_error("Unexpected end of stream");
+   size = Utils::swap(size);
+   if (size > CONTEXT.connsettings.max_read_len) 
+       syslog(LOG_WARNING, "Oversized message!");
+   Buffer buf(size);
+   if (!read_n_bytes(buf.data(), size)) throw std::runtime_error("Unexpected end of stream");
+   res = buf.to_str();
    return res;
 }
 
-Message* Connection::read_message_async(){
-    return read_message(0);//MSG_DONTWAIT);
-}
-
 // Reads message from network
-Message* Connection::read_message(int signal) {
+Message* Connection::read_message(bool &ok, bool async) {
    std::uint32_t size;
-   if (read_n_bytes(&size, sizeof(size), signal)) {
-       size = Utils::swap(size);
-       if (size > CONTEXT.connsettings.max_read_len) 
-           syslog(LOG_WARNING, "Oversized message!");
-       Buffer ibuf(size);
-       if (read_n_bytes(ibuf.data(), size, signal)) {
-           ibuf.set_read_only();
-           uint8_t type = ibuf.read_uint8();
-           switch (type){
-                case Msg_type::ReconRequestPoly: {
-                            ReconRequestPoly* data = new ReconRequestPoly;
-                            data->unmarshal(ibuf);
-                            data->type=type;
-                            return data;
-                        }
-                case Msg_type::ReconRequestFull: {
-                            ReconRequestFull* data = new ReconRequestFull;
-                            data->unmarshal(ibuf);
-                            data->type=type;
-                            return data;
-                        }
-                case Msg_type::Elements: {
-                            Elements* data = new Elements;
-                            data->unmarshal(ibuf);
-                            data->type=type;
-                            return data;
-                        }
-                case Msg_type::FullElements: {
-                            FullElements* data = new FullElements;
-                            data->unmarshal(ibuf);
-                            data->type=type;
-                            return data;
-                        }
-                case Msg_type::SyncFail: {
-                            SyncFail* data = new SyncFail;
-                            data->unmarshal(ibuf);
-                            data->type=type;
-                            return data;
-                        }
-                case Msg_type::Done: {
-                            Done* data = new Done;
-                            data->unmarshal(ibuf);
-                            data->type=type;
-                            return data;
-                        }
-                case Msg_type::Flush: {
-                            Flush* data = new Flush;
-                            data->unmarshal(ibuf);
-                            data->type=type;
-                            return data;
-                        }
-                case Msg_type::Error: {
-                            Error* data = new Error;
-                            data->unmarshal(ibuf);
-                            data->type=type;
-                            return data;
-                        }
-                case Msg_type::DBRequest: {
-                            DBRequest* data = new DBRequest;
-                            data->unmarshal(ibuf);
-                            data->type=type;
-                            return data;
-                        }
-                case Msg_type::DBReply: {
-                            DBReply* data = new DBReply;
-                            data->unmarshal(ibuf);
-                            data->type=type;
-                            return data;
-                        }
-                case Msg_type::Peer_config: {
-                             Peer_config* data = new Peer_config;
-                             data->unmarshal(ibuf);
-                             data->type=type;
-                             return data;
-                            }
-                             
-                default: syslog(LOG_WARNING, "Cannot understand message type during recon!");
-        }
-
-       } else {
-           //Protocol Exception
-           syslog(LOG_WARNING, "Unexpected end of stream");
-           throw std::underflow_error("Unexpected end of stream");
-       }
-   } else {
-       // connection was closed
+   if (!read_n_bytes(&size, sizeof(size))) {
+       ok = false;
+       return NULL;
+       syslog(LOG_WARNING, "No incoming message");
+   }
+   ok = true;
+   size = Utils::swap(size);
+   if (size > CONTEXT.connsettings.max_read_len) 
+       syslog(LOG_WARNING, "Oversized message!");
+   Buffer ibuf(size);
+   if (!read_n_bytes(ibuf.data(), size)) {
+       //Protocol Exception
        syslog(LOG_WARNING, "Unexpected end of stream");
        throw std::underflow_error("Unexpected end of stream");
    }
+   ibuf.set_read_only();
+   uint8_t type = ibuf.read_uint8();
+   switch (type){
+        case Msg_type::ReconRequestPoly: {
+                    ReconRequestPoly* data = new ReconRequestPoly;
+                    data->unmarshal(ibuf);
+                    data->type=type;
+                    return data;
+                }
+        case Msg_type::ReconRequestFull: {
+                    ReconRequestFull* data = new ReconRequestFull;
+                    data->unmarshal(ibuf);
+                    data->type=type;
+                    return data;
+                }
+        case Msg_type::Elements: {
+                    Elements* data = new Elements;
+                    data->unmarshal(ibuf);
+                    data->type=type;
+                    return data;
+                }
+        case Msg_type::FullElements: {
+                    FullElements* data = new FullElements;
+                    data->unmarshal(ibuf);
+                    data->type=type;
+                    return data;
+                }
+        case Msg_type::SyncFail: {
+                    SyncFail* data = new SyncFail;
+                    data->unmarshal(ibuf);
+                    data->type=type;
+                    return data;
+                }
+        case Msg_type::Done: {
+                    Done* data = new Done;
+                    data->unmarshal(ibuf);
+                    data->type=type;
+                    return data;
+                }
+        case Msg_type::Flush: {
+                    Flush* data = new Flush;
+                    data->unmarshal(ibuf);
+                    data->type=type;
+                    return data;
+                }
+        case Msg_type::Error: {
+                    Error* data = new Error;
+                    data->unmarshal(ibuf);
+                    data->type=type;
+                    return data;
+                }
+        case Msg_type::DBRequest: {
+                    DBRequest* data = new DBRequest;
+                    data->unmarshal(ibuf);
+                    data->type=type;
+                    return data;
+                }
+        case Msg_type::DBReply: {
+                    DBReply* data = new DBReply;
+                    data->unmarshal(ibuf);
+                    data->type=type;
+                    return data;
+                }
+        case Msg_type::Peer_config: {
+                     Peer_config* data = new Peer_config;
+                     data->unmarshal(ibuf);
+                     data->type=type;
+                     return data;
+                    }
+                     
+        default: syslog(LOG_WARNING, "Cannot understand message type during recon!");
+    }
    Error* data = new Error;
    return data;
 }

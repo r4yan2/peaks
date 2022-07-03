@@ -52,9 +52,9 @@ bool Recon_manager::is_flushing(){
 
 
 bool Recon_manager::done(){
-    return ((request_queue.size() == 0) &&
-            (bottom_queue.size() == 0) &&
-            (remote_set.size() < CONTEXT.peersettings.max_recover_size));
+    return 
+        (request_queue.empty() && bottom_queue.empty()) ||
+        (remote_set.size() > CONTEXT.peersettings.max_recover_size);
 }
 
 bool Recon_manager::bottom_queue_empty(){

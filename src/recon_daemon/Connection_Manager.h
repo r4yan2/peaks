@@ -91,8 +91,7 @@ class Connection {
         bool read_n_bytes(void *buf, std::size_t n, int signal=MSG_WAITALL);
 
         /** read a sks-type Message */
-        Message* read_message(int signal=MSG_WAITALL);
-        Message* read_message_async();
+        Message* read_message(bool &ok, bool async=false);
 
         /** perform the actual send */
         void send_peer(Buffer& buf);

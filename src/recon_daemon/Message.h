@@ -15,6 +15,7 @@ namespace peaks {
 namespace recon {
 
 typedef Bitset bitset;
+typedef unsigned char byte_t;
 
 /** Possible message types send/received during recon */
 namespace Msg_type{
@@ -48,11 +49,11 @@ enum Msg_type : int {
 class Buffer{
     private:
         /** uchar vector act as byte vector */
-        std::vector<unsigned char> buf;
+        std::vector<byte_t> buf;
         /** flag which indicate if buffer is read-only */
         bool read;
         /** iterator used to read from the buf vector */
-        std::vector<unsigned char>::iterator it;
+        std::vector<byte_t>::iterator it;
     public:
 	    /** default constructor */
         Buffer();
@@ -67,9 +68,10 @@ class Buffer{
          * @param string which init buffer
          */
         Buffer(const std::string&);
+        Buffer(std::shared_ptr<std::istream>);
 
 	    /** access to the underliyng std::vector data */
-        unsigned char* data();
+        byte_t* data();
 
         /** return size of the buffer */
         int size() const;
@@ -84,7 +86,7 @@ class Buffer{
          */
         void clear();
 
-        std::vector<unsigned char> vector() const;
+        std::vector<byte_t> vector() const;
         std::string to_str() const;
         char* c_str() const;
 
@@ -102,7 +104,7 @@ class Buffer{
         /** write a byte string to the buffer.
          * Like write_string
          */
-        void write_bytes(const std::vector<unsigned char>&);
+        void write_bytes(const std::vector<byte_t>&);
 
         /** write a set composed of ZZ_p elements.
          * First write the length of the zpset
@@ -182,12 +184,12 @@ class Buffer{
         std::vector<NTL::ZZ_p> read_zz_array();
 
         /** read bytes from the buffer */
-        std::vector<unsigned char> read_bytes(int size);
+        std::vector<byte_t> read_bytes(int size);
 
         /** Simple "push back" of a byte into
          * the buffer.
          */
-        void push_back(unsigned char);
+        void push_back(byte_t);
 
         /** Simple padding.
          * When some padding is needed
@@ -210,6 +212,9 @@ class Buffer{
 struct Message{
     uint8_t type;
     Message(uint8_t _type):type(_type){}
+    virtual void marshal(Buffer &buf){assert(false);};
+    virtual void unmarshal(Buffer &buf){assert(false);};
+    virtual ~Message(){};
 };
 
 /** Recon Request Poly type message.

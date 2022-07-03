@@ -12,7 +12,12 @@ Buffer::Buffer(int size){
 }
 
 Buffer::Buffer(const std::string &initializer){
-    buf = std::vector<unsigned char>(initializer.begin(), initializer.end());
+    buf = std::vector<byte_t>(initializer.begin(), initializer.end());
+    it = buf.begin();
+}
+
+Buffer::Buffer(std::shared_ptr<std::istream> stream){
+    buf = std::vector<byte_t>(std::istreambuf_iterator<char>(*stream), {});
     it = buf.begin();
 }
 
@@ -29,15 +34,15 @@ int Buffer::size() const{
     return buf.size();
 }
 
-unsigned char* Buffer::data(){
+byte_t* Buffer::data(){
     return buf.data();
 }
 
-std::vector<unsigned char> Buffer::vector() const{
+std::vector<byte_t> Buffer::vector() const{
     return buf;
 }
 
-void Buffer::push_back(unsigned char elem){
+void Buffer::push_back(byte_t elem){
     buf.push_back(elem);
 }
 
@@ -51,19 +56,19 @@ char* Buffer::c_str() const{
 
 void Buffer::write_self_len(){
     int size = buf.size();
-    unsigned char *dst = (unsigned char *)&size;
+    byte_t *dst = (byte_t *)&size;
     for (int i=3; i>=0; i--)
         buf.push_back(dst[i]);
     std::rotate(buf.rbegin(), buf.rbegin()+4, buf.rend());
 }
 
 void Buffer::write_int(int to_write){
-    unsigned char *ptr = (unsigned char *)&to_write;
+    byte_t *ptr = (byte_t *)&to_write;
     for (int i=3; i>=0; i--) buf.push_back(ptr[i]);
 }
 
 void Buffer::append(const Buffer &other){
-    std::vector<unsigned char> v = other.vector();
+    std::vector<byte_t> v = other.vector();
     buf.insert(buf.end(), v.begin(), v.end());
 }
 
@@ -81,7 +86,7 @@ void Buffer::write_string(const std::string &to_write){
     buf.insert(buf.end(),to_write.begin(),to_write.end());
 }
 
-void Buffer::write_bytes(const std::vector<unsigned char> &to_write){
+void Buffer::write_bytes(const std::vector<byte_t> &to_write){
     write_int(to_write.size());
     buf.insert(buf.end(),to_write.begin(),to_write.end());
 }
@@ -101,7 +106,7 @@ void Buffer::write_zz_p(const NTL::ZZ_p &to_write, int pad_to){
 
     NTL::ZZ z = rep(to_write);
     int num_bytes = NumBytes(z);
-    std::vector<unsigned char> buf_z(num_bytes);
+    std::vector<byte_t> buf_z(num_bytes);
     BytesFromZZ(buf_z.data(), z, num_bytes);
     buf.insert(buf.end(), buf_z.begin(), buf_z.end());
     if (num_bytes < pad_to){
@@ -118,7 +123,7 @@ uint8_t Buffer::read_uint8(){
 // Read int from data chunk
 int Buffer::read_int(){
     unsigned int res;
-    unsigned char *dst = (unsigned char *)&res;
+    byte_t *dst = (byte_t *)&res;
 
     for (int i=3; i>=0; i--, it++) dst[i] = *it;
     return res;
@@ -140,7 +145,7 @@ std::vector<NTL::ZZ_p> Buffer::read_zz_array(){
     int array_size = read_int();
     std::vector<NTL::ZZ_p> array(array_size);
     for (int i=0; i<array_size; i++){
-        std::vector<unsigned char> zbytes = read_bytes(NumBytes(NTL::ZZ_p::modulus()));
+        std::vector<byte_t> zbytes = read_bytes(NumBytes(NTL::ZZ_p::modulus()));
         array[i] = Utils::bytes_to_zz(zbytes);
     }
     return array;
@@ -160,14 +165,14 @@ std::string Buffer::read_string(){
     return result;
 }
 
-std::vector<unsigned char> Buffer::read_bytes(int size){
-    std::vector<unsigned char> res(it, it+size);
+std::vector<byte_t> Buffer::read_bytes(int size){
+    std::vector<byte_t> res(it, it+size);
     it+=size;
     return res;
 }
 
 void Buffer::padding(int padding_len){
-    std::vector<unsigned char> pad(padding_len);
+    std::vector<byte_t> pad(padding_len);
     bzero(pad.data(), pad.size());
     buf.insert(buf.end(), pad.begin(), pad.end());
 }

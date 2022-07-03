@@ -20,7 +20,7 @@ Connection PeerManager::choose_partner(){
     auto membership = CONTEXT.get<membership_t>("membership");
     int choice = Utils::get_random(membership.size());
     member m(std::get<1>(membership[choice]), std::get<2>(membership[choice]));
-    syslog(LOG_DEBUG, "choose as partner: %s", m.first.c_str());
+    syslog(LOG_INFO, "choose as partner: %s", m.first.c_str());
     Connection connection = cn.init_peer(m);
     connection.check_remote_config(); 
     return connection;
@@ -48,7 +48,7 @@ void PeerManager::start_client(){
 
 void PeerManager::serve(){
     
-    syslog(LOG_DEBUG, "starting gossip server");
+    syslog(LOG_INFO, "starting gossip server");
 
     cn.setup_listener(CONTEXT.peersettings.peaks_recon_port);
     std::vector<std::string> addresses;
@@ -87,7 +87,7 @@ void PeerManager::fetch_elements(const Peer &peer, const std::vector<NTL::ZZ_p> 
         return;
     }
     int c_size = CONTEXT.peersettings.request_chunk_size;
-    syslog(LOG_DEBUG, "Will recover: %d", int(elements_size));
+    syslog(LOG_INFO, "Will recover %d certificates", int(elements_size));
     std::vector<std::string> keys;
     if (c_size > elements_size){
         syslog(LOG_DEBUG, "requesting all element at once!");
@@ -185,7 +185,7 @@ std::vector<std::string> PeerManager::request_chunk(const Peer &peer, const std:
 }
 
 std::vector<NTL::ZZ_p> Connection::interact_with_client(){
-    syslog(LOG_DEBUG, "Accepted remote peer %s, starting interaction...", peer.hostname.c_str());
+    syslog(LOG_INFO, "Accepted remote peer %s, starting interaction...", peer.hostname.c_str());
     Recon_manager recon;
     std::shared_ptr<Pnode> root = PTREE.get_root();
     bitset newset(0);
@@ -206,21 +206,18 @@ std::vector<NTL::ZZ_p> Connection::interact_with_client(){
                     }
                 case recon_state::Bottom:
                     {
-                        Message* msg;
-                        try{
-                            msg = read_message_async();
+                        bool ok = true;
+                        Message* msg = read_message(ok);
+                        if (ok){
                             recon.pop_bottom();
                             recon.handle_reply(msg, bottom.request);
-                        } catch(std::invalid_argument &e){
+                        } else {
                             if((recon.bottom_queue_size() > CONTEXT.peersettings.max_outstanding_recon_req) || 
                                 (recon.request_queue_size() == 0)){
                                 if (recon.is_flushing()){
                                     recon.pop_bottom();
-                                    try{
-                                        msg = read_message_async();
-                                        recon.handle_reply(msg, bottom.request);
-                                    }catch(...){
-                                    }
+                                    msg = read_message(ok);
+                                    if (ok) recon.handle_reply(msg, bottom.request);
                                 }
                                 else{
                                     //flush
@@ -231,8 +228,6 @@ std::vector<NTL::ZZ_p> Connection::interact_with_client(){
                                 request_entry req = recon.pop_request();
                                 recon.send_request(req);
                             }
-                        } catch(std::exception &e){
-                            syslog(LOG_DEBUG, "Unexpected catch %s", e.what());
                         }
                         break;
                     }
@@ -250,24 +245,24 @@ void PeerManager::gossip(){
     auto membership = CONTEXT.get<membership_t>("membership");
     for (;;){
         try{
-            syslog(LOG_DEBUG, "starting gossip client");
+            syslog(LOG_INFO, "starting gossip client");
             if (membership.size()) {
                 Connection conn = choose_partner();
                 auto to_recover = conn.client_recon();
                 fetch_elements(conn.get_peer(), to_recover);
             }
         } catch (std::exception &e){
-            syslog(LOG_DEBUG, "%s", e.what());
+            syslog(LOG_NOTICE, "%s", e.what());
             //connection automatically closed
         }
-        syslog(LOG_DEBUG, "going to sleep...");
+        syslog(LOG_INFO, "going to sleep...");
         std::this_thread::sleep_for(std::chrono::seconds{CONTEXT.peersettings.gossip_interval});
-        syslog(LOG_DEBUG, "...resuming gossip");
+        syslog(LOG_INFO, "...resuming gossip");
     }
 }
 
 std::vector<NTL::ZZ_p> Connection::client_recon(){
-    syslog(LOG_DEBUG, "choosen partner %s", peer.hostname.c_str());
+    syslog(LOG_INFO, "choosen partner %s", peer.hostname.c_str());
     zpset response;
     std::vector<Message*> pending;
     std::vector<NTL::ZZ_p> empty;
@@ -281,7 +276,9 @@ std::vector<NTL::ZZ_p> Connection::client_recon(){
         comm.status=Communication_status::NONE;
 
         // fetch request + craft response
-        Message* msg = read_message();
+        bool ok = true;
+        Message* msg = read_message(ok);
+        if (!ok) throw std::runtime_error("Sync Failed");
         syslog(LOG_DEBUG, "handling message %d", msg->type);
         switch (msg->type){
             case Msg_type::ReconRequestPoly:{
@@ -546,8 +543,8 @@ Communication Connection::request_poly_handler(ReconRequestPoly* req){
     Communication newcomm;
     zpset remote_elements_set(remote_elements);
     zpset local_elements_set(local_elements);
-    syslog(LOG_DEBUG, "found local needs %lu", remote_elements.size());
-    syslog(LOG_DEBUG, "found remote needs %lu", local_elements.size());
+    syslog(LOG_INFO, "found local needs %lu", remote_elements.size());
+    syslog(LOG_INFO, "found remote needs %lu", local_elements.size());
     newcomm.elements = remote_elements_set;
     Elements* m_elements = new Elements;
     m_elements->elements = local_elements_set; 
