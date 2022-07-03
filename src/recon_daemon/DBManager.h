@@ -42,17 +42,31 @@ public:
      */
     virtual void delete_node(const Bitset &key) = 0;
     virtual bool check_key(const std::string& key) = 0;
-    virtual std::vector<std::string> get_all_hash() = 0;
-    virtual std::shared_ptr<DBResult> get_all_hash_iterator(int limit, int offset) = 0;
-    virtual std::string get_hash_from_results(const std::shared_ptr<DBResult> & results) = 0;
-    virtual void commit_memtree() = 0;
-    virtual void prepare_queries() = 0;
+
+    virtual void write_memtree_csv();
+    virtual void commit_memtree();
+    virtual void prepare_queries();
+
+    /** fetch all hashes from gpg_keyserver table, used
+     * to build ptree
+     * @return vector of strings representing hashes
+     */
+    std::vector<std::string> get_all_hash();
+    std::shared_ptr<DBResult> get_all_hash_iterator(int limit=10000, int offset=0);
+    std::string get_hash_from_results(const std::shared_ptr<DBResult> & results);
+    int get_hash_count();
+
 protected:
     /**
      * store a pointer to the csv file which will be needed to 
      * output a csv before use the bulk load
      */
 	std::ofstream csv_file;
+    std::shared_ptr<DBQuery>
+        get_all_hash_stmt,
+        get_all_hash_iterator_stmt,
+        get_hash_count_stmt
+            ;
 };
 
 /**
@@ -92,11 +106,6 @@ class Recon_mysql_DBManager: public RECON_DBManager{
 
     void prepare_queries();
     
-    //empty
-    std::vector<std::string> get_all_hash();
-    std::shared_ptr<DBResult> get_all_hash_iterator(int limit, int offset);
-    std::string get_hash_from_results(const std::shared_ptr<DBResult> & results);
-    void commit_memtree();
 private:
 
     /**
@@ -107,8 +116,6 @@ private:
         insert_pnode_stmt,
         update_pnode_stmt,
         delete_pnode_stmt,
-        get_all_hash_stmt,
-        get_all_hash_iterator_stmt,
         check_key_stmt
             ;
 
@@ -134,16 +141,7 @@ public:
     /** @brief prepare queries */
     void prepare_queries();
 
-    /** fetch all hashes from gpg_keyserver table, used
-     * to build ptree
-     * @return vector of strings representing hashes
-     */
-    std::vector<std::string> get_all_hash();
-    std::shared_ptr<DBResult> get_all_hash_iterator(int limit=10000, int offset=0);
-    std::string get_hash_from_results(const std::shared_ptr<DBResult> & results);
-    int get_hash_count();
-
-    /** check if hash is present in db
+   /** check if hash is present in db
      * @param key hash to check
      * @return bool if found, false otherwise
      */
@@ -164,13 +162,9 @@ public:
     void insert_node(const DBStruct::node &n);
     void update_node(const DBStruct::node &n);
     void delete_node(const Bitset &key);
-
 private:
 
     std::shared_ptr<DBQuery> 
-        get_all_hash_stmt,
-        get_all_hash_iterator_stmt,
-        get_hash_count_stmt,
         check_key_stmt;
 	std::pair<std::string,std::string> insert_ptree_stmt;
 

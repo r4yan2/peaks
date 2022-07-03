@@ -62,9 +62,6 @@ namespace peaks{
       /** maximum chunk of key that can be requested by the peer */
       int request_chunk_size;
   
-      /** if dry run is set recon daemon will only fetch certificates without importing them */
-      unsigned long dry_run;
-  
       /** sks_zp_bytes - 1 */
       long hashquery_len;
   

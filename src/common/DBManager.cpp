@@ -203,7 +203,7 @@ shared_ptr<DBQuery> DBManager::prepare_query(const std::string & stmt){
 }
 
 void DBManager::execute_query(const string & stmt){
-    syslog(LOG_INFO, "Execute query %s", stmt.c_str());
+    syslog(LOG_DEBUG, "Execute query %s", stmt.c_str());
     unique_ptr<sql::Statement>(con->createStatement())->execute(stmt);
 }
 
@@ -598,7 +598,7 @@ void DBManager::write_pubkey_table(const DBStruct::pubkey &pubkey) {
         insert_into_pubkey_stmt->setString(pos++, pubkey.expirationTime);
         
         for (const auto &v: pubkey.algValue){
-            insert_into_pubkey_stmt->setString(pos++, v);
+            insert_into_pubkey_stmt->setBlob(pos++, v);
         }
         insert_into_pubkey_stmt->setString(pos++, pubkey.curve);
         insert_into_pubkey_stmt->execute();
@@ -656,7 +656,7 @@ void DBManager::write_userAttributes_table(const DBStruct::userAtt &ua) {
         insert_into_userattributes_stmt->setString(pos++, ua.fingerprint);
         insert_into_userattributes_stmt->setString(pos++, ua.name);
         insert_into_userattributes_stmt->setInt(pos++, ua.encoding);
-        insert_into_userattributes_stmt->setString(pos++, ua.image);
+        insert_into_userattributes_stmt->setBlob(pos++, ua.image);
         insert_into_userattributes_stmt->execute();
     }catch (exception &e){
         syslog(LOG_CRIT, "write_userAttributes_table FAILED, the UserID not have the results of the unpacking in the database! - %s",
@@ -721,11 +721,11 @@ void DBManager::write_signature_table(const DBStruct::signatures &ss) {
         insert_into_signature_stmt->setString(pos++, ss.regex);
         insert_into_signature_stmt->setString(pos++, ss.creationTime);
         insert_into_signature_stmt->setString(pos++, ss.expirationTime);
-        insert_into_signature_stmt->setString(pos++, ss.rString);
-        insert_into_signature_stmt->setString(pos++, ss.sString);
-        insert_into_signature_stmt->setString(pos++, ss.flags);
+        insert_into_signature_stmt->setBlob(pos++, ss.rString);
+        insert_into_signature_stmt->setBlob(pos++, ss.sString);
+        insert_into_signature_stmt->setBlob(pos++, ss.flags);
         insert_into_signature_stmt->setString(pos++, ss.hashHeader);
-        insert_into_signature_stmt->setString(pos++, ss.signedHash);
+        insert_into_signature_stmt->setBlob(pos++, ss.signedHash);
         insert_into_signature_stmt->setInt(pos++, ss.hashMismatch);
         insert_into_signature_stmt->setString(pos++, ss.keyExpirationTime);
         insert_into_signature_stmt->setInt(pos++, ss.revocationCode);
@@ -911,11 +911,15 @@ void DBQuery::setString(const int pos, const string & str){
 }
 
 void DBQuery::setBlob(const int pos, const string & s){
-    DataBuf * buffer = new DataBuf((char*)s.data(), s.length());
-    std::istream * s_ptr = new std::istream(buffer);
-    stmt->setBlob(pos, s_ptr);
-    trash_bin_2.push_back(buffer);
-    trash_bin.push_back(s_ptr);
+    std::stringstream * is = new std::stringstream(s);
+    stmt->setBlob(pos,is);
+}
+
+
+void DBQuery::setBlob(const int pos, std::vector<unsigned char> & s){
+    std::istringstream * is = new std::istringstream;
+    is->rdbuf()->pubsetbuf(reinterpret_cast<char*>(&s[0]), s.size());
+    stmt->setBlob(pos, is);
 }
 
 void DBQuery::setBlob(const int pos, istream * s_ptr){
@@ -939,9 +943,9 @@ void DBQuery::setBoolean(const int pos, const bool value){
 }
 
 unique_ptr<DBResult> DBQuery::execute(){
-    syslog(LOG_INFO, "Execute prepared query %s", query.c_str());
+    syslog(LOG_DEBUG, "Execute prepared query %s", query.c_str());
     for(const auto& elem : params){
-        syslog(LOG_INFO, "Param %d -> %s", elem.first, elem.second.c_str());
+        syslog(LOG_DEBUG, "Param %d -> %s", elem.first, elem.second.c_str());
     }
     if (stmt->execute()){
         unique_ptr<DBResult> res = std::make_unique<DBResult>(stmt->getResultSet());
@@ -949,10 +953,7 @@ unique_ptr<DBResult> DBQuery::execute(){
     }
     for(auto & p: trash_bin)
         delete p;
-    for(auto & p: trash_bin_2)
-        delete p;
     trash_bin.clear();
-    trash_bin_2.clear();
     return 0;
 }
 

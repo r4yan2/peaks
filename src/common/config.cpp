@@ -97,7 +97,7 @@ Context::Context(){
         ("recover", po::bool_switch()->default_value(false), "recover")
         ("reset", po::bool_switch()->default_value(false), "reset")
         ("noclean,n", po::bool_switch()->default_value(false), "do not clean temporary folder")
-        ;
+       ;
 
     analyzer_desc.add_options()
         ("threads,t", po::value<int>(), "set number of threads")
@@ -179,7 +179,6 @@ void Context::setContext(const po::variables_map & _vm){
     peersettings = {
         vm["recon_port"].as<int>(),
         vm["request_chunk_size"].as<int>(),
-        vm.count("dryrun"),
         msgsettings.sks_zp_bytes - 1, // 16
         vm["max_outstanding_recon_req"].as<int>(),
         vm["gossip_interval"].as<int>(),

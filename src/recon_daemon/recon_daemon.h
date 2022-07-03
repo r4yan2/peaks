@@ -10,6 +10,7 @@ namespace peaks{
 namespace recon{
 
 void build();
+void build_slow();
 void recon();
 }
 }

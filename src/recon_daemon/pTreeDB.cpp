@@ -132,10 +132,10 @@ void Ptree::update(const std::vector<std::string> &hash_to_insert){
 
     std::lock_guard<std::mutex> lock(mtx);
     for (auto hash: hash_to_insert){
-        syslog(LOG_DEBUG, "inserting %s into ptree", hash.c_str());
+        syslog(LOG_INFO, "inserting %s into ptree", hash.c_str());
         insert(hash);
     }
-    syslog(LOG_DEBUG, "inserted %d hashes into the ptree", int(hash_to_insert.size()));
+    syslog(LOG_INFO, "inserted %d hashes into the ptree", int(hash_to_insert.size()));
 }
 
 Bitset generate_child_key(const Bitset& parent_key, int c_idx){
@@ -296,10 +296,11 @@ void Pnode::commit_node(bool newnode){
     n.num_elements = num_elements;
     n.leaf = leaf;
     n.elements = get_node_elements();
-    if (newnode)
+    if (newnode){
         tree->db_insert(n);
-    else
+    } else {
         tree->db_update(n);
+    }
 }
 
 void Pnode::delete_node(){

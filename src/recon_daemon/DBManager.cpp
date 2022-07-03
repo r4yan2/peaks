@@ -23,23 +23,21 @@ RECON_DBManager::RECON_DBManager():
 	};
 }
 
+
 RECON_DBManager::~RECON_DBManager(){}
 
-std::vector<std::string> Recon_mysql_DBManager::get_all_hash(){
-    throw std::runtime_error("Useless to fetch hashes from the database in mysql database manager");
+void RECON_DBManager::prepare_queries(){
+    get_all_hash_stmt = prepare_query("SELECT hash FROM gpg_keyserver");
+    get_all_hash_iterator_stmt = prepare_query("SELECT hash FROM gpg_keyserver LIMIT ? OFFSET ?");
+    get_hash_count_stmt = prepare_query("SELECT count(hash) as res FROM gpg_keyserver");
+}
+
+void RECON_DBManager::commit_memtree(){
+    throw std::runtime_error("Not implemented: commit_memtree");
 };
 
-
-std::shared_ptr<DBResult> Recon_mysql_DBManager::get_all_hash_iterator(int limit, int offset){
-    throw std::runtime_error("Useless to fetch hashes from the database in mysql database manager");
-};
-
-std::string Recon_mysql_DBManager::get_hash_from_results(const std::shared_ptr<DBResult> & results){
-    throw std::runtime_error("Useless to fetch hashes from the database in mysql database manager");
-};
-
-void Recon_mysql_DBManager::commit_memtree(){
-    throw std::runtime_error("Cannot commit whole tree in mysql database manager");
+void RECON_DBManager::write_memtree_csv(){
+    throw std::runtime_error("Not implemented: write_memtree_csv");
 };
 
 Recon_mysql_DBManager::Recon_mysql_DBManager():
@@ -49,8 +47,16 @@ Recon_mysql_DBManager::Recon_mysql_DBManager():
     prepare_queries();
 }
 
+int RECON_DBManager::get_hash_count(){
+    std::unique_ptr<DBResult> result = get_hash_count_stmt->execute();
+    if (result->next()){
+        return result->getInt("res");
+    }
+    return 0;
+}
+
 void Recon_mysql_DBManager::prepare_queries(){
-    
+    RECON_DBManager::prepare_queries(); 
     get_pnode_stmt = prepare_query("SELECT * FROM ptree WHERE node_key = (?) and key_size = (?)");
 
     insert_pnode_stmt = prepare_query("INSERT INTO ptree VALUES (?,?,?,?,?,?)");
@@ -65,12 +71,13 @@ void Recon_mysql_DBManager::prepare_queries(){
             "LOAD DATA LOCAL INFILE '", "' IGNORE INTO TABLE ptree FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
             "LINES TERMINATED BY '\\n' (@node_key, key_size, node_svalues, num_elements, leaf, node_elements) SET node_key = UNHEX(@node_key)"
             );
+	get_hash_count_stmt = prepare_query("SELECT count(hash) as res FROM gpg_keyserver");
 
 }
 
 void Recon_mysql_DBManager::insert_node(const DBStruct::node &n){
   try{
-    insert_pnode_stmt->setString(1, n.key);
+    insert_pnode_stmt->setBlob(1, n.key);
     insert_pnode_stmt->setInt(2, n.key_size);
     Buffer tmp;
     tmp.write_zz_array(n.svalues);
@@ -79,7 +86,7 @@ void Recon_mysql_DBManager::insert_node(const DBStruct::node &n){
     insert_pnode_stmt->setBoolean(5, n.leaf);
     tmp.clear();
     tmp.write_zz_array(n.elements);
-    insert_pnode_stmt->setString(6, tmp.to_str());
+    insert_pnode_stmt->setBlob(6, tmp.to_str());
     insert_pnode_stmt->execute();
   }
   catch (std::exception &e){
@@ -96,8 +103,9 @@ void Recon_mysql_DBManager::update_node(const DBStruct::node &n){
     update_pnode_stmt->setBoolean(3, n.leaf);
     tmp.clear();
     tmp.write_zz_array(n.elements);
-    update_pnode_stmt->setString(4, tmp.to_str());
-    update_pnode_stmt->setString(5, n.key);
+    std::vector<byte_t> vec = tmp.vector();
+    update_pnode_stmt->setBlob(4, vec);
+    update_pnode_stmt->setBlob(5, n.key);
     update_pnode_stmt->setInt(6, n.key_size);
     update_pnode_stmt->execute();
   }
@@ -107,7 +115,7 @@ void Recon_mysql_DBManager::update_node(const DBStruct::node &n){
 }
 
 DBStruct::node Recon_mysql_DBManager::get_node(const Bitset& k){
-  get_pnode_stmt->setString(1, k.blob());
+  get_pnode_stmt->setBlob(1, k.blob());
   get_pnode_stmt->setInt(2, k.size());
   std::unique_ptr<DBResult> result = get_pnode_stmt->execute();
   result->next();
@@ -127,7 +135,7 @@ DBStruct::node Recon_mysql_DBManager::get_node(const Bitset& k){
 
 void Recon_mysql_DBManager::delete_node(const Bitset& k){
   try{
-    delete_pnode_stmt->setString(1,k.blob());
+    delete_pnode_stmt->setBlob(1,k.blob());
     delete_pnode_stmt->setInt(2,k.size());
     delete_pnode_stmt->execute();
   } catch (exception &e){
@@ -153,12 +161,7 @@ Recon_memory_DBManager::Recon_memory_DBManager() : RECON_DBManager(){
 }
 
 void Recon_memory_DBManager::prepare_queries(){
-
-    get_all_hash_stmt = prepare_query("SELECT hash FROM gpg_keyserver");
-
-    get_all_hash_iterator_stmt = prepare_query("SELECT hash FROM gpg_keyserver LIMIT ? OFFSET ?");
-
-    get_hash_count_stmt = prepare_query("SELECT count(hash) as res FROM gpg_keyserver");
+    RECON_DBManager::prepare_queries(); 
 
     check_key_stmt = prepare_query("SELECT * FROM gpg_keyserver where hash = (?)");
 
@@ -217,7 +220,7 @@ DBStruct::node Recon_memory_DBManager::get_node(const Bitset& k){
   return n;
 }
 
-std::vector<std::string> Recon_memory_DBManager::get_all_hash(){
+std::vector<std::string> RECON_DBManager::get_all_hash(){
     std::vector<std::string> hashes;
     std::unique_ptr<DBResult> result = get_all_hash_stmt->execute();
     while(result->next()){
@@ -227,23 +230,14 @@ std::vector<std::string> Recon_memory_DBManager::get_all_hash(){
     return hashes;
 }
 
-
-int Recon_memory_DBManager::get_hash_count(){
-    std::unique_ptr<DBResult> result = get_hash_count_stmt->execute();
-    if (result->next()){
-        return result->getInt("res");
-    }
-    return 0;
-}
-
-std::shared_ptr<DBResult> Recon_memory_DBManager::get_all_hash_iterator(int limit, int offset){
+std::shared_ptr<DBResult> RECON_DBManager::get_all_hash_iterator(int limit, int offset){
     get_all_hash_iterator_stmt->setInt(1, limit);
     get_all_hash_iterator_stmt->setInt(2, offset);
     std::unique_ptr<DBResult> result = get_all_hash_iterator_stmt->execute();
     return result;
 }
 
-std::string Recon_memory_DBManager::get_hash_from_results(const std::shared_ptr<DBResult> & results){
+std::string RECON_DBManager::get_hash_from_results(const std::shared_ptr<DBResult> & results){
     std::string hash = "";
     if(results->next()){
         hash = results->getString("hash");

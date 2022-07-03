@@ -17,7 +17,7 @@ using namespace OpenPGP;
 namespace peaks {
 namespace common{
 
-void pr::readPublicKeyPacket(const string &arm, std::shared_ptr<DBManager> dbm, bool ptree_override){
+void pr::readPublicKeyPacket(const string &arm, std::shared_ptr<DBManager> dbm, bool ptree_override, bool unpack){
     PublicKey::Ptr key(new PublicKey(arm));
 
     gpg_keyserver_data gk = {};
@@ -131,10 +131,12 @@ void pr::readPublicKeyPacket(const string &arm, std::shared_ptr<DBManager> dbm, 
         PTREE.insert(gk.hash);
     dbm->end_transaction();
 
-    // Unpacking will be done in a separate transaction, may fail if unpacking is already locking the tables, so key will be unpacked later
-    dbm->begin_transaction();
-    peaks::unpacker::unpack_key(key, dbm, true);
-    dbm->end_transaction();
+    if (unpack) {
+        // Unpacking will be done in a separate transaction, may fail if unpacking is already locking the tables, so key will be unpacked later
+        dbm->begin_transaction();
+        peaks::unpacker::unpack_key(key, dbm, true);
+        dbm->end_transaction();
+    }
 }
 
 bool pr::manageMerge(PublicKey::Ptr key, const std::string & content){

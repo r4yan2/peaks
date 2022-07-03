@@ -36,20 +36,11 @@ class DBResult {
         long unsigned int size();
 };
 
-struct DataBuf : public std::streambuf
-{
-    DataBuf(char* s, std::size_t n)
-    {
-        setg(s, s, s + n);
-    }
-};
-
 class DBQuery {
     private:
         std::string query;
         std::shared_ptr<sql::PreparedStatement> stmt;
         std::vector<std::istream *> trash_bin;
-        std::vector<DataBuf *> trash_bin_2;
         std::map<int, std::string> params;
         int pos;
 
@@ -61,6 +52,7 @@ class DBQuery {
         void refresh(sql::Connection * con);
         std::unique_ptr<DBResult> execute();
         void setBlob(int, const std::string &);
+        void setBlob(int, std::vector<unsigned char> &);
         void setBlob(int, std::istream *);
         void setBoolean(int, const bool);
         void setString(int, const std::string &);

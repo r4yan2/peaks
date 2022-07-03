@@ -105,7 +105,7 @@ void PeerManager::fetch_elements(const Peer &peer, const std::vector<NTL::ZZ_p> 
         }
     }
     syslog(LOG_DEBUG, "fetched %d keys from peer", int(keys.size()));
-    if (CONTEXT.peersettings.dry_run){
+    if (CONTEXT.get<bool>("dryrun")){
         syslog(LOG_WARNING, "DRY RUN, will NOT insert certificates");
         return;
     }
@@ -114,7 +114,7 @@ void PeerManager::fetch_elements(const Peer &peer, const std::vector<NTL::ZZ_p> 
 
     for (auto &k: keys){
         try{
-            pr::readPublicKeyPacket(k, dbm, true);
+            pr::readPublicKeyPacket(k, dbm, true, false);
         }catch(...){
             // key unpacking failed
         }
