@@ -50,7 +50,7 @@ void Thread_Pool::Add_Jobs(const std::vector<std::shared_ptr<Job>> & new_jobs){
     {
         std::lock_guard <mutex> lock(queue_mutex);
         queue.insert(queue.end(), new_jobs.begin(), new_jobs.end());
-        for (int i=0; i<new_jobs.size(); i++) condition.notify_one();
+        for (size_t i=0; i<new_jobs.size(); i++) condition.notify_one();
     }
 }
 

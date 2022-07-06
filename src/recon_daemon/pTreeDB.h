@@ -216,8 +216,8 @@ public:
     size_t get_num_samples();
     int get_ptree_thresh_mult();
     std::vector<NTL::ZZ_p> get_points();
-    unsigned int get_split_threshold();
-    unsigned int get_join_threshold();
+    int get_split_threshold();
+    int get_join_threshold();
 
     void db_insert(DBStruct::node &n);
     void db_update(DBStruct::node &n);

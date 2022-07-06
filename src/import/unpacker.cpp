@@ -72,14 +72,14 @@ namespace Import {
                             if ((ec == ParsingErrc::EndOfStream) || pos >= size){
                                 end = true;
                             } else {
-                                syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (ErrorCode: %d). Index: %d. Packet: %lu", ec, idx, key->get_packets().size());
+                                syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (ErrorCode: %d). Index: %d. Packet: %lu", int(ec), idx, key->get_packets().size());
                                 //dbm->write_broken_key_csv(file, ec.message());
                             }
                         }catch (KeyErrc &ke) {
                             if (pos >= size){
                                 end = true;
                             } else {
-                                syslog(LOG_WARNING, "Catched KeyError (ErrorCode: %d). Index: %d", ke, idx);
+                                syslog(LOG_WARNING, "Catched KeyError (ErrorCode: %d). Index: %d", int(ke), idx);
                             }
                         }
                         if (pos >= size)

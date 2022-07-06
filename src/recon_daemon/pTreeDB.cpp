@@ -49,7 +49,7 @@ pnode_ptr Ptree::get_root(){
 
 std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z){
     std::vector<NTL::ZZ_p> marray(CONTEXT.treesettings.num_samples);
-    for(size_t i=0; i<CONTEXT.treesettings.num_samples; i++){
+    for(int i=0; i<CONTEXT.treesettings.num_samples; i++){
         marray[i] = CONTEXT.treesettings.points[i] - z;
         if (marray[i] == 0){
             syslog(LOG_CRIT, "marray has a zero element!");
@@ -61,7 +61,7 @@ std::vector<NTL::ZZ_p> add_element_array(const NTL::ZZ_p &z){
 
 std::vector<NTL::ZZ_p> Ptree::delete_element_array(const NTL::ZZ_p &z){
     std::vector<NTL::ZZ_p> marray(CONTEXT.treesettings.num_samples);
-    for(size_t i=0; i < CONTEXT.treesettings.num_samples; i++){
+    for(int i=0; i < CONTEXT.treesettings.num_samples; i++){
         marray[i] = inv(CONTEXT.treesettings.points[i] - z);
     }
     return marray;
@@ -92,11 +92,11 @@ std::vector<NTL::ZZ_p> Ptree::get_points(){
     return CONTEXT.treesettings.points;
 }
 
-unsigned int Ptree::get_split_threshold(){
+int Ptree::get_split_threshold(){
     return CONTEXT.treesettings.split_threshold;
 }
 
-unsigned int Ptree::get_join_threshold(){
+int Ptree::get_join_threshold(){
     return CONTEXT.treesettings.join_threshold;
 }
 
@@ -156,7 +156,7 @@ Bitset generate_child_key(const Bitset& parent_key, int c_idx){
 
 std::vector<NTL::ZZ_p> generate_svalues(){
     std::vector<NTL::ZZ_p> svalues(CONTEXT.treesettings.num_samples);
-    for (size_t i=0; i < CONTEXT.treesettings.num_samples; i++){
+    for (int i=0; i < CONTEXT.treesettings.num_samples; i++){
         NTL::ZZ_p z(1);
         svalues[i] = z;
     }

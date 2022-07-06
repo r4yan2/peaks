@@ -70,7 +70,7 @@ bool radix64::encode(std::istream& in, std::string& out)
         return false;
 
     in.seekg(0, in.end);
-    istream::streampos size = in.tellg();
+    std::streampos size = in.tellg();
     in.seekg(0, in.beg);
 
     if(size == 0)

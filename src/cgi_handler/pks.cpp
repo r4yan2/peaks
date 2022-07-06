@@ -326,7 +326,7 @@ cppcms::json::value ptree_stats(){
     cppcms::json::value full_stats;
     syslog(LOG_INFO, "Generating ptree stats");
     std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
-    int tree_heigth = 0;
+    size_t tree_heigth = 0;
     int arity = 4;
     std::vector<DBStruct::node> nodes = dbm->get_pnodes();
     std::map<size_t, std::vector<std::string>> node_on_lv;
@@ -355,7 +355,7 @@ cppcms::json::value ptree_stats(){
                 num_elements_buckets[3] += 1;
             else 
                 num_elements_buckets[4] += 1;
-            for (int j=0; j < num_elements_buckets.size(); j++)
+            for (size_t j=0; j < num_elements_buckets.size(); j++)
                 full_stats["ptree"]["num_elements_ptree_stats"][j] = num_elements_buckets[j];
             i++;
         }
@@ -415,7 +415,7 @@ cppcms::json::value ptree_stats(){
     }
 
     full_stats["ptree"]["node_level_ptree_stats"][0] = 1;
-    for (int lv = 1; lv < tree_heigth; lv++){
+    for (size_t lv = 1; lv < tree_heigth; lv++){
         full_stats["ptree"]["node_level_ptree_stats"][lv] = node_on_lv[lv].size();
     }
     full_stats["ptree"]["generic"]["Arity"] = to_string(arity);
@@ -472,14 +472,14 @@ cppcms::json::value certificate_stats(){
     int unpacked = 0;
     std::shared_ptr<DBResult> certificates_data_ptr = dbm->get_certificates_analysis_iterator();
     std::vector<int> bins(size_limits.size()+1, 0);
-    int certificates = 0;
+    size_t certificates = 0;
     for (; certificates < certificates_data_ptr->size(); certificates++){
         int length, year;
         bool has_ua;
         int is_unpacked;
         std::tie(length, has_ua, year, is_unpacked) = dbm->get_certificate_data_from_iterator(certificates_data_ptr);
         bool found = false;
-        int i = 0;
+        size_t i = 0;
         maxsize = std::max(maxsize, length);
         minsize = std::min(minsize, length);
         if (is_unpacked != 0)
@@ -496,11 +496,11 @@ cppcms::json::value certificate_stats(){
         if (year >= allowed_min_year && year <= allowed_max_year)
             years_counter[year] = get(years_counter, year, 0) + 1;
     }
-    int i = 0;
+    size_t i = 0;
     for (i=0; i<bins.size() + 1; i++)
         full_stats["certificates"]["size"]["data"][i] = bins[i];
     full_stats["certificates"]["size"]["ticks"][0] = 0;
-    for (int i = 0; i<size_limits.size(); i++){
+    for (size_t i = 0; i<size_limits.size(); i++){
         full_stats["certificates"]["size"]["ticks"][i+1] = std::to_string(size_limits[i]/KB);
     }
     full_stats["certificates"]["size"]["maxsize"] = std::to_string(maxsize/MB) + "MB";
@@ -547,7 +547,7 @@ cppcms::json::value userattribute_stats(){
 
     std::vector<int> image_bins(limits.size()+1, 0);
     std::vector<int> other_bins(limits.size()+1, 0);
-    int userattributes = 0;
+    size_t userattributes = 0;
     for (; userattributes < ua_data_iterator->size(); userattributes++){
         int length;
         bool is_data_image;
@@ -556,7 +556,7 @@ cppcms::json::value userattribute_stats(){
           image_user_attributes += 1;
         else
           other_user_attributes += 1;
-        for (int i=0; i<limits.size(); i++){
+        for (size_t i=0; i<limits.size(); i++){
             if (is_data_image)
                 maxsize_image = std::max(maxsize_image, length);
             else
@@ -570,11 +570,11 @@ cppcms::json::value userattribute_stats(){
             }
         }
     }
-    for (int i=0; i<image_bins.size(); i++)
+    for (size_t i=0; i<image_bins.size(); i++)
         full_stats["userattributes"]["image"]["size"][i] = image_bins[i];
-    for (int i=0; i<other_bins.size(); i++)
+    for (size_t i=0; i<other_bins.size(); i++)
         full_stats["userattributes"]["other"]["size"][i] = other_bins[i];
-    int i = 0;
+    size_t i = 0;
     for (; i<limits.size(); i++){
         full_stats["userattributes"]["ticks"][i] = std::to_string(limits[i]/KB);
     }
@@ -618,7 +618,7 @@ cppcms::json::value pubkey_stats(){
     std::vector<int> dsa_plimits = 
         {1024, 2048, 3072};
     int security_limit_rsa = 1024;
-    int security_limit_elgamal = 1024;
+    //int security_limit_elgamal = 1024;
     int ec = 0;
     int rsa = 0;
     int dsa = 0;
@@ -644,7 +644,7 @@ cppcms::json::value pubkey_stats(){
     std::shared_ptr<CGI_DBManager> dbm = std::make_shared<CGI_DBManager>();
     std::shared_ptr<DBResult> data_iterator = dbm->get_pubkey_data_iterator(allowed_min_year, allowed_max_year);
 
-    int pubkey_count = 0;
+    size_t pubkey_count = 0;
     for (; pubkey_count < data_iterator -> size(); pubkey_count++){
         int algorithm, year, n, q, p, vulnerabilityCode, is_analyzed;
         std::string vulnerabilityDescription;
@@ -673,7 +673,7 @@ cppcms::json::value pubkey_stats(){
                 unhealthy_rsa_year[year] = 0;
                 healthy_rsa_year[year] = 0;
             }
-            int i = 0;
+            size_t i = 0;
             bool found = false;
             for (; i<rsa_limits.size(); i++){
                 if (n < rsa_limits[i]){
@@ -708,7 +708,7 @@ cppcms::json::value pubkey_stats(){
                 vulnerability_elgamal_year_dict[year] = 
                     std::map<int, int>();
             }
-            int i = 0;
+            size_t i = 0;
             bool found = false;
             for (; i<elg_limits.size(); i++){
                 if (p < elg_limits[i]){
@@ -742,7 +742,7 @@ cppcms::json::value pubkey_stats(){
                 vulnerability_dsa_year_dict[year] = 
                     std::map<int, int>();
             }
-            int i = 0;
+            size_t i = 0;
             bool found = false;
             for (; i<dsa_qlimits.size(); i++){
                 if (q < dsa_qlimits[i]){
@@ -850,15 +850,15 @@ cppcms::json::value signature_stats(){
         sig_valid,
         self_sig,
         sig;
-    int
-        self_sig_expired_count = 0,
-        self_sig_revocation_count = 0,
-        sig_expired_count = 0,
-        sig_revocation_count = 0,
-        self_sig_valid_count = 0,
-        sig_valid_count = 0,
-        self_sig_count = 0,
-        sig_count = 0;
+    //int
+    //    self_sig_expired_count = 0,
+    //    self_sig_revocation_count = 0,
+    //    sig_expired_count = 0,
+    //    sig_revocation_count = 0,
+    //    self_sig_valid_count = 0,
+    //    sig_valid_count = 0,
+    //    self_sig_count = 0,
+    //    sig_count = 0;
 
     time_t t = time(NULL);
     tm* timePtr = localtime(&t);
@@ -868,7 +868,7 @@ cppcms::json::value signature_stats(){
     std::map<int, std::map<int,int>> signature_year_alg_dict;
 
     std::shared_ptr<DBResult> data_iterator = dbm->get_signature_data_iterator();
-    int signature_count = 0;
+    size_t signature_count = 0;
 
     for (; signature_count < data_iterator->size(); signature_count++){
         int isRevocation, isExpired, pubAlgorithm, year, issuingKeyId, signedKeyId;
@@ -895,7 +895,6 @@ cppcms::json::value signature_stats(){
         signature_year_alg_dict[year][pubAlgorithm] = get(signature_year_alg_dict[year], pubAlgorithm, 0) + 1;
     }
     auto f = [=](std::map<int, int> m){int sum = 0; for (const auto& it: m) sum+=it.second;return sum;};
-    int i = 0;
     for (int y=allowed_min_year,i=0; y<=allowed_max_year; y++,i++)
         full_stats["signature"]["static"]["years"][i] = y;
 
@@ -936,7 +935,6 @@ cppcms::json::value userid_stats(){
     int
         PPA_mail = 0,
         PPA_nomail = 0,
-        PPA_keyid = 0,
         no_mail = 0,
         no_name = 0;
     size_t max_length = 0;
@@ -945,11 +943,11 @@ cppcms::json::value userid_stats(){
         names,
         hosts,
         magnets;
-    std::vector<int> size_limits;
-    for (int i=10; i < 100; i+=10){
+    std::vector<size_t> size_limits;
+    for (size_t i=10; i < 100; i+=10){
         size_limits.push_back(i);
     }
-    for (int i=100; i <= 1000; i+=100){
+    for (size_t i=100; i <= 1000; i+=100){
         size_limits.push_back(i);
     }
   
@@ -957,11 +955,11 @@ cppcms::json::value userid_stats(){
     std::map<std::string, std::set<std::string>> domain_dict;
     std::vector<int> username_lengths;
     regex link_pattern("(https?|ftp)://([^/\r\n]+/[^\r\n]*?)");
-    regex mail_pattern("([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)");
+    regex mail_pattern("([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+.[a-zA-Z0-9-.]+)");
     
     std::shared_ptr<DBResult> data_iterator = dbm->get_userid_data_iterator();
     std::vector<int> bins(size_limits.size()+1, 0);
-    int userid_count = 0;
+    size_t userid_count = 0;
 
     for (; userid_count < data_iterator->size(); userid_count++){
         int ownerkeyid;
@@ -975,7 +973,7 @@ cppcms::json::value userid_stats(){
             continue;
         }
         bool found = false;
-        int i = 0;
+        size_t i = 0;
         for (i=0; i<size_limits.size(); i++){
             if (size < size_limits[i]){
                 bins[i] += 1;
@@ -1043,15 +1041,15 @@ cppcms::json::value userid_stats(){
         return a.second > b.second;
     }
     );
-    int limit = 20;
-    int i = 0;
+    size_t limit = 20;
+    size_t i = 0;
     for (const auto &it: pairs){
         if (i > limit) break;
         full_stats["userid"]["domain"]["label"][i] = it.first;
         full_stats["userid"]["domain"]["value"][i] = it.second;
         i++;
     }
-    for (int i=0; i<bins.size(); i++)
+    for (size_t i=0; i<bins.size(); i++)
         full_stats["userid"]["size"]["value"][i] = bins[i];
     i = 0;
     for (; i<size_limits.size(); i++)
@@ -1235,7 +1233,7 @@ void Pks::vindex(const string& id) {
 
 string Pks::fp_format(const string &fp){
     string out = "";
-    for (unsigned int i = 0; i < fp.size(); i++){
+    for (size_t i = 0; i < fp.size(); i++){
         if (i == (fp.size() / 2)){
             out += "  ";
         }else if (i != 0 && i % 4 == 0){

@@ -28,7 +28,7 @@ Context::Context(){
         ("reconciliation_timeout", po::value<int>()->default_value(45))
         ("max_read_len_shift", po::value<int>()->default_value(24))
         ("max_recover_size", po::value<int>()->default_value(1500))
-        ("max_request_queue_len", po::value<int>()->default_value(60000))
+        ("max_request_queue_len", po::value<size_t>()->default_value(60000))
         ("request_chunk_size", po::value<int>()->default_value(100))
         ("max_outstanding_recon_req", po::value<int>()->default_value(100))
         ("async_timeout_sec", po::value<int>()->default_value(1))
@@ -43,7 +43,7 @@ Context::Context(){
         ("filters", po::value<std::string>()->default_value("yminsky.dedup,yminsky.merge"))
         ("name", po::value<std::string>()->default_value("peaks_recon"))
         ("gossip_interval", po::value<int>()->default_value(60))
-        ("max_unpacker_keysize", po::value<int>()->default_value(-1))
+        ("max_unpacker_keysize", po::value<size_t>()->default_value(0))
         ("unpacker_interval", po::value<int>()->default_value(60))
         ("unpacker_threads", po::value<int>()->default_value(1))
         ("unpacker_limit", po::value<int>()->default_value(10000))
@@ -63,7 +63,7 @@ Context::Context(){
         ("db_database", po::value<std::string>()->default_value("gpg_keyserver"))
         ("db_password", po::value<std::string>()->default_value(""))
         ("filestorage_format", po::value<std::string>()->default_value("/var/peaks/filestorage/peaks_filestorage_%d.pgp"))
-        ("filestorage_maxsize", po::value<int>()->default_value(100))
+        ("filestorage_maxsize", po::value<size_t>()->default_value(100))
         ("expire_interval", po::value<int>()->default_value(15))
         ;
 
@@ -144,7 +144,7 @@ void Context::setContext(const po::variables_map & _vm){
         vm["tmp_folder"].as<std::string>(),
         vm["error_folder"].as<std::string>(),
         vm["filestorage_format"].as<std::string>(),
-        vm["filestorage_maxsize"].as<int>(),
+        vm["filestorage_maxsize"].as<size_t>(),
         vm["expire_interval"].as<int>(),
     };
     P_SKS = NTL::conv<NTL::ZZ>(vm["P_SKS_STRING"].as<std::string>().c_str());
@@ -165,7 +165,7 @@ void Context::setContext(const po::variables_map & _vm){
         vm["version"].as<std::string>(),
         vm["http_port"].as<int>(),
         vm["filters"].as<std::string>(),
-        1 << vm["max_read_len_shift"].as<int>(), //1 << 24 max_read_len
+        1u << vm["max_read_len_shift"].as<int>(), //1 << 24 max_read_len
         vm["async_timeout_sec"].as<int>(),
         vm["async_timeout_usec"].as<int>()
     };
@@ -173,7 +173,7 @@ void Context::setContext(const po::variables_map & _vm){
     msgsettings = {
         vm["P_SKS_STRING"].as<std::string>(),
         NTL::NumBytes(CONTEXT.P_SKS), // 17
-        vm["max_request_queue_len"].as<int>(),
+        vm["max_request_queue_len"].as<size_t>(),
     };
 
     peersettings = {

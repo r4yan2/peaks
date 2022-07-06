@@ -26,7 +26,7 @@ namespace peaks{
       std::string tmp_folder;
       std::string error_folder;
       std::string filestorage_format;
-      int filestorage_maxsize;
+      size_t filestorage_maxsize;
       int expire_interval;
   };
   
@@ -85,7 +85,7 @@ namespace peaks{
       std::string peaks_filters;
   
       /** maximum bytes length of a single message */
-      int max_read_len;
+      size_t max_read_len;
   
       /** asyncronous request timeout in sec */
       int async_timeout_sec;
@@ -101,7 +101,7 @@ namespace peaks{
       /** number of bytes which composes the P_SKS representation */
       long sks_zp_bytes;
       /** max length for the recon request queue */
-      int max_request_queue_len;
+      size_t max_request_queue_len;
   };
   
   }

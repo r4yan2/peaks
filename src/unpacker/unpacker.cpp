@@ -167,7 +167,7 @@ void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm_, const std::s
 }
 
 std::string unpack_key(Key::Ptr & key, const std::shared_ptr<DBManager> &dbm, DBStruct::gpg_keyserver_data &gpg_data, bool fast) {
-    int max_bin_size = CONTEXT.get<int>("max_unpacker_keysize");
+    size_t max_bin_size = CONTEXT.get<size_t>("max_unpacker_keysize");
     bool analyzable = true;
     try{
         key = std::make_shared<Key>();
