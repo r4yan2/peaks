@@ -37,12 +37,6 @@ void UNPACKER_DBManager::prepare_queries(){
     get_signature_by_index = prepare_query("SELECT id "
                                          "FROM Signatures WHERE r = (?) and s = (?)");
     
-    insert_error_comments = prepare_query("INSERT INTO Unpacker_errors "
-                                         "(version, fingerprint, error) VALUES (?, ?, ?);");
-    
-    set_key_not_analyzable = prepare_query("UPDATE gpg_keyserver "
-                                         "SET is_unpacked = -1 WHERE version = (?) and fingerprint = unhex(?)");
-
     set_unpacking_status_stmt = prepare_query("UPDATE gpg_keyserver SET is_unpacked = 3 WHERE version = (?) and fingerprint = (?)");
     
     update_issuing_fingerprint = prepare_query("UPDATE Signatures INNER JOIN Pubkey on issuingKeyId = KeyId SET issuingFingerprint = fingerprint where isnull(issuingFingerprint) and issuingKeyId = KeyId;");
@@ -105,32 +99,6 @@ bool UNPACKER_DBManager::existSignature(const DBStruct::signatures &s){
     }catch (exception &e){
         syslog(LOG_CRIT, "get_signature_by_index FAILED, there may be a double signature in the database! - %s", e.what());
         return false;
-    }
-}
-
-void UNPACKER_DBManager::set_as_not_analyzable(const int &version, const string &fingerprint, const string &comment) {
-    try{
-        insert_error_comments->setInt(1, version);
-        insert_error_comments->setString(2, fingerprint);
-        insert_error_comments->setString(3, comment);
-        insert_error_comments->execute();
-    }catch (exception &e){
-        syslog(LOG_CRIT, "insert_error_comments FAILED, the key will not have some comments - %s", e.what());
-    }
-
-    try{
-        set_key_not_analyzable->setInt(1, version);
-        string fp;
-        if (version < 4){
-            fp = hexlify(fingerprint) + "00000000";
-        }else{
-            fp = hexlify(fingerprint);
-        }
-        set_key_not_analyzable->setString(2, fp);
-        set_key_not_analyzable->execute();
-
-    }catch (exception &e){
-        syslog(LOG_CRIT, "set_key_not_analyzable FAILED, the key will result not UNPACKED in the database! - %s", e.what());
     }
 }
 

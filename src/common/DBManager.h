@@ -86,14 +86,16 @@ class DBManager {
             check_blocklist_stmt,
             fetch_blocklist_stmt,
             insert_gpg_stmt,
-        insert_into_blocklist_stmt,
-        insert_into_pubkey_stmt,
-        insert_into_signature_stmt,
-        insert_into_selfsignature_stmt,
-        insert_into_userid_stmt,
-        insert_into_userattributes_stmt,
-        insert_into_unpackererrors_stmt,
-        update_gpg_keyserver_stmt
+            insert_into_blocklist_stmt,
+            insert_into_pubkey_stmt,
+            insert_into_signature_stmt,
+            insert_into_selfsignature_stmt,
+            insert_into_userid_stmt,
+            insert_into_userattributes_stmt,
+            insert_into_unpackererrors_stmt,
+            update_gpg_keyserver_stmt,
+            insert_error_comments,
+            set_key_not_analyzable
             ;
 
 
@@ -206,47 +208,54 @@ class DBManager {
         void closeCSVFiles();
 
         /** @brief fill up the Pubkey csv
-          * @param pubkey new data to add
-          */
-         void write_pubkey_csv(const DBStruct::pubkey &pubkey);
-         /** @brief fill up the UserID csv
-          * @param uid new data to add
-          */
-         void write_userID_csv(const DBStruct::userID &uid);
-         /** @brief fill up the userAttributes csv
-          * @param userAtt new data to add
-          */
-         void write_userAttributes_csv(const DBStruct::userAtt &ua);
-         /** @brief fill up the Signature csv
-          * @param ss new data to add
-          */
-         void write_signature_csv(const DBStruct::signatures &ss);
-         /** @brief fill up the SelfSignatures csv
-          * @param ss new data to add
-          */
-         void write_self_signature_csv(const DBStruct::signatures &ss);
-         /** @brief fill up the UnpackerErrors csv
-          * @param mod new data to add
-          */
-         void write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod);
-         /** @brief fill the Unpacked csv
-          * Will be used to change the status of the is_unpacked flag
-          * in the certificates table
-          * @param key certificate for which change the unpacked value
-          * @param mod information about the unpacking status
-          */
-         void write_unpacked_csv(const OpenPGP::Key::Ptr &key, const DBStruct::Unpacker_errors &mod);
+         * @param pubkey new data to add
+         */
+        void write_pubkey_csv(const DBStruct::pubkey &pubkey);
+        /** @brief fill up the UserID csv
+         * @param uid new data to add
+         */
+        void write_userID_csv(const DBStruct::userID &uid);
+        /** @brief fill up the userAttributes csv
+         * @param userAtt new data to add
+         */
+        void write_userAttributes_csv(const DBStruct::userAtt &ua);
+        /** @brief fill up the Signature csv
+         * @param ss new data to add
+         */
+        void write_signature_csv(const DBStruct::signatures &ss);
+        /** @brief fill up the SelfSignatures csv
+         * @param ss new data to add
+         */
+        void write_self_signature_csv(const DBStruct::signatures &ss);
+        /** @brief fill up the UnpackerErrors csv
+         * @param mod new data to add
+         */
+        void write_unpackerErrors_csv(const DBStruct::Unpacker_errors &mod);
+        /** @brief fill the Unpacked csv
+         * Will be used to change the status of the is_unpacked flag
+         * in the certificates table
+         * @param key certificate for which change the unpacked value
+         * @param mod information about the unpacking status
+         */
+        void write_unpacked_csv(const OpenPGP::Key::Ptr &key, const DBStruct::Unpacker_errors &mod);
 
 
-         void write_pubkey_table(const DBStruct::pubkey &pubkey);
-         void write_userID_table(const DBStruct::userID &uid);
-         void write_userAttributes_table(const DBStruct::userAtt &ua);
-         void write_signature_table(const DBStruct::signatures &ss);
-         void write_self_signature_table(const DBStruct::signatures &ss);
-         void write_unpackerErrors_table(const DBStruct::Unpacker_errors &mod);
-         void write_unpacked_table(const OpenPGP::Key::Ptr &key, const DBStruct::Unpacker_errors &mod);
+        void write_pubkey_table(const DBStruct::pubkey &pubkey);
+        void write_userID_table(const DBStruct::userID &uid);
+        void write_userAttributes_table(const DBStruct::userAtt &ua);
+        void write_signature_table(const DBStruct::signatures &ss);
+        void write_self_signature_table(const DBStruct::signatures &ss);
+        void write_unpackerErrors_table(const DBStruct::Unpacker_errors &mod);
+        void write_unpacked_table(const OpenPGP::Key::Ptr &key, const DBStruct::Unpacker_errors &mod);
 
         void insert_into_blocklist(const std::string & ID);
+
+        /** @brief In case of error mark the certificate not analyzable
+         * @param version version of the certificate (primary key)
+         * @param fingerprint fingerprint of the certificate (primary key)
+         * @param comment reason for the error
+         */
+        void set_as_not_analyzable(const int &version, const std::string &fingerprint, const std::string &comment);
 
 
 };

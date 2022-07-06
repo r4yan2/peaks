@@ -245,7 +245,6 @@ std::string RECON_DBManager::get_hash_from_results(const std::shared_ptr<DBResul
     return hash;
 }
 
-
 void Recon_memory_DBManager::delete_node(const Bitset& k){
     syslog(LOG_DEBUG, "deleting node %s from memory DB", Bitset::to_string(k).c_str());
   try{

@@ -9,7 +9,7 @@
 #include "db.h"
 #include <recon_daemon/pTreeDB.h>
 #include <unpacker/unpacker.h>
-
+#include <syslog.h>
 
 using namespace std;
 using namespace OpenPGP;
@@ -17,34 +17,31 @@ using namespace OpenPGP;
 namespace peaks {
 namespace common{
 
-void pr::readPublicKeyPacket(const string &arm, std::shared_ptr<DBManager> dbm, bool ptree_override, bool unpack){
-    PublicKey::Ptr key(new PublicKey(arm));
-
+void pr::readPublicKeyPacket(const string &arm, std::shared_ptr<DBManager> dbm, bool ptree_override, bool unpack, bool armored){
+    Key::Ptr key;
     gpg_keyserver_data gk = {};
     vector<userID> uids;
     bool exist = false;
     std::string oldkid = "";
+    std::string err;
 
-
+    if (armored)
+        gk.certificate = get_ascii_arm(arm);
+    else
+        gk.certificate = arm;
+    gk.version = 0; // key still not in DB
+    gk.fingerprint = "";
+    gk.error_code = 0;
+    err = peaks::unpacker::unpack_key(key, dbm, gk, !unpack);
+    if (err.find("Error") != std::string::npos) //looking for critical Errors
+        throw std::runtime_error(err);
     try{
-        for (const auto &p: key->get_packets()){
-            if (p->get_tag() == Packet::PUBLIC_KEY){
-                // Verifico se la chiave è già presente nel DB ed eventualmente mergio
-                oldkid = mpitodec(rawtompi(key->keyid()));
-                std::string query = dbm -> get_certificate_from_filestore_by_id(oldkid);
-                if(query != ""){ exist = pr::manageMerge(key, query); }
-                break;
-            }
-        }
-        key->meaningful();
+        // Verifico se la chiave è già presente nel DB ed eventualmente mergio
+        oldkid = mpitodec(rawtompi(key->keyid()));
+        std::string query = dbm -> get_certificate_from_filestore_by_id(oldkid);
+        if(query != ""){ exist = pr::manageMerge(key, query); }
 
         thread fullfill_gpg_ks (read_gpg_keyserver_data, key, &gk);
-        gk.error_code = 0;
-        for(auto &p: key->get_packets()){
-            if(p->get_tag() == Packet::USER_ID){
-                uids.push_back(read_userID_data(key, dynamic_pointer_cast<Packet::Tag13>(p)));
-            }
-        }
         fullfill_gpg_ks.join();
     }catch(error_code &ec){
         switch (ec.value()){
@@ -131,15 +128,22 @@ void pr::readPublicKeyPacket(const string &arm, std::shared_ptr<DBManager> dbm, 
         PTREE.insert(gk.hash);
     dbm->end_transaction();
 
-    if (unpack) {
+    if (err != ""){
+        syslog(LOG_WARNING, err.c_str());
+        dbm->set_as_not_analyzable(gk.version, gk.fingerprint, err);
+    } else if (unpack) {
         // Unpacking will be done in a separate transaction, may fail if unpacking is already locking the tables, so key will be unpacked later
         dbm->begin_transaction();
-        peaks::unpacker::unpack_key(key, dbm, true);
-        dbm->end_transaction();
+        try{
+            peaks::unpacker::_unpack_key(dbm, key, true);
+            dbm->end_transaction();
+        } catch (std::exception &e){
+            dbm->rollback_transaction();
+        }
     }
 }
 
-bool pr::manageMerge(PublicKey::Ptr key, const std::string & content){
+bool pr::manageMerge(Key::Ptr key, const std::string & content){
     const Key::Ptr oldKey = make_shared<Key>(content);
     try{
         key->merge(oldKey);

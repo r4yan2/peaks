@@ -337,8 +337,8 @@ Message* Connection::read_message(bool &ok, bool async) {
    std::uint32_t size;
    if (!read_n_bytes(&size, sizeof(size))) {
        ok = false;
+       syslog(LOG_NOTICE, "No incoming message");
        return NULL;
-       syslog(LOG_WARNING, "No incoming message");
    }
    ok = true;
    size = Utils::swap(size);

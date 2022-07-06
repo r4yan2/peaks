@@ -12,6 +12,7 @@
 #include "Key_Tools.h"
 #include "utils.h"
 #include <common/config.h>
+#include <syslog.h>
 
 namespace peaks{
 namespace unpacker{
@@ -141,85 +142,80 @@ void Unpacker::run(){
 void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm_, const std::shared_ptr<DBResult> & results, size_t start, size_t size) {
     std::shared_ptr<UNPACKER_DBManager> dbm = make_shared<UNPACKER_DBManager>();
     dbm->openCSVFiles(); // just recover handlers
-    int max_bin_size = CONTEXT.get<int>("max_unpacker_keysize");
     size_t end = start + size;
     for (size_t i = start; i < results->size() && i < end; i++){
         DBStruct::gpg_keyserver_data gpg_data = dbm_->get_certificate_from_results(results);
         Key::Ptr key;
-        bool analyzable = true;
+        auto err = unpack_key(key, dbm, gpg_data);
+        if (err != "")
+            continue;
+
+        // actual unpack in DB
         try{
-            key = std::make_shared<Key>();
-            key->read_raw(gpg_data.certificate);
-            key->set_type(PGP::PUBLIC_KEY_BLOCK);
-        }catch (std::error_code &ec){
-            switch (ec.value()) {
-                case static_cast<int>(KeyErrc::NotExistingVersion):
-                case static_cast<int>(KeyErrc::BadKey):
-                case static_cast<int>(KeyErrc::NotAPublicKey):
-                case static_cast<int>(KeyErrc::NotASecretKey):
-                    analyzable = false;
-                    break;
-                case static_cast<int>(KeyErrc::NotEnoughPackets): {
-                    if (key->get_packets().empty()) {
-                        analyzable = false;
-                        break;
-                    }
-                }
-                case static_cast<int>(KeyErrc::FirstPacketWrong):
-                case static_cast<int>(KeyErrc::SignAfterPrimary):
-                case static_cast<int>(KeyErrc::AtLeastOneUID):
-                case static_cast<int>(KeyErrc::WrongSignature):
-                case static_cast<int>(KeyErrc::NoSubkeyFound):
-                case static_cast<int>(KeyErrc::Ver3Subkey):
-                case static_cast<int>(KeyErrc::NoSubkeyBinding):
-                case static_cast<int>(KeyErrc::NotAllPacketsAnalyzed):
-                    break;
-                default:
-                    analyzable = false;
-                    break;
-            }
-            
-            if (!analyzable){
-                syslog(LOG_WARNING, "Error during creation of the object PGP::Key - %s at index %lu", ec.message().c_str(), i);
-                dbm->set_as_not_analyzable(gpg_data.version, gpg_data.fingerprint, "Error during creation of the object PGP::Key");
-                continue;
-            }
-        }catch (std::exception &e){
-            syslog(LOG_WARNING, "Error during creation of the object PGP::Key - %s at index %lu", e.what(), i);
-            dbm->set_as_not_analyzable(gpg_data.version, gpg_data.fingerprint, "Error during creation of the object PGP::Key");
-            continue;
-        }catch (...){
-            syslog(LOG_WARNING, "Error during creation of the object PGP::Key at index %lu", i);
-            continue;
-        }
-
-        if (max_bin_size > 0 && max_bin_size < gpg_data.certificate.size()){
-            dbm->set_as_not_analyzable(gpg_data.version, gpg_data.fingerprint, "Key skipped: too large");
-            continue;
-        }
-
-        // only unpackable key after this point
-        assert(analyzable);
-
-        // actual unpack
-        try{
-            unpack_key(key, dbm);
+            _unpack_key(dbm, key);
         }catch(exception &e) {
             syslog(LOG_WARNING, "Key not analyzed due to not meaningfulness (%s). is_analyzed will be set equals to -1", e.what());
-            cout << "Key not analyzed due to not meaningfulness (" << e.what() << "). is_analyzed will be set equals to -1" << endl;
             dbm->set_as_not_analyzable(key->version(), key->fingerprint(), e.what());
-            continue;
         }catch (error_code &ec){
             syslog(LOG_WARNING, "Key not unpacked due to not meaningfulness (%s).", ec.message().c_str());
-            cerr << "Key not unpacked due to not meaningfulness (" << ec.message() << ")." << endl;
             dbm->set_as_not_analyzable(key->version(), key->fingerprint(), ec.message());
-            continue;
         }catch (...){
-            syslog(LOG_CRIT, "Error during creation of the object PGP::Key");
-            continue;
+            syslog(LOG_WARNING, "Error during creation of the object PGP::Key");
         }
     } //end for
     dbm->flushCSVFiles();
+}
+
+std::string unpack_key(Key::Ptr & key, const std::shared_ptr<DBManager> &dbm, DBStruct::gpg_keyserver_data &gpg_data, bool fast) {
+    int max_bin_size = CONTEXT.get<int>("max_unpacker_keysize");
+    bool analyzable = true;
+    try{
+        key = std::make_shared<Key>();
+        size_t pos = 0;
+        key->read_raw(gpg_data.certificate, pos, fast);
+        key->set_type(PGP::PUBLIC_KEY_BLOCK);
+    }catch (std::error_code &ec){
+        switch (ec.value()) {
+            case static_cast<int>(KeyErrc::NotExistingVersion):
+            case static_cast<int>(KeyErrc::BadKey):
+            case static_cast<int>(KeyErrc::NotAPublicKey):
+            case static_cast<int>(KeyErrc::NotASecretKey):
+                analyzable = false;
+                break;
+            case static_cast<int>(KeyErrc::NotEnoughPackets): {
+                if (key->get_packets().empty()) {
+                    analyzable = false;
+                    break;
+                }
+            }
+            case static_cast<int>(KeyErrc::FirstPacketWrong):
+            case static_cast<int>(KeyErrc::SignAfterPrimary):
+            case static_cast<int>(KeyErrc::AtLeastOneUID):
+            case static_cast<int>(KeyErrc::WrongSignature):
+            case static_cast<int>(KeyErrc::NoSubkeyFound):
+            case static_cast<int>(KeyErrc::Ver3Subkey):
+            case static_cast<int>(KeyErrc::NoSubkeyBinding):
+            case static_cast<int>(KeyErrc::NotAllPacketsAnalyzed):
+                break;
+            default:
+                analyzable = false;
+                break;
+        }
+        
+        if (!analyzable){
+            return Utils::stringFormat("Error during creation of the object PGP::Key - %s", ec.message().c_str());
+        }
+    }catch (std::exception &e){
+        return Utils::stringFormat("Error during creation of the object PGP::Key - %s", e.what());
+    }catch (...){
+        syslog(LOG_WARNING, "Error during creation of the object PGP::Key");
+        return "Error during creation of the object PGP::Key";
+    }
+
+    if (max_bin_size > 0 && max_bin_size < gpg_data.certificate.size()){
+        return "Key skipped: too large";
+    }
+    return "";
 }
 
 void Unpacker::store_keymaterial(const std::shared_ptr<UNPACKER_DBManager> &dbm){
@@ -235,10 +231,7 @@ void Unpacker::store_keymaterial(const std::shared_ptr<UNPACKER_DBManager> &dbm)
     //dbm->UpdateIsValid();
 }
 
-void unpack_key( const Key::Ptr &key, const shared_ptr<DBManager> &dbm, bool direct_write){
-    if (direct_write)
-        dbm->begin_transaction();
-
+void _unpack_key(const shared_ptr<DBManager> &dbm, const OpenPGP::Key::Ptr &key, bool direct_write){
     Key::pkey pk;
     DBStruct::Unpacker_errors modified;
 
@@ -258,7 +251,7 @@ void unpack_key( const Key::Ptr &key, const shared_ptr<DBManager> &dbm, bool dir
                 syslog(LOG_WARNING, "Submitted a PGP packet of type: %d", key->get_type());
                 throw ec;
             case static_cast<int>(KeyErrc::NotAPublicKey):
-                syslog(LOG_WARNING, "Submitted a private key!");
+                syslog(LOG_WARNING, "Submitted a private key! You should revoke it immediately!");
                 throw ec;
             case static_cast<int>(KeyErrc::NotASecretKey):
                 throw runtime_error("Not unpackable key: " + ec.message());
@@ -397,6 +390,9 @@ void unpack_key( const Key::Ptr &key, const shared_ptr<DBManager> &dbm, bool dir
     }
 
     // Insert in DB
+
+    if (direct_write)
+        dbm->begin_transaction();
 
     for (auto &p: unpackedPubkeys){
         for (auto &s: unpackedSignatures){

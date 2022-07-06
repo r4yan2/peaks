@@ -47,13 +47,6 @@ public:
     DBStruct::gpg_keyserver_data get_certificate_from_results(const std::shared_ptr<DBResult> &);
     bool existSignature(const DBStruct::signatures &s);
 
-    /** @brief In case of error mark the certificate not analyzable
-     * @param version version of the certificate (primary key)
-     * @param fingerprint fingerprint of the certificate (primary key)
-     * @param comment reason for the error
-     */
-    void set_as_not_analyzable(const int &version, const std::string &fingerprint, const std::string &comment);
-
     /** @brief Updates issuing fingerprint 
      * Update issuing signatures fingerprint in the signatures table
      */
@@ -78,8 +71,6 @@ private:
     std::shared_ptr<DBQuery>
         get_analyzable_cert_stmt, 
         get_signature_by_index, 
-        set_key_not_analyzable,
-        insert_error_comments,
         update_issuing_fingerprint,
         update_issuing_username,
         update_expired,

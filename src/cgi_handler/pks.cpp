@@ -192,43 +192,11 @@ void Pks::post(const string& arm){
         pr::readPublicKeyPacket(arm, dbm);
         response().status(cppcms::http::response::ok);
         response().out() << "Key uploaded succesfully";
-    }catch (error_code &ec){
-        switch (ec.value()){
-            case static_cast<int>(KeyErrc::BadKey):
-                response().status(cppcms::http::response::internal_server_error);
-                response().out() << "Not a PGP Public Key";
-            case static_cast<int>(KeyErrc::NotAPublicKey):
-                response().status(cppcms::http::response::internal_server_error);
-                response().out() << "ERROR: you have uploaded a PRIVATE KEY! You shold revoke it IMMEDIATELY";
-            default:
-                cerr << ec.message() << endl;
-                response().status(cppcms::http::response::internal_server_error);
-                response().out() << "Error during the upload of the key. Please contact the administrator.";
-                syslog(LOG_CRIT, "GENERIC ERROR: (%s) during upload of key", ec.message().c_str());
-                break;
-        }
-        dbm->insert_broken_key(pr::get_ascii_arm(arm), ec.message());
-    }catch (runtime_error &e){
-        cout << e.what() << endl;
+    }catch (std::exception &e){
         response().status(cppcms::http::response::internal_server_error);
-        response().out() << "Error during the upload of the key. Please contact the administrator.";
-        syslog(LOG_ERR, "Error (%s) during upload of key", e.what());
-        dbm->insert_broken_key(pr::get_ascii_arm(arm), e.what());
-    }catch (logic_error &e){
-        cerr << e.what() << endl;
-        response().status(cppcms::http::response::internal_server_error);
-        response().out() << "Error during the upload of the key. Please contact the administrator.";
-        syslog(LOG_CRIT, "LOGIC ERROR: (%s) during upload of key", e.what());
-        dbm->insert_broken_key(pr::get_ascii_arm(arm), e.what());
-    }catch (exception &e){
-        cerr << e.what() << endl;
-        response().status(cppcms::http::response::internal_server_error);
-        response().out() << "Error during the upload of the key. Please contact the administrator.";
-        syslog(LOG_CRIT, "GENERIC ERROR: (%s) during upload of key", e.what());
-        dbm->insert_broken_key(pr::get_ascii_arm(arm), e.what());
+        response().out() << e.what();
     }
 }
-
 
 void Pks::get(const string& id) {
     syslog(LOG_INFO, "Looking up key with id: %s", id.c_str());

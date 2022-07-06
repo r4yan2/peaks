@@ -9,6 +9,7 @@
 #include <cmath>
 #include <curl/curl.h>
 #include <common/PacketReader.h>
+#include <unpacker/DBManager.h>
 
 namespace peaks{
 namespace recon{
@@ -110,13 +111,13 @@ void PeerManager::fetch_elements(const Peer &peer, const std::vector<NTL::ZZ_p> 
         return;
     }
     
-    std::shared_ptr<IMPORT_DBManager> dbm = std::make_shared<IMPORT_DBManager>();
+    std::shared_ptr<unpacker::UNPACKER_DBManager> dbm = std::make_shared<unpacker::UNPACKER_DBManager>();
 
     for (auto &k: keys){
         try{
-            pr::readPublicKeyPacket(k, dbm, true, false);
-        }catch(...){
-            // key unpacking failed
+            pr::readPublicKeyPacket(k, dbm, true, false, false);
+        }catch(std::exception &e){
+            syslog(LOG_WARNING, "Recon: key unpacking failed because %s", e.what());
         }
     }
 }

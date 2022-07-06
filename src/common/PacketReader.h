@@ -7,8 +7,8 @@
 namespace peaks {
 namespace common{
 namespace pr {
-    void readPublicKeyPacket(const std::string &arm, std::shared_ptr<DBManager> dbm, bool ptree_override=false, bool unpack=true);
-    bool manageMerge(OpenPGP::PublicKey::Ptr key, const std::string & content);
+    void readPublicKeyPacket(const std::string &arm, std::shared_ptr<DBManager> dbm, bool ptree_override=false, bool unpack=true, bool armored=true);
+    bool manageMerge(OpenPGP::Key::Ptr key, const std::string & content);
 
     void read_gpg_keyserver_data(const OpenPGP::Key::Ptr &k, gpg_keyserver_data *gk);
     userID read_userID_data(const OpenPGP::Key::Ptr &k, const OpenPGP::Packet::Tag13::Ptr &u);

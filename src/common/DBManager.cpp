@@ -49,7 +49,11 @@ void DBManager::connect_schema(){
     insert_into_userattributes_stmt = prepare_query("INSERT INTO UserAttribute(id, fingerprint, name, encoding, image) VALUES(?,?,?,?,?)");
     insert_into_unpackererrors_stmt = prepare_query("INSERT INTO Unpacker_errors(version,fingerprint,error) VALUES(?,?,?)");
     update_gpg_keyserver_stmt = prepare_query("UPDATE gpg_keyserver SET is_unpacked = (?) WHERE version = (?) AND fingerprint = (?)");
+    insert_error_comments = prepare_query("INSERT INTO Unpacker_errors "
+                                         "(version, fingerprint, error) VALUES (?, ?, ?);");
 
+    set_key_not_analyzable = prepare_query("UPDATE gpg_keyserver "
+                                         "SET is_unpacked = -1 WHERE version = (?) and fingerprint = unhex(?)");
 
     // filestorage
     int idx = 0;
@@ -165,11 +169,13 @@ void DBManager::end_transaction(){
 }
 
 void DBManager::rollback_transaction(){
+    if (!critical_section)
+        return; //already ended
     try{
         CONTEXT.critical_section = false;
         execute_query("ROLLBACK");
-        execute_query("SET AUTOCOMMIT = 1");
-        execute_query("SET UNIQUE_CHECKS = 1");
+        //execute_query("SET AUTOCOMMIT = 1");
+        //execute_query("SET UNIQUE_CHECKS = 1");
         execute_query("SET sql_log_bin = 1");
         execute_query("SET foreign_key_checks = 1");
     }catch (exception &e){
@@ -334,7 +340,7 @@ void DBManager::insert_gpg_keyserver(const DBStruct::gpg_keyserver_data &gk) {
     try {
         insert_gpg_stmt->setInt(1, gk.version);
         insert_gpg_stmt->setBigInt(2, gk.ID);
-        insert_gpg_stmt->setBlob(3, new istringstream(gk.fingerprint));
+        insert_gpg_stmt->setBlob(3, gk.fingerprint);
         insert_gpg_stmt->setString(4, gk.hash);
         insert_gpg_stmt->setInt(5, gk.error_code);
         insert_gpg_stmt->setString(6, std::get<0>(res));
@@ -527,6 +533,32 @@ void DBManager::insert_into_blocklist(const std::string &ID) {
     }catch(exception &e){
         syslog(LOG_CRIT, "insert_into_blocklist_stmt FAILED, the blocklist was not updated! - %s",
                           e.what());
+    }
+}
+
+void DBManager::set_as_not_analyzable(const int &version, const string &fingerprint, const string &comment) {
+    try{
+        insert_error_comments->setInt(1, version);
+        insert_error_comments->setBlob(2, fingerprint);
+        insert_error_comments->setString(3, comment);
+        insert_error_comments->execute();
+    }catch (exception &e){
+        syslog(LOG_CRIT, "insert_error_comments FAILED, the key will not have some comments - %s", e.what());
+    }
+
+    try{
+        set_key_not_analyzable->setInt(1, version);
+        string fp;
+        if (version < 4){
+            fp = hexlify(fingerprint) + "00000000";
+        }else{
+            fp = hexlify(fingerprint);
+        }
+        set_key_not_analyzable->setString(2, fp);
+        set_key_not_analyzable->execute();
+
+    }catch (exception &e){
+        syslog(LOG_CRIT, "set_key_not_analyzable FAILED, the key will result not UNPACKED in the database! - %s", e.what());
     }
 }
 

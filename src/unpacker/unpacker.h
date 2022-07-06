@@ -7,7 +7,6 @@
 #include "DBManager.h"
 #include <functional>
 #include <Misc/radix64.h>
-#include <syslog.h>
 #include <future>
 #include <iostream>
 #include <cstring>
@@ -33,7 +32,8 @@ class Unpacker{
 void unpack();
 void blocklist();
 void unpack_key_th(const std::shared_ptr<UNPACKER_DBManager> &dbm, const std::shared_ptr<DBResult> &, size_t, size_t);
-void unpack_key(const OpenPGP::Key::Ptr &key, const std::shared_ptr<DBManager> &dbm, bool direct_write=false);
+std::string unpack_key(Key::Ptr & key, const std::shared_ptr<DBManager> &dbm, DBStruct::gpg_keyserver_data &gpg_data, bool fast=false);
+void _unpack_key(const std::shared_ptr<DBManager> &dbm, const OpenPGP::Key::Ptr &key, bool direct_write=false);
 DBStruct::signatures get_signature_data(const OpenPGP::Key::SigPairs::iterator &sp, const OpenPGP::Packet::Key::Ptr &priKey, const std::string &uatt_id="");
 DBStruct::pubkey get_publicKey_data(const OpenPGP::Packet::Tag::Ptr &p, const OpenPGP::Packet::Key::Ptr &priKey);
 DBStruct::userID get_userID_data(const OpenPGP::Packet::Tag::Ptr &user_pkt, const OpenPGP::Packet::Key::Ptr &key);
