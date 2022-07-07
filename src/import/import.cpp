@@ -102,6 +102,8 @@ void generate_csv(std::shared_ptr<IMPORT_DBManager> dbm, std::vector<std::string
     }
 
     pool->terminate();
+    dbm->flushCSVFiles();
+    dbm->closeCSVFiles();
 }
 
 void import_csv(std::shared_ptr<IMPORT_DBManager> dbm){
